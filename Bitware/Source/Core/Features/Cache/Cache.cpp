@@ -120,7 +120,7 @@ namespace Cache {
                                     Globals::Camera.Address = Globals::Workspace.Find_First_Child_Of_Class(std::string(skCrypt("Camera"))).Address;
                                     if (Globals::Camera.Address != 0)
                                         break;
-                                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                                    SDK::sleep_jitter(100, 25);
                                 }
 
                                 Globals::LocalPlayer = SDK::Player{};
@@ -141,9 +141,16 @@ namespace Cache {
                 static int window_refresh_counter = 0;
                 if (++window_refresh_counter >= 20) {
                     window_refresh_counter = 0;
-                    HWND cached = Api::FindWindowA(nullptr, std::string(skCrypt("Roblox")).c_str());
-                    if (cached || Globals::RobloxWindow)
-                        Globals::RobloxWindow = cached;
+                    DWORD target_pid = Driver->Get_Process();
+                    EnumWindows([](HWND hwnd, LPARAM lparam) -> BOOL {
+                        DWORD pid = 0;
+                        GetWindowThreadProcessId(hwnd, &pid);
+                        if (pid == static_cast<DWORD>(lparam) && IsWindowVisible(hwnd)) {
+                            Globals::RobloxWindow = hwnd;
+                            return FALSE;
+                        }
+                        return TRUE;
+                    }, static_cast<LPARAM>(target_pid));
                 }
 
                 if (Globals::VisualEngine.Address != 0 && Globals::Datamodel.Address != 0 && Globals::Camera.Address != 0)
@@ -157,7 +164,7 @@ namespace Cache {
             }
 
             OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            SDK::sleep_jitter(100, 25);
         }
     }
 
@@ -333,6 +340,6 @@ void Cache::RunService() {
             OBF_JUNK_BLOCK;
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        SDK::sleep_jitter(150, 35);
     }
 }

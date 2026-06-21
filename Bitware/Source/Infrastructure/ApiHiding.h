@@ -3,9 +3,12 @@
 #include <dwmapi.h>
 #include <winternl.h>
 #include <TlHelp32.h>
+#include <d3d11.h>
 #include <cstdio>
 #include <Auth/skStr.h>
 #include <Infrastructure/Logger.h>
+#include <Psapi.h>
+#include <Infrastructure/EatParser.h>
 
 namespace Api {
 
@@ -20,7 +23,10 @@ namespace Api {
         template <typename T>
         T Get() {
             if (!Resolved) {
-                Address = ::GetProcAddress(Module, Name);
+                Address = reinterpret_cast<FARPROC>(EatParser::GetProcAddressEAT(Module, Name));
+                if (!Address) {
+                    Address = ::GetProcAddress(Module, Name);
+                }
                 Resolved = true;
                 if (!Address) {
                     char buf[256];
@@ -34,32 +40,57 @@ namespace Api {
     };
 
     inline HMODULE GetKernel32() {
-        static HMODULE mod = ::GetModuleHandleA(skCrypt("kernel32.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"kernel32.dll"));
         return mod;
     }
 
     inline HMODULE GetNtdll() {
-        static HMODULE mod = ::GetModuleHandleA(skCrypt("ntdll.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"ntdll.dll"));
         return mod;
     }
 
     inline HMODULE GetUser32() {
-        static HMODULE mod = ::LoadLibraryA(skCrypt("user32.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"user32.dll"));
+        if (!mod) {
+            ::LoadLibraryA(skCrypt("user32.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"user32.dll"));
+        }
         return mod;
     }
 
     inline HMODULE GetShcore() {
-        static HMODULE mod = ::LoadLibraryA(skCrypt("shcore.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"shcore.dll"));
+        if (!mod) {
+            ::LoadLibraryA(skCrypt("shcore.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"shcore.dll"));
+        }
         return mod;
     }
 
     inline HMODULE GetDwmapi() {
-        static HMODULE mod = ::LoadLibraryA(skCrypt("dwmapi.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"dwmapi.dll"));
+        if (!mod) {
+            ::LoadLibraryA(skCrypt("dwmapi.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"dwmapi.dll"));
+        }
         return mod;
     }
 
     inline HMODULE GetWinmm() {
-        static HMODULE mod = ::LoadLibraryA(skCrypt("winmm.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"winmm.dll"));
+        if (!mod) {
+            ::LoadLibraryA(skCrypt("winmm.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"winmm.dll"));
+        }
+        return mod;
+    }
+
+    inline HMODULE GetD3D11() {
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"d3d11.dll"));
+        if (!mod) {
+            ::LoadLibraryA(skCrypt("d3d11.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"d3d11.dll"));
+        }
         return mod;
     }
 
@@ -288,6 +319,13 @@ namespace Api {
     DEFINE_DYNAMIC_API_MOD1(Api::GetWinmm(), MMRESULT, timeBeginPeriod, UINT, uPeriod)
     DEFINE_DYNAMIC_API_MOD1(Api::GetWinmm(), MMRESULT, timeEndPeriod, UINT, uPeriod)
 
+    // D3D11 wrappers
+    DEFINE_DYNAMIC_API_MOD12(Api::GetD3D11(), HRESULT, D3D11CreateDeviceAndSwapChain,
+        IDXGIAdapter*, pAdapter, D3D_DRIVER_TYPE, DriverType, HMODULE, Software, UINT, Flags,
+        const D3D_FEATURE_LEVEL*, pFeatureLevels, UINT, FeatureLevels, UINT, SDKVersion,
+        const DXGI_SWAP_CHAIN_DESC*, pSwapChainDesc, IDXGISwapChain**, ppSwapChain,
+        ID3D11Device**, ppDevice, D3D_FEATURE_LEVEL*, pFeatureLevel, ID3D11DeviceContext**, ppImmediateContext)
+
     // Kernel32 wrappers cont. 
     DEFINE_DYNAMIC_API0(HANDLE, GetCurrentProcess)
     DEFINE_DYNAMIC_API0(DWORD, GetCurrentProcessId)
@@ -296,6 +334,18 @@ namespace Api {
     DEFINE_DYNAMIC_API7(BOOL, DuplicateHandle, HANDLE, hSourceProcessHandle, HANDLE, hSourceHandle, HANDLE, hTargetProcessHandle, LPHANDLE, lpTargetHandle, DWORD, dwDesiredAccess, BOOL, bInheritHandle, DWORD, dwOptions)
     DEFINE_DYNAMIC_API0(DWORD, GetLastError)
     DEFINE_DYNAMIC_API1(void, Sleep, DWORD, dwMilliseconds)
+    
+    // Kernel32 wrappers cont. for AntiInjection
+    DEFINE_DYNAMIC_API1(void, GetSystemInfo, LPSYSTEM_INFO, lpSystemInfo)
+    DEFINE_DYNAMIC_API3(SIZE_T, VirtualQuery, LPCVOID, lpAddress, PMEMORY_BASIC_INFORMATION, lpBuffer, SIZE_T, dwLength)
+    DEFINE_DYNAMIC_API2(BOOL, Thread32First, HANDLE, hSnapshot, LPTHREADENTRY32, lpte)
+    DEFINE_DYNAMIC_API2(BOOL, Thread32Next, HANDLE, hSnapshot, LPTHREADENTRY32, lpte)
+    DEFINE_DYNAMIC_API4(BOOL, GetModuleInformation, HANDLE, hProcess, HMODULE, hModule, LPMODULEINFO, lpmodinfo, DWORD, cb)
+    DEFINE_DYNAMIC_API1(HMODULE, GetModuleHandleW, LPCWSTR, lpModuleName)
+    DEFINE_DYNAMIC_API7(HANDLE, CreateFileW, LPCWSTR, lpFileName, DWORD, dwDesiredAccess, DWORD, dwShareMode, LPSECURITY_ATTRIBUTES, lpSecurityAttributes, DWORD, dwCreationDisposition, DWORD, dwFlagsAndAttributes, HANDLE, hTemplateFile)
+    DEFINE_DYNAMIC_API6(HANDLE, CreateFileMappingW, HANDLE, hFile, LPSECURITY_ATTRIBUTES, lpFileMappingAttributes, DWORD, flProtect, DWORD, dwMaximumSizeHigh, DWORD, dwMaximumSizeLow, LPCWSTR, lpName)
+    DEFINE_DYNAMIC_API5(LPVOID, MapViewOfFile, HANDLE, hFileMappingObject, DWORD, dwDesiredAccess, DWORD, dwFileOffsetHigh, DWORD, dwFileOffsetLow, SIZE_T, dwNumberOfBytesToMap)
+    DEFINE_DYNAMIC_API1(BOOL, UnmapViewOfFile, LPCVOID, lpBaseAddress)
 
     // NTDLL wrappers
     DEFINE_DYNAMIC_API_NT5(NTSTATUS, NtQueryInformationProcess, HANDLE, ProcessHandle, PROCESSINFOCLASS, ProcessInformationClass, PVOID, ProcessInformation, ULONG, ProcessInformationLength, PULONG, ReturnLength)

@@ -16,11 +16,9 @@ namespace AntiDump {
     static std::uint64_t SectionBase = 0;
     static SIZE_T SectionSize = 0;
 
-    // exception handler in (".protect")
-    // so it doesnt get marked as PAGE_NOACCESS along with ".text".
-    #pragma section(".protect", read, execute)
-    __declspec(code_seg(".protect"))
-    static LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS ExceptionInfo) {
+    #pragma section(".vcdata", read, execute)
+    __declspec(code_seg(".vcdata"))
+    static LONG WINAPI OnException(PEXCEPTION_POINTERS ExceptionInfo) {
         if (ExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_ACCESS_VIOLATION) {
             auto Address = static_cast<std::uint64_t>(ExceptionInfo->ExceptionRecord->ExceptionInformation[1]);
             if (Address >= SectionBase && Address < SectionBase + SectionSize) {
@@ -75,37 +73,25 @@ namespace AntiDump {
     }
 
     inline bool Enable() {
-        Logger::Log(WRAPPER_MARCO("[AntiDump] Enable enter"));
-        if (ProtectionActive.load()) { Logger::Log(WRAPPER_MARCO("[AntiDump] already active")); return true; }
+        if (ProtectionActive.load()) return true;
 
         GetTextSection(SectionBase, SectionSize, OriginalProtect);
-        Logger::LogHex(WRAPPER_MARCO("[AntiDump] SectionBase"), SectionBase);
-        Logger::LogHex(WRAPPER_MARCO("[AntiDump] SectionSize"), SectionSize);
-        if (!SectionBase || !SectionSize) { Logger::Log(WRAPPER_MARCO("[AntiDump] no section found")); return false; }
+        if (!SectionBase || !SectionSize) return false;
 
-        // register handler first avoids a race condition where memory 
-        // is PAGE_NOACCESS but the handler isnt registered yet to handle violations
-        VexHandle = AddVectoredExceptionHandler(1, VectoredHandler);
-        Logger::LogHex(WRAPPER_MARCO("[AntiDump] VexHandle"), reinterpret_cast<uintptr_t>(VexHandle));
-        if (!VexHandle) { Logger::Log(WRAPPER_MARCO("[AntiDump] VEH failed")); return false; }
+        VexHandle = AddVectoredExceptionHandler(1, OnException);
+        if (!VexHandle) return false;
 
         ProtectionActive.store(true);
-        Logger::Log(WRAPPER_MARCO("[AntiDump] ProtectionActive set"));
 
         DWORD old;
-        Logger::Log(WRAPPER_MARCO("[AntiDump] calling VirtualProtect PAGE_NOACCESS"));
-        Logger::Flush();
         BOOL vpResult = Api::VirtualProtect(reinterpret_cast<LPVOID>(SectionBase), SectionSize, PAGE_NOACCESS, &old);
-        Logger::Log(WRAPPER_MARCO("[AntiDump] VirtualProtect returned"));
         if (!vpResult) {
-            Logger::Log(WRAPPER_MARCO("[AntiDump] VirtualProtect failed, cleanup"));
             RemoveVectoredExceptionHandler(VexHandle);
             VexHandle = nullptr;
             ProtectionActive.store(false);
             return false;
         }
 
-        Logger::Log(WRAPPER_MARCO("[AntiDump] Enable done"));
         return true;
     }
 
@@ -128,5 +114,12 @@ namespace AntiDump {
     inline bool IsProtected() {
         return ProtectionActive.load();
     }
-}
 
+    inline void Toggle() {
+        if (ProtectionActive.load()) {
+            Disable();
+        } else {
+            Enable();
+        }
+    }
+}

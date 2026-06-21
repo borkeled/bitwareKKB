@@ -4,7 +4,7 @@
 
 namespace Logger {
 
-    inline bool Enabled = false;
+    inline bool Enabled = true;
 
     inline HANDLE GetHandle() {
         static HANDLE h = CreateFileA("bitware_debug.log", GENERIC_WRITE, FILE_SHARE_READ,

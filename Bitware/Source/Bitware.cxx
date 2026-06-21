@@ -27,7 +27,7 @@ std::int32_t main(std::int32_t argc, char** argv[])
 
     if (!app.Init())
     {
-        MessageBoxA(nullptr, WRAPPER_MARCO("Failed to initialize"), WRAPPER_MARCO("Error"), MB_ICONERROR | MB_OK);
+        Api::MessageBoxA(nullptr, WRAPPER_MARCO("Failed to initialize"), WRAPPER_MARCO("Error"), MB_ICONERROR | MB_OK);
         return 1;
     }
 

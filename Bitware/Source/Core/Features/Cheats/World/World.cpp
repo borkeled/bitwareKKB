@@ -138,7 +138,7 @@ namespace World {
                 }
             }
             OBF_JUNK_BLOCK;
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            SDK::sleep_jitter(30, 10);
         }
     }
 
@@ -154,7 +154,7 @@ namespace World {
                 SDK::Renderview::InvalidateLighting();
             }
             OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            SDK::sleep_jitter(100, 20);
         }
     }
 
@@ -170,7 +170,7 @@ namespace World {
                 SDK::Renderview::InvalidateLighting();
             }
             OBF_JUNK_BLOCK;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            SDK::sleep_jitter(100, 20);
         }
     }
 
@@ -186,7 +186,7 @@ namespace World {
                 SDK::Renderview::InvalidateLighting();
             }
             OBF_JUNK_BLOCK;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            SDK::sleep_jitter(100, 20);
         }
     }
 
@@ -202,7 +202,7 @@ namespace World {
                 SDK::Renderview::InvalidateLighting();
             }
             OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            SDK::sleep_jitter(100, 20);
         }
     }
 
@@ -223,7 +223,7 @@ namespace World {
                 }
             }
             OBF_JUNK_BLOCK;
-            std::this_thread::sleep_for(std::chrono::milliseconds(30));
+            SDK::sleep_jitter(30, 10);
         }
     }
 
@@ -232,7 +232,7 @@ namespace World {
         StopSkybox = true; StopAtmosphere = true; StopFog = true;
         StopBrightness = true; StopExposure = true; StopFOV = true;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        SDK::sleep_jitter(50, 10);
 
         StopSkybox = false; StopAtmosphere = false; StopFog = false;
         StopBrightness = false; StopExposure = false; StopFOV = false;

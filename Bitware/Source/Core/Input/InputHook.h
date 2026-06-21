@@ -5,7 +5,7 @@ namespace InputHook
 {
     bool Install();
     void Remove();
-    void PollMouseKeys();
+    void PollKeys();
     bool IsKeyDown(DWORD vk);
     bool ConsumeMenuKeyPress();
 }

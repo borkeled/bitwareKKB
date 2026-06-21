@@ -451,7 +451,9 @@ void Explorer::Explorer::RenderScriptViewer()
                 // read the raw bytecode data
                 std::string raw_data;
                 raw_data.resize(bytecode_size);
-                Driver_ReadVirtualMemory(Driver->Get_Handle(), reinterpret_cast<void*>(bytecode_ptr), raw_data.data(), static_cast<ULONG>(bytecode_size), nullptr);
+                if (DriverReadVirtualMemory) {
+                    DriverReadVirtualMemory(Driver->Get_Handle(), reinterpret_cast<void*>(bytecode_ptr), raw_data.data(), static_cast<ULONG>(bytecode_size), nullptr);
+                }
 
                 cached_script_bytes = raw_data;
                 cached_script_class = class_name;

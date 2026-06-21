@@ -1,37 +1,51 @@
 #include "Driver.h"
 #include <Auth/skStr.h>
+#include <psapi.h>
 
 std::uint32_t Driver_t::Find_Process(const std::string& Process_Name)
 {
     OBF_PROLOGUE;
     std::uint32_t Local_Process = 0;
-    HANDLE Snapshot = Api::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, NULL);
 
-    if (Snapshot == INVALID_HANDLE_VALUE)
-    {
-        OBF_JUNK_BLOCK;
-        return Local_Process;
+    if (!DriverNtQuerySystemInformation) return Local_Process;
+
+    ULONG buffer_size = 0x10000;
+    std::vector<uint8_t> buffer(buffer_size);
+
+    NTSTATUS status = DriverNtQuerySystemInformation(5, buffer.data(), buffer_size, &buffer_size);
+    if (status == 0xC0000004) {
+        buffer.resize(buffer_size);
+        status = DriverNtQuerySystemInformation(5, buffer.data(), buffer_size, &buffer_size);
     }
+    if (status < 0) return Local_Process;
 
-    PROCESSENTRY32 Process_Entry{};
-    Process_Entry.dwSize = sizeof(PROCESSENTRY32);
+    auto entry = reinterpret_cast<SYSTEM_PROCESS_INFORMATION*>(buffer.data());
+    while (true) {
+        if (entry->ImageName.Buffer && entry->ImageName.Length > 0) {
+            int len = WideCharToMultiByte(CP_UTF8, 0, entry->ImageName.Buffer,
+                entry->ImageName.Length / sizeof(wchar_t), nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+                std::string name(len, '\0');
+                WideCharToMultiByte(CP_UTF8, 0, entry->ImageName.Buffer,
+                    entry->ImageName.Length / sizeof(wchar_t), &name[0], len, nullptr, nullptr);
 
-    if (Api::Process32First(Snapshot, &Process_Entry))
-    {
-        do
-        {
-            OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-            if (!_stricmp(Process_Name.c_str(), Process_Entry.szExeFile))
-            {
-                Local_Process = Process_Entry.th32ProcessID;
-                Process_ID = Local_Process;
-                OBF_JUNK_BLOCK;
-                break;
+                std::string proc_lower = Process_Name;
+                std::string name_lower = name;
+                for (auto& c : proc_lower) if (c >= 'A' && c <= 'Z') c += 32;
+                for (auto& c : name_lower) if (c >= 'A' && c <= 'Z') c += 32;
+
+                if (proc_lower == name_lower) {
+                    Local_Process = static_cast<std::uint32_t>(reinterpret_cast<uintptr_t>(entry->UniqueProcessId));
+                    Process_ID = Local_Process;
+                    break;
+                }
             }
-        } while (Api::Process32Next(Snapshot, &Process_Entry));
+        }
+        if (!entry->NextEntryOffset) break;
+        entry = reinterpret_cast<SYSTEM_PROCESS_INFORMATION*>(
+            reinterpret_cast<uint8_t*>(entry) + entry->NextEntryOffset);
     }
 
-    Api::CloseHandle(Snapshot);
     return Local_Process;
 }
 
@@ -40,50 +54,136 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
     OBF_PROLOGUE;
     std::uint64_t Module_Address = 0;
 
-    if (!Process_Handle || Process_Handle == INVALID_HANDLE_VALUE)
-    {
+    if (!Process_Handle || Process_Handle == INVALID_HANDLE_VALUE || !DriverNtOpenProcess) {
         OBF_JUNK_BLOCK;
         return Module_Address;
     }
 
-    DWORD pid = Api::GetProcessId(Process_Handle);
-    HANDLE Snapshot = Api::CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
-
-    if (Snapshot == INVALID_HANDLE_VALUE)
-    {
+    PROCESS_BASIC_INFORMATION pbi;
+    ULONG ret_len = 0;
+    auto nq_status = Api::NtQueryInformationProcess(Process_Handle,
+        ProcessBasicInformation, &pbi, sizeof(pbi), &ret_len);
+    if (nq_status < 0 || !pbi.PebBaseAddress) {
         OBF_JUNK_BLOCK;
         return Module_Address;
     }
 
-    MODULEENTRY32 Module_Entry{};
-    Module_Entry.dwSize = sizeof(MODULEENTRY32);
+    uint64_t image_base = 0;
+    if (DriverReadVirtualMemory) {
+        DriverReadVirtualMemory(Process_Handle,
+            reinterpret_cast<PVOID>(reinterpret_cast<uint64_t>(pbi.PebBaseAddress) + 0x10),
+            &image_base, sizeof(image_base), nullptr);
+    }
 
-    if (Api::Module32First(Snapshot, &Module_Entry))
-    {
-        do
-        {
-            OBF_JUNK_DECLARE;
-            if (!_stricmp(Module_Name.c_str(), Module_Entry.szModule))
-            {
-                Module_Address = reinterpret_cast<uint64_t>(Module_Entry.modBaseAddr);
-                Base_Address = Module_Address;
-                OBF_JUNK_BLOCK;
-                break;
+    if (!image_base) {
+        OBF_JUNK_BLOCK;
+        return Module_Address;
+    }
+
+    if (_stricmp(Module_Name.c_str(), "RobloxPlayerBeta.exe") == 0) {
+        Base_Address = image_base;
+        return image_base;
+    }
+
+    uint64_t ldr_addr = 0;
+    if (DriverReadVirtualMemory) {
+        DriverReadVirtualMemory(Process_Handle,
+            reinterpret_cast<PVOID>(reinterpret_cast<uint64_t>(pbi.PebBaseAddress) + 0x18),
+            &ldr_addr, sizeof(ldr_addr), nullptr);
+    }
+    if (!ldr_addr) {
+        OBF_JUNK_BLOCK;
+        return Module_Address;
+    }
+
+    LIST_ENTRY module_list;
+    if (DriverReadVirtualMemory) {
+        DriverReadVirtualMemory(Process_Handle,
+            reinterpret_cast<PVOID>(ldr_addr + 0x30),
+            &module_list, sizeof(module_list), nullptr);
+    }
+
+    LIST_ENTRY current = module_list;
+    uint64_t current_flink = reinterpret_cast<uint64_t>(current.Flink);
+    uint64_t head_flink = reinterpret_cast<uint64_t>(module_list.Flink);
+
+    while (true) {
+        LDR_DATA_TABLE_ENTRY entry_data;
+        bool read_ok = false;
+        if (DriverReadVirtualMemory) {
+            read_ok = DriverReadVirtualMemory(Process_Handle,
+                reinterpret_cast<PVOID>(current_flink), &entry_data, sizeof(entry_data), nullptr) >= 0;
+        }
+
+        if (!read_ok || current_flink == 0) break;
+
+        UNICODE_STRING& mod_name = entry_data.FullDllName;
+
+        if (mod_name.Buffer && mod_name.Length > 0) {
+            int len = WideCharToMultiByte(CP_UTF8, 0, mod_name.Buffer,
+                mod_name.Length / sizeof(wchar_t), nullptr, 0, nullptr, nullptr);
+            if (len > 0) {
+                std::string name(len, '\0');
+                WideCharToMultiByte(CP_UTF8, 0, mod_name.Buffer,
+                    mod_name.Length / sizeof(wchar_t), &name[0], len, nullptr, nullptr);
+
+                size_t pos = name.rfind('\\');
+                std::string fname = (pos != std::string::npos) ? name.substr(pos + 1) : name;
+
+                std::string mod_lower = Module_Name;
+                std::string fname_lower = fname;
+                for (auto& c : mod_lower) if (c >= 'A' && c <= 'Z') c += 32;
+                for (auto& c : fname_lower) if (c >= 'A' && c <= 'Z') c += 32;
+
+                if (mod_lower == fname_lower) {
+                    Module_Address = reinterpret_cast<std::uint64_t>(entry_data.DllBase);
+                    Base_Address = Module_Address;
+                    break;
+                }
             }
-        } while (Api::Module32Next(Snapshot, &Module_Entry));
+        }
+
+        if (current_flink == head_flink) break;
+        uint64_t next_flink = 0;
+        if (DriverReadVirtualMemory) {
+            DriverReadVirtualMemory(Process_Handle,
+                reinterpret_cast<PVOID>(current_flink),
+                &next_flink, sizeof(next_flink), nullptr);
+        }
+        current_flink = next_flink;
     }
 
-    Api::CloseHandle(Snapshot);
     return Module_Address;
 }
+
 
 bool Driver_t::Attach_Process(const std::string& Process_Name)
 {
     OBF_PROLOGUE;
-    HANDLE Process = Api::OpenProcess(PROCESS_ALL_ACCESS, false, Find_Process(Process_Name));
 
-    if (!Process || Process == INVALID_HANDLE_VALUE)
-    {
+    if (!DriverNtOpenProcess || !Process_ID) {
+        OBF_JUNK_BLOCK;
+        return false;
+    }
+
+    CLIENT_ID cid;
+    cid.UniqueProcess = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(Process_ID));
+    cid.UniqueThread = nullptr;
+
+    OBJECT_ATTRIBUTES oa;
+    oa.Length = sizeof(oa);
+    oa.RootDirectory = nullptr;
+    oa.ObjectName = nullptr;
+    oa.Attributes = 0;
+    oa.SecurityDescriptor = nullptr;
+    oa.SecurityQualityOfService = nullptr;
+
+    HANDLE Process = nullptr;
+    NTSTATUS status = DriverNtOpenProcess(&Process,
+        PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION,
+        &oa, &cid);
+
+    if (status < 0 || !Process || Process == INVALID_HANDLE_VALUE) {
         OBF_JUNK_BLOCK;
         return false;
     }
@@ -106,7 +206,9 @@ std::string Driver_t::Read_String(std::uint64_t Address)
     std::uint64_t String_Address = (String_Length >= 16) ? Read<std::uint64_t>(Address) : Address;
 
     std::vector<char> Buffer(String_Length + 1, 0);
-    Driver_ReadVirtualMemory(Process_Handle, reinterpret_cast<void*>(String_Address), Buffer.data(), (ULONG)Buffer.size(), nullptr);
+    if (DriverReadVirtualMemory) {
+        DriverReadVirtualMemory(Process_Handle, reinterpret_cast<void*>(String_Address), Buffer.data(), (ULONG)Buffer.size(), nullptr);
+    }
 
     return std::string(Buffer.data(), String_Length);
 }
@@ -143,25 +245,29 @@ void Driver_t::Write_String(std::uint64_t Address, const std::string& Value)
     if (Str.Length > 15)
     {
         Write<RbxString>(Address, Str);
-        Driver_WriteVirtualMemory(
-            Process_Handle,
-            reinterpret_cast<void*>(Str.Data.Pointer),
-            (void*)Value.data(),
-            (ULONG)Value.length(),
-            nullptr
-        );
+        if (DriverWriteVirtualMemory) {
+            DriverWriteVirtualMemory(
+                Process_Handle,
+                reinterpret_cast<void*>(Str.Data.Pointer),
+                (void*)Value.data(),
+                (ULONG)Value.length(),
+                nullptr
+            );
+        }
     }
     else
     {
         Str.Capacity = 15;
         Write<RbxString>(Address, Str);
-        Driver_WriteVirtualMemory(
-            Process_Handle,
-            reinterpret_cast<void*>(Address),
-            (void*)Value.data(),
-            (ULONG)Value.length(),
-            nullptr
-        );
+        if (DriverWriteVirtualMemory) {
+            DriverWriteVirtualMemory(
+                Process_Handle,
+                reinterpret_cast<void*>(Address),
+                (void*)Value.data(),
+                (ULONG)Value.length(),
+                nullptr
+            );
+        }
     }
 }
 

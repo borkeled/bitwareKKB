@@ -23,7 +23,7 @@ namespace Misc {
         float targetSpeed = Globals::Misc::Speed_Value;
         OBF_OPAQUE_FALSE { OBF_JUNK_BLOCK; }
 
-        for (int i = 0; i < 25000; i++)
+        for (int i = 0; i < 3; i++)
         {
             Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, targetSpeed);
             Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, targetSpeed);
@@ -102,7 +102,7 @@ namespace Misc {
 
         for (;;)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            SDK::sleep_jitter(10, 5);
 
             if (Globals::Misc::Jump)
             {

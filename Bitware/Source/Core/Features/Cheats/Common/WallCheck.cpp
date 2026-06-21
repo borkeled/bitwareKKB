@@ -34,7 +34,7 @@ void WallCheck::cache_loop()
         for (int i = 0; i < 15 && thread_running; ++i)
         {
             OBF_JUNK_BLOCK;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            SDK::sleep_jitter(100, 20);
         }
     }
 }

@@ -113,9 +113,10 @@ bool Graphics::Create_Window()
         }
     }
 
-    Detail->Window = CreateWindowExA(WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW,
+    static std::string szTitle(ThreadObf::RandomString(6 + rand() % 10));
+    Detail->Window = CreateWindowExA(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
         Detail->WindowClass.lpszClassName,
-        ThreadObf::GenerateWindowClass().c_str(),
+        szTitle.c_str(),
         WS_POPUP,
         TargetRect.left, TargetRect.top,
         TargetRect.right - TargetRect.left,
@@ -177,16 +178,16 @@ bool Graphics::Create_Device()
     D3D_FEATURE_LEVEL FeatureLevel;
     D3D_FEATURE_LEVEL FeatureLevelList[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
 
-    HRESULT Result = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
+    HRESULT Result = Api::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
 
     if (Result == DXGI_ERROR_UNSUPPORTED)
     {
-        Result = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
+        Result = Api::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
     }
 
     if (Result != S_OK)
     {
-        MessageBoxA(nullptr, WRAPPER_MARCO("This software can not run on your computer."), WRAPPER_MARCO("Critical Problem"), MB_ICONERROR | MB_OK);
+        Api::MessageBoxA(nullptr, WRAPPER_MARCO("This software can not run on your computer."), WRAPPER_MARCO("Critical Problem"), MB_ICONERROR | MB_OK);
     }
 
     ID3D11Texture2D* BackBuffer{ nullptr };
@@ -364,12 +365,12 @@ void Graphics::NewFrame()
 
         if (Running)
         {
-            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE);
             SetForegroundWindow(Detail->Window);
         }
         else
         {
-            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_LAYERED);
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT);
         }
     }
 }

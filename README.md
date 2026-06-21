@@ -19,7 +19,7 @@ Bitware.cxx → main()
       └── InitOverlay()               – create D3D11 overlay window + ImGui
 ```
 
-Execution model: **external process** with **direct syscalls** (MASM stubs in `luck.asm`) for all memory reads/writes. No DLL injection. Overlay uses ImGui + D3D11.
+Execution model: **external process** with **runtime-generated direct syscall stubs** for all memory reads/writes. No DLL injection. Overlay uses ImGui + D3D11 (resolved dynamically, no IAT entry for d3d11.dll).
 
 ---
 
@@ -51,18 +51,20 @@ Execution model: **external process** with **direct syscalls** (MASM stubs in `l
 | `Bitware/Source/Core/Features/Cheats/Common/PlayerUtils.h` | Knock detection utility |
 | `Bitware/Source/Core/Features/Explorer/Explorer.h/.cpp` | Instance tree browser, script viewer, teleport |
 | `Bitware/Source/Driver/Driver.h/.cpp` | Process/module attach, typed read/write wrappers |
-| `Bitware/Source/Driver/luck.asm` | MASM x64 syscall stubs (NtReadVirtualMemory, NtWriteVirtualMemory) |
+| `Bitware/Source/Driver/SSN.h` | Dynamic SSN resolution + runtime stub generation |
+| `Bitware/Source/Driver/luck.asm` | **Dead** — all functions removed; kept for MSBuild MASM integration |
 | `Bitware/Source/Engine/Engine.h` | Roblox SDK class declarations |
 | `Bitware/Source/Engine/Classes/*` | SDK implementations (Instance, Datamodel, Camera, Humanoid, Part, etc.) |
 | `Bitware/Source/Engine/Math/Math.h` | Vector2/3/4, Matrix3/4, xorshift PRNG |
 | `Bitware/Source/Engine/Offsets/Offsets.h` | 390+ memory offsets for Roblox classes |
 | `Bitware/Source/Infrastructure/ApiHiding.h` | Dynamic Win32 API resolution |
 | `Bitware/Source/Infrastructure/Obfuscation.h` | ObfuscatedValue, OBF_PROLOGUE, junk code, opaque predicates |
-| `Bitware/Source/Infrastructure/AntiDump.h` | VEH + PAGE_NOACCESS anti-dump |
-| `Bitware/Source/Infrastructure/ThreadObf.h` | HideFromDebugger, random thread names |
+| `Bitware/Source/Infrastructure/AntiDump.h` | VEH + PAGE_NOACCESS anti-dump (VEH handler in `.vcdata` section, outside `.text` range) |
+| `Bitware/Source/Infrastructure/ThreadObf.h` | Random window class/thread names, random string generation |
 | `Bitware/Source/Infrastructure/MiniVM.h` | 26-opcode stack VM for bytecode obfuscation |
 | `Bitware/Source/Infrastructure/ResourceEnc.h` | Encrypted resource loading |
 | `Bitware/Source/Infrastructure/Logger.h` | Debug logging to `bitware_debug.log` |
+| `Bitware/Source/Infrastructure/SyscallObf.h` | Runtime syscall stub generator with garbage instructions, XOR encryption, RW→RX pages |
 | `Bitware/Source/Miscellaneous/Config/ConfigManager.h` | Encrypted JSON config save/load |
 | `Bitware/Source/Miscellaneous/Output/Output.h` | Console output with colored prefixes |
 | `Bitware/Source/Miscellaneous/Protection/AntiInjection.h/.cpp` | Module/thread/hook monitoring |
@@ -109,14 +111,20 @@ Template-based memory read/write via direct syscalls:
 | `Write<T>(address, value)` | Write `T` to remote process |
 | `Read_String(address)` | Read Roblox-style string (inline or pointer) |
 | `Write_String(address, value)` | Write string to remote process |
-| `Find_Process(name)` | Find process by name via CreateToolhelp32Snapshot |
-| `Attach_Process(name)` | OpenProcess with required access |
-| `Find_Module(name)` | Get module base address |
+| `Find_Process(name)` | Find process by name via NtQuerySystemInformation |
+| `Attach_Process(name)` | NtOpenProcess with required access |
+| `Find_Module(name)` | Get module base address via PEB walking |
 
-### Syscall Stubs (`luck.asm`)
-- `Driver_ReadVirtualMemory` — syscall 63 (NtReadVirtualMemory)
-- `Driver_WriteVirtualMemory` — syscall 58 (NtWriteVirtualMemory)
-- `Driver_WriteMousePosition` — direct memory write to InputObject position fields
+### Runtime Syscall Stubs (`SSN.h` + `SyscallObf.h`)
+All syscall stubs and writable memory stubs are generated at runtime with randomized garbage instructions:
+
+| Stub | Method |
+|---|---|
+| `DriverReadVirtualMemory` | SSN resolved via EAT parsing → `SyscallObf::GenerateSyscallStub()` |
+| `DriverWriteVirtualMemory` | SSN resolved via EAT parsing → `SyscallObf::GenerateSyscallStub()` |
+| `DriverWriteMousePosition` | Runtime-generated via `SyscallObf::GenerateWriteStub(0xEC, 0xF0)` |
+
+Stubs are XOR-encrypted at rest, decrypted before use. Allocated as `PAGE_READWRITE`, then protected to `PAGE_EXECUTE_READ` (no RWX pages at rest). No static ASM bytes remain in `.text` — `luck.asm` is empty.
 
 ---
 
@@ -295,11 +303,12 @@ OBB (Oriented Bounding Box) raycasting system for visibility checks:
 ### Runtime
 | Layer | What |
 |---|---|
-| `ApiHiding.h` | All Win32 APIs resolved dynamically via `GetProcAddress` |
+| `SyscallObf.h` | Runtime syscall stub generator — XOR-encrypted at rest, RW→RX allocation, random garbage instructions |
+| `ApiHiding.h` | All Win32 APIs (including MessageBoxA, D3D11CreateDeviceAndSwapChain) resolved dynamically — no IAT entries |
 | `Obfuscation.h` | `ObfuscatedValue<T>` (XOR-encrypted integers), opaque predicates, junk code blocks |
-| `AntiDump.h` | VEH handler + `PAGE_NOACCESS` on `.text` section |
-| `AntiInjection.cpp` | Monitors module loads, detects NTDLL hooks, detects debuggers |
-| `ThreadObf.h` | `NtSetInformationThread(HideFromDebugger)`, random thread names |
+| `AntiDump.h` | VEH handler + `PAGE_NOACCESS` on `.text` section (handler in `.vcdata`, outside `.text` range) |
+| `AntiInjection.cpp` | Monitors module loads, detects NTDLL hooks, detects debuggers (all APIs via ApiHiding) |
+| `ThreadObf.h` | Random window class/thread names, random string generation |
 | `FakeStrings.cpp` | Pool of decoy strings (AES_KEY, Backdoor, License_Key, etc.) |
 | `MiniVM.h` | 26-opcode bytecode interpreter for obfuscated code sections |
 | `ResourceEnc.h` | AES-XOR-shift encrypted embedded resources |
@@ -419,7 +428,7 @@ Settings are defined as `inline` variables in `Settings.h` (namespace `SettingsS
 - **Platform**: x64, C++20
 - **Entry**: `main()` via `mainCRTStartup` (subsystem: Windows)
 - **Libraries**: `d3d11.lib`, `d3dcompiler.lib`, `dxgi.lib`, `Ole32.lib`, `Shell32.lib`, `winmm.lib`, `freetype.lib`
-- **MASM**: `luck.asm` assembled via MSBuild MASM integration
+- **MASM**: `luck.asm` kept for MSBuild MASM integration only (empty — all stubs generated at runtime via `SyscallObf.h` + `SSN.h`)
 - **UAC**: RequireAdministrator (Release)
 - **Configurations**: Debug / Release
 - **Release post-build**: Cleans PDB, iobj, ipdb, and tlog build artifacts

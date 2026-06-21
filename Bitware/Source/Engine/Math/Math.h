@@ -3,6 +3,8 @@
 #include <vector>
 #include <string>
 #include <complex>
+#include <thread>
+#include <chrono>
 
 namespace SDK
 {
@@ -142,5 +144,10 @@ namespace SDK
 
 	inline float fast_rand_float() {
 		return (xorshift64() & 0xFFFFFF) / 16777216.0f;
+	}
+
+	inline void sleep_jitter(int base_ms, int jitter_ms) {
+		int jitter = static_cast<int>(xorshift64() % (jitter_ms + 1));
+		std::this_thread::sleep_for(std::chrono::milliseconds(base_ms + jitter));
 	}
 }

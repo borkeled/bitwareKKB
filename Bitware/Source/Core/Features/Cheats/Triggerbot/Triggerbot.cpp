@@ -54,11 +54,11 @@ namespace Triggerbot {
                 OBF_JUNK_BLOCK;
                 if (!Globals::Triggerbot::Enabled) {
                     if (Holding) {
-                        INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+                        INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
                         Api::SendInput(1, &Up, sizeof(INPUT));
                         Holding = false;
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    SDK::sleep_jitter(50, 10);
                     continue;
                 }
 
@@ -74,7 +74,7 @@ namespace Triggerbot {
                 int Vk = ImGuiKeyToVK(Globals::Triggerbot::Triggerbot_Key);
                 if (!Vk || !InputHook::IsKeyDown(Vk)) {
                     if (Holding) {
-                        INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+                        INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
                         Api::SendInput(1, &Up, sizeof(INPUT));
                         Holding = false;
                     }
@@ -83,7 +83,7 @@ namespace Triggerbot {
                 }
 
                 if (!Globals::VisualEngine.Address || !Globals::Camera.Address) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                    SDK::sleep_jitter(10, 5);
                     continue;
                 }
 
@@ -176,12 +176,11 @@ namespace Triggerbot {
                             std::this_thread::sleep_for(std::chrono::milliseconds(DelayMs));
                         }
 
-                        INPUT Inputs[2] = {};
-                        Inputs[0].type = INPUT_MOUSE;
-                        Inputs[0].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
-                        Inputs[1].type = INPUT_MOUSE;
-                        Inputs[1].mi.dwFlags = MOUSEEVENTF_LEFTUP;
-                        Api::SendInput(2, Inputs, sizeof(INPUT));
+                        INPUT Down = {}; Down.type = INPUT_MOUSE; Down.mi.dwFlags = MOUSEEVENTF_LEFTDOWN; Down.mi.dwExtraInfo = SDK::xorshift64();
+                        Api::SendInput(1, &Down, sizeof(INPUT));
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1 + (SDK::xorshift64() % 5)));
+                        INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
+                        Api::SendInput(1, &Up, sizeof(INPUT));
 
                         LastFireTime = std::chrono::steady_clock::now();
                     }
@@ -205,7 +204,7 @@ namespace Triggerbot {
                                 std::this_thread::sleep_for(std::chrono::milliseconds(DelayMs));
                             }
 
-                            INPUT Down = {}; Down.type = INPUT_MOUSE; Down.mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+                            INPUT Down = {}; Down.type = INPUT_MOUSE; Down.mi.dwFlags = MOUSEEVENTF_LEFTDOWN; Down.mi.dwExtraInfo = SDK::xorshift64();
                             Api::SendInput(1, &Down, sizeof(INPUT));
                             Holding = true;
                         }
@@ -214,7 +213,7 @@ namespace Triggerbot {
                     {
                         if (Holding)
                         {
-                            INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+                            INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
                             Api::SendInput(1, &Up, sizeof(INPUT));
                             Holding = false;
                         }

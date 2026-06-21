@@ -10,6 +10,7 @@
 
 
 #include "Aimbot.h"
+#include "Engine/Math/Math.h"
 #include "../../Cache/Cache.h"
 #include "../../../../Engine/Engine.h"
 #include <Globals.hxx>
@@ -178,6 +179,8 @@ namespace Aimbot {
             }
             if (MoveX < -45.f) MoveX = -45.f; if (MoveX > 45.f) MoveX = 45.f;
             if (MoveY < -45.f) MoveY = -45.f; if (MoveY > 45.f) MoveY = 45.f;
+            MoveX += (SDK::fast_rand_float() * 2.f - 1.f) * 0.5f;
+            MoveY += (SDK::fast_rand_float() * 2.f - 1.f) * 0.5f;
             LONG FinalMoveX = (LONG)std::round(MoveX);
             LONG FinalMoveY = (LONG)std::round(MoveY);
             if (FinalMoveX == 0 && std::abs(MoveX) > 0.05f) FinalMoveX = (MoveX > 0.f) ? 1 : -1;
@@ -187,6 +190,7 @@ namespace Aimbot {
                 Input.type = INPUT_MOUSE;
                 Input.mi.dx = FinalMoveX; Input.mi.dy = FinalMoveY;
                 Input.mi.dwFlags = MOUSEEVENTF_MOVE;
+                Input.mi.dwExtraInfo = SDK::xorshift64();
                 Api::SendInput(1, &Input, sizeof(INPUT));
             }
         }
@@ -206,7 +210,7 @@ namespace Aimbot {
             while (true) {
                 OBF_PROLOGUE;
                 if (!Globals::Aimbot::Enabled) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    SDK::sleep_jitter(50, 15);
                     OBF_JUNK_BLOCK;
                     continue;
                 }

@@ -261,7 +261,7 @@ void SilentHelper::WriteMousePosition(std::uint64_t Address, float X, float Y)
     CachedInputObject = GetCurrentInputObject(Address);
     if (CachedInputObject != 0 && CachedInputObject != 0xFFFFFFFFFFFFFFFF)
     {
-        Driver_WriteMousePosition(
+        DriverWriteMousePosition(
             Driver->Get_Handle(),
             reinterpret_cast<PVOID>(CachedInputObject + Offsets::MouseService::MousePosition),
             X,
@@ -327,7 +327,7 @@ void Silent::SilentFramePos() {
     static std::uint64_t Stored_Datamodel_Addr = 0;
 
     for (;;) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        SDK::sleep_jitter(10, 5);
         OBF_JUNK_BLOCK;
 
         if (Globals::Datamodel.Address != 0 && Globals::Datamodel.Address != Stored_Datamodel_Addr) {
@@ -344,7 +344,7 @@ void Silent::SilentFramePos() {
         }
 
         if (CachedMouseService.Address == 0 || !Globals::VisualEngine.Address) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            SDK::sleep_jitter(100, 20);
             continue;
         }
 
@@ -373,7 +373,7 @@ void Silent::SilentFramePos() {
         if (!ShouldSilentAimBeActive()) {
             IsSilentReady = false;
             SilentCachedTarget = {};
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            SDK::sleep_jitter(50, 15);
             continue;
         }
 
@@ -505,7 +505,7 @@ void Silent::SilentMouse()
         if (!MouseService || !ShouldSilentAimBeActive() || SilentCachedTarget.Character.Address == 0 || !IsSilentReady)
         {
             MouseServiceInitialized = false;
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            SDK::sleep_jitter(10, 5);
             continue;
         }
 

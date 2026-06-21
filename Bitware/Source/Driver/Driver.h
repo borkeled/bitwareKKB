@@ -1,5 +1,6 @@
 #pragma once
 #include <windows.h>
+#include <winternl.h>
 #include <TlHelp32.h>
 #include <vector>
 #include <string>
@@ -7,28 +8,20 @@
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
 
-extern "C" intptr_t Driver_ReadVirtualMemory(
-    HANDLE ProcessHandle,
-    PVOID BaseAddress,
-    PVOID Buffer,
-    ULONG NumberOfBytesToRead,
-    PULONG NumberOfBytesRead
-);
+using ReadVirtualMemoryFn = intptr_t(NTAPI*)(HANDLE, PVOID, PVOID, ULONG, PULONG);
+using WriteVirtualMemoryFn = intptr_t(NTAPI*)(HANDLE, PVOID, PVOID, ULONG, PULONG);
+using OpenProcessFn = NTSTATUS(NTAPI*)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, CLIENT_ID*);
+using QuerySysInfoFn = NTSTATUS(NTAPI*)(ULONG, PVOID, ULONG, PULONG);
 
-extern "C" intptr_t Driver_WriteVirtualMemory(
-    HANDLE ProcessHandle,
-    PVOID BaseAddress,
-    PVOID Buffer,
-    ULONG NumberOfBytesToWrite,
-    PULONG NumberOfBytesWritten
-);
+inline ReadVirtualMemoryFn DriverReadVirtualMemory = nullptr;
+inline WriteVirtualMemoryFn DriverWriteVirtualMemory = nullptr;
+inline OpenProcessFn DriverNtOpenProcess = nullptr;
+inline QuerySysInfoFn DriverNtQuerySystemInformation = nullptr;
 
-extern "C" void Driver_WriteMousePosition(
-    HANDLE ProcessHandle,
-    PVOID InputObjectAddress,
-    float X,
-    float Y
-);
+using WriteMousePosFn = void(NTAPI*)(HANDLE, PVOID, float, float);
+inline WriteMousePosFn DriverWriteMousePosition = nullptr;
+
+
 
 union RbxStringData {
     char Inline[16];
@@ -73,7 +66,9 @@ template <typename T>
 T Driver_t::Read(std::uint64_t Address) {
     OBF_PROLOGUE;
     T Buffer{};
-    Driver_ReadVirtualMemory(Process_Handle, reinterpret_cast<void*>(Address), &Buffer, sizeof(T), nullptr);
+    if (DriverReadVirtualMemory) {
+        DriverReadVirtualMemory(Process_Handle, reinterpret_cast<void*>(Address), &Buffer, sizeof(T), nullptr);
+    }
     OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
     return Buffer;
 }
@@ -82,7 +77,9 @@ template <typename T>
 void Driver_t::Write(std::uint64_t Address, T Value) {
     OBF_PROLOGUE;
     OBF_JUNK_DECLARE;
-    Driver_WriteVirtualMemory(Process_Handle, reinterpret_cast<void*>(Address), &Value, sizeof(T), nullptr);
+    if (DriverWriteVirtualMemory) {
+        DriverWriteVirtualMemory(Process_Handle, reinterpret_cast<void*>(Address), &Value, sizeof(T), nullptr);
+    }
 }
 
 inline std::unique_ptr<Driver_t> Driver = std::make_unique<Driver_t>();

@@ -8,10 +8,6 @@
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
 
-#ifndef ThreadHideFromDebugger
-#define ThreadHideFromDebugger ((THREADINFOCLASS)0x11)
-#endif
-
 namespace ThreadObf {
 
     inline std::string RandomString(size_t len) {
@@ -32,34 +28,6 @@ namespace ThreadObf {
         return result;
     }
 
-    inline DWORD WINAPI HiddenThreadProc(LPVOID) {
-        return 0;
-    }
-
-    inline HANDLE CreateObfuscatedThread(LPTHREAD_START_ROUTINE Start, LPVOID Param) {
-        auto ThreadFunc = [](LPVOID p) -> DWORD {
-            OBF_PROLOGUE;
-            auto real_fn = reinterpret_cast<LPTHREAD_START_ROUTINE>(p);
-            return real_fn(nullptr);
-        };
-
-        DWORD tid;
-        HANDLE hThread = Api::CreateThread(nullptr, 0, ThreadFunc, Start, 0, &tid);
-        if (hThread) {
-            HMODULE ntdll = reinterpret_cast<HMODULE>(Api::GetModuleHandleA(skCrypt("ntdll.dll")));
-            if (ntdll) {
-                typedef NTSTATUS(NTAPI* NtSetInformationThread_t)(HANDLE, THREADINFOCLASS, PVOID, ULONG);
-                auto NtSetInformationThread = reinterpret_cast<NtSetInformationThread_t>(
-                    Api::GetProcAddress(reinterpret_cast<HMODULE>(ntdll), skCrypt("NtSetInformationThread")));
-                if (NtSetInformationThread) {
-                    ULONG hide = 1;
-                    NtSetInformationThread(hThread, ThreadHideFromDebugger, &hide, sizeof(hide));
-                }
-            }
-        }
-        return hThread;
-    }
-
     inline std::string GenerateWindowClass() {
         std::string names[] = {
             "MSCTF_Input",
@@ -69,6 +37,35 @@ namespace ThreadObf {
             "WorkerW",
             "Progman",
             "Windows.UI.Core.CoreWindow",
+            "Button",
+            "Edit",
+            "ComboBox",
+            "ScrollBar",
+            "Static",
+            "ListBox",
+            "RichEdit20W",
+            "SysTreeView32",
+            "SysHeader32",
+            "SysTabControl32",
+            "SysAnimate32",
+            "msctls_statusbar32",
+            "msctls_progress32",
+            "msctls_updown32",
+            "msctls_hotkey32",
+            "tooltips_class32",
+            "SysIPAddress32",
+            "SysMonthCal32",
+            "SysDateTimePick32",
+            "ReBarWindow32",
+            "#32770",
+            "MSTaskListWClass",
+            "Shell_SecondaryTrayWnd",
+            "DV2ControlHost",
+            "SystemSettingsViewModelHost",
+            "Windows.UI.Composition.DesktopWindowContentBridge",
+            "ApplicationFrameWindow",
+            "Windows.UI.Core.CoreFrameworkInputView",
+            "Shell_DllWindowClass",
         };
         return names[rand() % (sizeof(names) / sizeof(names[0]))];
     }

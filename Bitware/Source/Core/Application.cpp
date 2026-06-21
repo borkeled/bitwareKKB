@@ -7,6 +7,7 @@
 #include <imgui/imgui.h>
 
 #include <Driver/Driver.h>
+#include <Driver/SSN.h>
 #include <Globals.hxx>
 #include <Miscellaneous/Output/Output.h>
 #include <Core/Graphics/Graphics.h>
@@ -176,7 +177,18 @@ bool Application::InitSDK()
     auto Lightin = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Lighting")).c_str());
     Globals::Lighting = SDK::Lighting(Lightin.Address);
 
-    Globals::RobloxWindow = FindWindowA(nullptr, std::string(skCrypt("Roblox")).c_str());
+    {
+        DWORD target_pid = Driver->Get_Process();
+        EnumWindows([](HWND hwnd, LPARAM lparam) -> BOOL {
+            DWORD pid = 0;
+            GetWindowThreadProcessId(hwnd, &pid);
+            if (pid == static_cast<DWORD>(lparam) && IsWindowVisible(hwnd)) {
+                Globals::RobloxWindow = hwnd;
+                return FALSE;
+            }
+            return TRUE;
+        }, static_cast<LPARAM>(target_pid));
+    }
 
     if (Globals::Workspace.Address)
     {
@@ -238,6 +250,10 @@ bool Application::Init()
         Logger::Flush();
         AntiDump::Enable();
         OBF_JUNK_BLOCK;
+
+        Logger::Log(WRAPPER_MARCO("[Init] SSN resolver..."));
+        Logger::Flush();
+        SSN::Resolve();
 
         Logger::Log(WRAPPER_MARCO("[Init] init proc..."));
         Logger::Flush();
@@ -355,7 +371,7 @@ void Application::Run()
                 return;
         }
 
-        InputHook::PollMouseKeys();
+        InputHook::PollKeys();
 
         Graphic->NewFrame();
         DrawCursor();
