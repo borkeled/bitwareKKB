@@ -1,0 +1,132 @@
+#pragma once
+#include <windows.h>
+#include <cstdint>
+#include <atomic>
+#include <cstdio>
+#include <Auth/skStr.h>
+#include <Infrastructure/ApiHiding.h>
+#include <Infrastructure/Logger.h>
+#include <Miscellaneous/Protection/External/oxorany_include.h>
+
+namespace AntiDump {
+
+    static std::atomic<bool> ProtectionActive{ false };
+    static PVOID VexHandle = nullptr;
+    static DWORD OriginalProtect = PAGE_EXECUTE_READ;
+    static std::uint64_t SectionBase = 0;
+    static SIZE_T SectionSize = 0;
+
+    // exception handler in (".protect")
+    // so it doesnt get marked as PAGE_NOACCESS along with ".text".
+    #pragma section(".protect", read, execute)
+    __declspec(code_seg(".protect"))
+    static LONG WINAPI VectoredHandler(PEXCEPTION_POINTERS ExceptionInfo) {
+        if (ExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_ACCESS_VIOLATION) {
+            auto Address = static_cast<std::uint64_t>(ExceptionInfo->ExceptionRecord->ExceptionInformation[1]);
+            if (Address >= SectionBase && Address < SectionBase + SectionSize) {
+                DWORD old;
+                ::VirtualProtect(reinterpret_cast<LPVOID>(SectionBase), SectionSize, OriginalProtect, &old);
+                return EXCEPTION_CONTINUE_EXECUTION;
+            }
+        }
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    static DWORD MapSectionCharacteristics(DWORD characteristics) {
+        if (characteristics & IMAGE_SCN_MEM_EXECUTE) {
+            if (characteristics & IMAGE_SCN_MEM_WRITE)
+                return PAGE_EXECUTE_READWRITE;
+            return PAGE_EXECUTE_READ;
+        }
+        if (characteristics & IMAGE_SCN_MEM_WRITE)
+            return PAGE_READWRITE;
+        if (characteristics & IMAGE_SCN_MEM_READ)
+            return PAGE_READONLY;
+        return PAGE_NOACCESS;
+    }
+
+    static std::uint64_t GetCurrentModuleBase() {
+        HMODULE hModule = nullptr;
+        GetModuleHandleExW(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            reinterpret_cast<LPCWSTR>(&GetCurrentModuleBase),
+            &hModule
+        );
+        return reinterpret_cast<std::uint64_t>(hModule);
+    }
+
+    static void GetTextSection(std::uint64_t& base, SIZE_T& size, DWORD& protect) {
+        auto image_base = GetCurrentModuleBase();
+        if (!image_base) return;
+        auto dos = reinterpret_cast<IMAGE_DOS_HEADER*>(image_base);
+        if (dos->e_magic != IMAGE_DOS_SIGNATURE) return;
+        auto nt = reinterpret_cast<IMAGE_NT_HEADERS64*>(image_base + dos->e_lfanew);
+        auto sect = IMAGE_FIRST_SECTION(nt);
+        for (WORD i = 0; i < nt->FileHeader.NumberOfSections; ++i) {
+            char name[9] = {};
+            memcpy(name, sect[i].Name, 8);
+            if (memcmp(name, ".text", 5) == 0 || memcmp(name, "CODE", 4) == 0) {
+                base = image_base + sect[i].VirtualAddress;
+                size = sect[i].Misc.VirtualSize;
+                protect = MapSectionCharacteristics(sect[i].Characteristics);
+                return;
+            }
+        }
+    }
+
+    inline bool Enable() {
+        Logger::Log(WRAPPER_MARCO("[AntiDump] Enable enter"));
+        if (ProtectionActive.load()) { Logger::Log(WRAPPER_MARCO("[AntiDump] already active")); return true; }
+
+        GetTextSection(SectionBase, SectionSize, OriginalProtect);
+        Logger::LogHex(WRAPPER_MARCO("[AntiDump] SectionBase"), SectionBase);
+        Logger::LogHex(WRAPPER_MARCO("[AntiDump] SectionSize"), SectionSize);
+        if (!SectionBase || !SectionSize) { Logger::Log(WRAPPER_MARCO("[AntiDump] no section found")); return false; }
+
+        // register handler first avoids a race condition where memory 
+        // is PAGE_NOACCESS but the handler isnt registered yet to handle violations
+        VexHandle = AddVectoredExceptionHandler(1, VectoredHandler);
+        Logger::LogHex(WRAPPER_MARCO("[AntiDump] VexHandle"), reinterpret_cast<uintptr_t>(VexHandle));
+        if (!VexHandle) { Logger::Log(WRAPPER_MARCO("[AntiDump] VEH failed")); return false; }
+
+        ProtectionActive.store(true);
+        Logger::Log(WRAPPER_MARCO("[AntiDump] ProtectionActive set"));
+
+        DWORD old;
+        Logger::Log(WRAPPER_MARCO("[AntiDump] calling VirtualProtect PAGE_NOACCESS"));
+        Logger::Flush();
+        BOOL vpResult = Api::VirtualProtect(reinterpret_cast<LPVOID>(SectionBase), SectionSize, PAGE_NOACCESS, &old);
+        Logger::Log(WRAPPER_MARCO("[AntiDump] VirtualProtect returned"));
+        if (!vpResult) {
+            Logger::Log(WRAPPER_MARCO("[AntiDump] VirtualProtect failed, cleanup"));
+            RemoveVectoredExceptionHandler(VexHandle);
+            VexHandle = nullptr;
+            ProtectionActive.store(false);
+            return false;
+        }
+
+        Logger::Log(WRAPPER_MARCO("[AntiDump] Enable done"));
+        return true;
+    }
+
+    inline void Disable() {
+        if (!ProtectionActive.load()) return;
+
+        if (VexHandle) {
+            RemoveVectoredExceptionHandler(VexHandle);
+            VexHandle = nullptr;
+        }
+
+        if (SectionBase && SectionSize) {
+            DWORD old;
+            Api::VirtualProtect(reinterpret_cast<LPVOID>(SectionBase), SectionSize, OriginalProtect, &old);
+        }
+
+        ProtectionActive.store(false);
+    }
+
+    inline bool IsProtected() {
+        return ProtectionActive.load();
+    }
+}
+

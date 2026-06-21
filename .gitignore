@@ -1,0 +1,108 @@
+## Build outputs
+/Build/
+/Builds/
+/out/
+/output/
+/x64/
+/x86/
+/arm64/
+Win32/
+[Dd]ebug/
+[Rr]elease/
+[Rr]elease_[Dd]ebug/
+x64/
+x86/
+[Aa][Rr][Mm]*/
+[Aa][Rr][Mm]64*/
+
+## Visual Studio
+.vs/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.sln.docstates
+*.vcxproj.user
+*.pdb
+
+## Compiled Object files
+*.obj
+*.o
+*.pch
+*.pdb
+*.d
+*.slo
+*.lo
+
+## Precompiled Headers
+*.gch
+*.pch
+
+## Compiled Dynamic libraries
+*.dll
+*.so
+*.dylib
+
+## Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+## Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+## Debug files
+*.db
+*.opendb
+*.VC.db
+*.VC.VC.opendb
+
+## CLion
+.idea/
+cmake-build-*/
+
+## Visual Studio Code
+.vscode/
+
+## Logs
+/logs/
+*.log
+errors.txt
+methods/
+
+## OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+## Temporary files
+*.tmp
+*.temp
+*.cache
+*.pid
+*.seed
+*.pid.lock
+*.nfs*
+
+## Packages
+*.7z
+*.dmg
+*.gz
+*.iso
+*.jar
+*.rar
+*.tar
+*.zip
+*.tgz

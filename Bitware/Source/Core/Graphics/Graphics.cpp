@@ -1,0 +1,423 @@
+#include <dwmapi.h>
+#include <cstdio>
+#include <chrono>
+#include <thread>
+#include <d3d11.h>
+#include <wincodec.h>
+#include <vector>
+
+#include "Graphics.h"
+#include <Globals.hxx>
+
+#include <imgui/misc/imgui_freetype.h>
+#include "imgui/imgui_internal.h"
+
+#include "Fonts/Tahoma.h"
+#include "Fonts/Tahoma_Bold.h"
+#include <ImGui/addons/colors/colors.h>
+#include <ImGui/addons/imgui_addons.h>
+#include <Core/Input/InputHook.h>
+#include <Core/UI/IMenuRenderer.h>
+#include <Miscellaneous/Protection/External/oxorany_include.h>
+#include <Infrastructure/ApiHiding.h>
+#include <Infrastructure/Obfuscation.h>
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LParam);
+
+LRESULT CALLBACK WndProc(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LParam)
+{
+    if (ImGui_ImplWin32_WndProcHandler(Hwnd, Msg, WParam, LParam))
+    {
+        return true;
+    }
+
+    switch (Msg)
+    {
+    case WM_SYSCOMMAND:
+        if ((WParam & 0xfff0) == SC_KEYMENU)
+        {
+            return 0;
+        }
+        break;
+
+    case WM_SYSKEYDOWN:
+        if (WParam == VK_F4) {
+            Api::DestroyWindow(Hwnd);
+            return 0;
+        }
+        break;
+
+    case WM_DESTROY:
+        PostQuitMessage(11);
+        break;
+    case WM_CLOSE:
+        return 0;
+    }
+
+    return DefWindowProcA(Hwnd, Msg, WParam, LParam);
+}
+
+Graphics::Graphics()
+{
+    Detail = std::make_unique<detail_t>();
+}
+
+Graphics::~Graphics()
+{
+    Destroy_Imgui();
+    Destroy_Window();
+    Destroy_Device();
+}
+
+void Graphics::SetMenuRenderer(std::unique_ptr<IMenuRenderer> renderer)
+{
+    m_MenuRenderer = std::move(renderer);
+}
+
+bool Graphics::Create_Window()
+{
+    Detail->WindowClass.cbSize = sizeof(Detail->WindowClass);
+    Detail->WindowClass.style = CS_CLASSDC;
+    static std::string szClass(ThreadObf::GenerateWindowClass());
+    Detail->WindowClass.lpszClassName = szClass.c_str();
+    Detail->WindowClass.hInstance = GetModuleHandleA(0);
+    Detail->WindowClass.lpfnWndProc = WndProc;
+
+    RegisterClassExA(&Detail->WindowClass);
+
+    int ScreenWidth = Api::GetSystemMetrics(SM_CXSCREEN);
+    int ScreenHeight = Api::GetSystemMetrics(SM_CYSCREEN);
+    RECT TargetRect = { 0, 0, ScreenWidth, ScreenHeight };
+    HWND TargetWindow = Globals::RobloxWindow;
+    if (TargetWindow && Api::IsWindow(TargetWindow))
+    {
+        RECT WindowRect = { 0, 0, 0, 0 };
+        Api::GetWindowRect(TargetWindow, &WindowRect);
+        int WinWidth = WindowRect.right - WindowRect.left;
+        int WinHeight = WindowRect.bottom - WindowRect.top;
+
+        if (WinWidth >= ScreenWidth && WinHeight >= ScreenHeight)
+        {
+            TargetRect = { 0, 0, ScreenWidth, ScreenHeight };
+        }
+        else
+        {
+            RECT ClientRect = { 0, 0, 0, 0 };
+            POINT ClientOrigin = { 0, 0 };
+            Api::GetClientRect(TargetWindow, &ClientRect);
+            Api::ClientToScreen(TargetWindow, &ClientOrigin);
+            TargetRect.left   = ClientOrigin.x;
+            TargetRect.top    = ClientOrigin.y;
+            TargetRect.right  = ClientOrigin.x + ClientRect.right;
+            TargetRect.bottom = ClientOrigin.y + ClientRect.bottom;
+        }
+    }
+
+    Detail->Window = CreateWindowExA(WS_EX_TOPMOST | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW,
+        Detail->WindowClass.lpszClassName,
+        ThreadObf::GenerateWindowClass().c_str(),
+        WS_POPUP,
+        TargetRect.left, TargetRect.top,
+        TargetRect.right - TargetRect.left,
+        TargetRect.bottom - TargetRect.top,
+        0, 0, Detail->WindowClass.hInstance, 0);
+
+    if (!Detail->Window)
+    {
+        return false;
+    }
+
+    Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
+
+    RECT ClientArea{};
+    RECT WindowArea{};
+    Api::GetClientRect(Detail->Window, &ClientArea);
+    Api::GetWindowRect(Detail->Window, &WindowArea);
+    POINT Diff{};
+    Api::ClientToScreen(Detail->Window, &Diff);
+    MARGINS Margins
+    {
+        WindowArea.left + (Diff.x - WindowArea.left),
+        WindowArea.top + (Diff.y - WindowArea.top),
+        WindowArea.right,
+        WindowArea.bottom,
+    };
+    Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
+
+    Api::ShowWindow(Detail->Window, SW_SHOW);
+    Api::UpdateWindow(Detail->Window);
+
+    return true;
+}
+
+bool Graphics::Create_Device()
+{
+    DXGI_SWAP_CHAIN_DESC SwapChainDesc{};
+
+    SwapChainDesc.BufferCount = 2;
+    SwapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
+    SwapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
+
+    SwapChainDesc.BufferDesc.Width = 0;
+    SwapChainDesc.BufferDesc.Height = 0;
+    SwapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+    SwapChainDesc.OutputWindow = Detail->Window;
+
+    SwapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    SwapChainDesc.Windowed = 1;
+
+    SwapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+
+    SwapChainDesc.SampleDesc.Count = 1;
+    SwapChainDesc.SampleDesc.Quality = 0;
+
+    SwapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+
+    D3D_FEATURE_LEVEL FeatureLevel;
+    D3D_FEATURE_LEVEL FeatureLevelList[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
+
+    HRESULT Result = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
+
+    if (Result == DXGI_ERROR_UNSUPPORTED)
+    {
+        Result = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
+    }
+
+    if (Result != S_OK)
+    {
+        MessageBoxA(nullptr, WRAPPER_MARCO("This software can not run on your computer."), WRAPPER_MARCO("Critical Problem"), MB_ICONERROR | MB_OK);
+    }
+
+    ID3D11Texture2D* BackBuffer{ nullptr };
+    Detail->SwapChain->GetBuffer(0, IID_PPV_ARGS(&BackBuffer));
+
+    if (BackBuffer)
+    {
+        Detail->Device->CreateRenderTargetView(BackBuffer, nullptr, &Detail->GraphicsTargetView);
+        BackBuffer->Release();
+
+        return true;
+    }
+
+    return false;
+}
+
+bool Graphics::Create_Imgui()
+{
+    using namespace ImGui;
+    CreateContext();
+    StyleColorsDark();
+
+    float MainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
+
+    ImGuiStyle& Style = ImGui::GetStyle();
+    ImGuiIO& IO = ImGui::GetIO(); (void)IO;
+
+    IO.IniFilename = nullptr;
+
+    ImGui::StyleColorsDark();
+
+    const unsigned int freetype_flags = ImGuiFreeTypeLoaderFlags_MonoHinting | ImGuiFreeTypeLoaderFlags_Monochrome;
+    IO.Fonts->SetFontLoader(ImGuiFreeType::GetFontLoader());
+    IO.Fonts->FontLoaderFlags = freetype_flags;
+
+    ImFontConfig font_cfg{};
+    font_cfg.PixelSnapH = true;
+    font_cfg.OversampleH = 2;
+    font_cfg.OversampleV = 1;
+    font_cfg.RasterizerMultiply = 1.05f;
+    font_cfg.FontLoaderFlags = freetype_flags;
+
+    ImFontConfig font_configuration = font_cfg;
+    font_configuration.FontDataOwnedByAtlas = false;
+
+	float Verdana_Size = 13.0f * MainScale;
+    float Tahoma_Size = 13.0f * MainScale;
+    float Tahoma_Bold_Size = 13.0f * MainScale;
+
+    IO.Fonts->AddFontFromMemoryTTF(const_cast<unsigned char*>(Tahoma), sizeof(Tahoma), Verdana_Size, &font_configuration);
+
+    Tahoma_BoldXP = IO.Fonts->AddFontFromMemoryTTF(const_cast<unsigned char*>(Tahoma_Bold), sizeof(Tahoma_Bold), Verdana_Size, &font_configuration, IO.Fonts->GetGlyphRangesCyrillic());
+
+    if (!ImGui_ImplWin32_Init(Detail->Window))
+    {
+        return false;
+    }
+
+    if (!Detail->Device || !Detail->DeviceContext)
+    {
+        return false;
+    }
+
+    if (!ImGui_ImplDX11_Init(Detail->Device, Detail->DeviceContext))
+    {
+        return false;
+    }
+
+    return true;
+}
+
+void Graphics::Destroy_Device()
+{
+    if (Detail->GraphicsTargetView) Detail->GraphicsTargetView->Release();
+    if (Detail->SwapChain) Detail->SwapChain->Release();
+    if (Detail->DeviceContext) Detail->DeviceContext->Release();
+    if (Detail->Device) Detail->Device->Release();
+}
+
+void Graphics::Destroy_Window()
+{
+    Api::DestroyWindow(Detail->Window);
+    Api::UnregisterClassA(Detail->WindowClass.lpszClassName, Detail->WindowClass.hInstance);
+}
+
+void Graphics::Destroy_Imgui()
+{
+    ImGui_ImplDX11_Shutdown();
+    ImGui_ImplWin32_Shutdown();
+    ImGui::DestroyContext();
+}
+
+void Graphics::NewFrame()
+{
+    if (Globals::Settings::Streamproof)
+    {
+        Api::SetWindowDisplayAffinity(Detail->Window, WDA_EXCLUDEFROMCAPTURE);
+    }
+    else
+    {
+        Api::SetWindowDisplayAffinity(Detail->Window, WDA_NONE);
+    }
+
+    HWND TargetWindow = Globals::RobloxWindow;
+    if (TargetWindow && Api::IsWindow(TargetWindow) && Detail->Window)
+    {
+        static RECT LastOverlayRect = { 0, 0, 0, 0 };
+
+        int ScreenWidth = Api::GetSystemMetrics(SM_CXSCREEN);
+        int ScreenHeight = Api::GetSystemMetrics(SM_CYSCREEN);
+        RECT OverlayRect = { 0, 0, ScreenWidth, ScreenHeight };
+
+        RECT WindowRect = { 0, 0, 0, 0 };
+        Api::GetWindowRect(TargetWindow, &WindowRect);
+        int WinWidth = WindowRect.right - WindowRect.left;
+        int WinHeight = WindowRect.bottom - WindowRect.top;
+
+        if (WinWidth >= ScreenWidth && WinHeight >= ScreenHeight)
+        {
+            OverlayRect = { 0, 0, ScreenWidth, ScreenHeight };
+        }
+        else
+        {
+            RECT ClientRect = { 0, 0, 0, 0 };
+            POINT ClientOrigin = { 0, 0 };
+            Api::GetClientRect(TargetWindow, &ClientRect);
+            Api::ClientToScreen(TargetWindow, &ClientOrigin);
+            OverlayRect.left   = ClientOrigin.x;
+            OverlayRect.top    = ClientOrigin.y;
+            OverlayRect.right  = ClientOrigin.x + ClientRect.right;
+            OverlayRect.bottom = ClientOrigin.y + ClientRect.bottom;
+        }
+
+        if (OverlayRect.left   != LastOverlayRect.left   ||
+            OverlayRect.top    != LastOverlayRect.top    ||
+            OverlayRect.right  != LastOverlayRect.right  ||
+            OverlayRect.bottom != LastOverlayRect.bottom)
+        {
+            LastOverlayRect = OverlayRect;
+            Api::SetWindowPos(Detail->Window, HWND_TOPMOST,
+                OverlayRect.left, OverlayRect.top,
+                OverlayRect.right - OverlayRect.left,
+                OverlayRect.bottom - OverlayRect.top,
+                SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+            if (Detail->SwapChain)
+            {
+                if (Detail->GraphicsTargetView)
+                {
+                    Detail->GraphicsTargetView->Release();
+                    Detail->GraphicsTargetView = nullptr;
+                }
+
+                UINT NewWidth  = OverlayRect.right - OverlayRect.left;
+                UINT NewHeight = OverlayRect.bottom - OverlayRect.top;
+                Detail->SwapChain->ResizeBuffers(0, NewWidth, NewHeight, DXGI_FORMAT_UNKNOWN, 0);
+
+                ID3D11Texture2D* BackBuffer = nullptr;
+                if (SUCCEEDED(Detail->SwapChain->GetBuffer(0, IID_PPV_ARGS(&BackBuffer))))
+                {
+                    Detail->Device->CreateRenderTargetView(BackBuffer, nullptr, &Detail->GraphicsTargetView);
+                    BackBuffer->Release();
+                }
+            }
+        }
+    }
+
+    ImGui_ImplDX11_NewFrame();
+    ImGui_ImplWin32_NewFrame();
+    ImGui::NewFrame();
+
+    if (InputHook::ConsumeMenuKeyPress())
+    {
+        Running = !Running;
+
+        if (Running)
+        {
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
+            SetForegroundWindow(Detail->Window);
+        }
+        else
+        {
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_TOOLWINDOW | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_LAYERED);
+        }
+    }
+}
+
+void Graphics::Render()
+{
+    if (Running && m_MenuRenderer)
+    {
+        m_MenuRenderer->Render();
+    }
+}
+
+void Graphics::Present()
+{
+    Globals::FrameCount.fetch_add(1, std::memory_order_relaxed);
+
+    ImGui::Render();
+
+    float ClearColor[4]{ 0, 0, 0, 0 };
+    Detail->DeviceContext->OMSetRenderTargets(1, &Detail->GraphicsTargetView, nullptr);
+    Detail->DeviceContext->ClearRenderTargetView(Detail->GraphicsTargetView, ClearColor);
+
+    ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+    static auto LastPresentTime = std::chrono::steady_clock::now();
+    int Mode = Globals::Settings::Performance_Mode;
+    if (Mode < 0) Mode = 0;
+    if (Mode > 2) Mode = 2;
+
+    int TargetFPS = SettingsStore::PerfMode_FPS[Mode];
+    auto TargetInterval = std::chrono::microseconds(1000000 / TargetFPS);
+
+    auto Now = std::chrono::steady_clock::now();
+    auto Elapsed = std::chrono::duration_cast<std::chrono::microseconds>(Now - LastPresentTime);
+    if (Elapsed < TargetInterval) {
+        std::this_thread::sleep_for(TargetInterval - Elapsed);
+    }
+    LastPresentTime = std::chrono::steady_clock::now();
+
+    Detail->SwapChain->Present(0, 0);
+}
+
+void Graphics::Start_Render()
+{
+    NewFrame();
+}
+
+void Graphics::End_Render()
+{
+    Present();
+}
