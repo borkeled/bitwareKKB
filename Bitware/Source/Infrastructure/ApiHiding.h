@@ -30,7 +30,7 @@ namespace Api {
                 Resolved = true;
                 if (!Address) {
                     char buf[256];
-                    snprintf(buf, sizeof(buf), "[Api] FAILED: %s in module 0x%llX", Name, (unsigned long long)Module);
+                    snprintf(buf, sizeof(buf), skCrypt("[Api] FAILED: %s in module 0x%llX"), Name, (unsigned long long)Module);
                     Logger::Log(buf);
                     Logger::Flush();
                 }
@@ -40,56 +40,56 @@ namespace Api {
     };
 
     inline HMODULE GetKernel32() {
-        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"kernel32.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"kernel32.dll")));
         return mod;
     }
 
     inline HMODULE GetNtdll() {
-        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"ntdll.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"ntdll.dll")));
         return mod;
     }
 
     inline HMODULE GetUser32() {
-        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"user32.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"user32.dll")));
         if (!mod) {
             ::LoadLibraryA(skCrypt("user32.dll"));
-            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"user32.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"user32.dll")));
         }
         return mod;
     }
 
     inline HMODULE GetShcore() {
-        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"shcore.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"shcore.dll")));
         if (!mod) {
             ::LoadLibraryA(skCrypt("shcore.dll"));
-            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"shcore.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"shcore.dll")));
         }
         return mod;
     }
 
     inline HMODULE GetDwmapi() {
-        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"dwmapi.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"dwmapi.dll")));
         if (!mod) {
             ::LoadLibraryA(skCrypt("dwmapi.dll"));
-            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"dwmapi.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"dwmapi.dll")));
         }
         return mod;
     }
 
     inline HMODULE GetWinmm() {
-        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"winmm.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"winmm.dll")));
         if (!mod) {
             ::LoadLibraryA(skCrypt("winmm.dll"));
-            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"winmm.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"winmm.dll")));
         }
         return mod;
     }
 
     inline HMODULE GetD3D11() {
-        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"d3d11.dll"));
+        static HMODULE mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"d3d11.dll")));
         if (!mod) {
             ::LoadLibraryA(skCrypt("d3d11.dll"));
-            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(L"d3d11.dll"));
+            mod = reinterpret_cast<HMODULE>(EatParser::FindModuleInPEB(skCrypt(L"d3d11.dll")));
         }
         return mod;
     }

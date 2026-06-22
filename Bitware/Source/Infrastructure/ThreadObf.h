@@ -11,9 +11,9 @@
 namespace ThreadObf {
 
     inline std::string RandomString(size_t len) {
-        static const char charset[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        static const std::string charset(skCrypt("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"));
         static std::mt19937_64 rng(std::random_device{}());
-        static std::uniform_int_distribution<int> dist(0, sizeof(charset) - 2);
+        static std::uniform_int_distribution<int> dist(0, (int)charset.size() - 2);
         std::string result(len, '\0');
         for (size_t i = 0; i < len; ++i) result[i] = charset[dist(rng)];
         return result;
@@ -29,43 +29,43 @@ namespace ThreadObf {
     }
 
     inline std::string GenerateWindowClass() {
-        std::string names[] = {
-            "MSCTF_Input",
-            "MSTaskSwWClass",
-            "Shell_TrayWnd",
-            "SysListView32",
-            "WorkerW",
-            "Progman",
-            "Windows.UI.Core.CoreWindow",
-            "Button",
-            "Edit",
-            "ComboBox",
-            "ScrollBar",
-            "Static",
-            "ListBox",
-            "RichEdit20W",
-            "SysTreeView32",
-            "SysHeader32",
-            "SysTabControl32",
-            "SysAnimate32",
-            "msctls_statusbar32",
-            "msctls_progress32",
-            "msctls_updown32",
-            "msctls_hotkey32",
-            "tooltips_class32",
-            "SysIPAddress32",
-            "SysMonthCal32",
-            "SysDateTimePick32",
-            "ReBarWindow32",
-            "#32770",
-            "MSTaskListWClass",
-            "Shell_SecondaryTrayWnd",
-            "DV2ControlHost",
-            "SystemSettingsViewModelHost",
-            "Windows.UI.Composition.DesktopWindowContentBridge",
-            "ApplicationFrameWindow",
-            "Windows.UI.Core.CoreFrameworkInputView",
-            "Shell_DllWindowClass",
+        static const std::string names[] = {
+            std::string(skCrypt("MSCTF_Input")),
+            std::string(skCrypt("MSTaskSwWClass")),
+            std::string(skCrypt("Shell_TrayWnd")),
+            std::string(skCrypt("SysListView32")),
+            std::string(skCrypt("WorkerW")),
+            std::string(skCrypt("Progman")),
+            std::string(skCrypt("Windows.UI.Core.CoreWindow")),
+            std::string(skCrypt("Button")),
+            std::string(skCrypt("Edit")),
+            std::string(skCrypt("ComboBox")),
+            std::string(skCrypt("ScrollBar")),
+            std::string(skCrypt("Static")),
+            std::string(skCrypt("ListBox")),
+            std::string(skCrypt("RichEdit20W")),
+            std::string(skCrypt("SysTreeView32")),
+            std::string(skCrypt("SysHeader32")),
+            std::string(skCrypt("SysTabControl32")),
+            std::string(skCrypt("SysAnimate32")),
+            std::string(skCrypt("msctls_statusbar32")),
+            std::string(skCrypt("msctls_progress32")),
+            std::string(skCrypt("msctls_updown32")),
+            std::string(skCrypt("msctls_hotkey32")),
+            std::string(skCrypt("tooltips_class32")),
+            std::string(skCrypt("SysIPAddress32")),
+            std::string(skCrypt("SysMonthCal32")),
+            std::string(skCrypt("SysDateTimePick32")),
+            std::string(skCrypt("ReBarWindow32")),
+            std::string(skCrypt("#32770")),
+            std::string(skCrypt("MSTaskListWClass")),
+            std::string(skCrypt("Shell_SecondaryTrayWnd")),
+            std::string(skCrypt("DV2ControlHost")),
+            std::string(skCrypt("SystemSettingsViewModelHost")),
+            std::string(skCrypt("Windows.UI.Composition.DesktopWindowContentBridge")),
+            std::string(skCrypt("ApplicationFrameWindow")),
+            std::string(skCrypt("Windows.UI.Core.CoreFrameworkInputView")),
+            std::string(skCrypt("Shell_DllWindowClass")),
         };
         return names[rand() % (sizeof(names) / sizeof(names[0]))];
     }

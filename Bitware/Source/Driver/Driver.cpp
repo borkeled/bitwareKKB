@@ -80,7 +80,7 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
         return Module_Address;
     }
 
-    if (_stricmp(Module_Name.c_str(), "RobloxPlayerBeta.exe") == 0) {
+    if (_stricmp(Module_Name.c_str(), skCrypt("RobloxPlayerBeta.exe")) == 0) {
         Base_Address = image_base;
         return image_base;
     }

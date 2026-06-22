@@ -125,9 +125,18 @@ bool Application::InitProcess()
 {
     OBF_PROLOGUE;
 
-    Driver->Find_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
-    Driver->Attach_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
-    Driver->Find_Module(std::string(skCrypt("RobloxPlayerBeta.exe")));
+    for (int Retries = 0; Retries < 10; Retries++)
+    {
+        Driver->Find_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
+        Driver->Attach_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
+        Driver->Find_Module(std::string(skCrypt("RobloxPlayerBeta.exe")));
+
+        if (Driver->Get_Handle())
+            break;
+
+        Output::Warning(WRAPPER_MARCO("Retrying process attachment..."));
+        Api::Sleep(500);
+    }
 
     if (!Driver->Get_Handle())
     {
@@ -251,9 +260,13 @@ bool Application::Init()
         AntiDump::Enable();
         OBF_JUNK_BLOCK;
 
+        Api::Sleep(50);
+
         Logger::Log(WRAPPER_MARCO("[Init] SSN resolver..."));
         Logger::Flush();
         SSN::Resolve();
+
+        Api::Sleep(25);
 
         Logger::Log(WRAPPER_MARCO("[Init] init proc..."));
         Logger::Flush();
@@ -280,6 +293,8 @@ bool Application::Init()
         Logger::Log(WRAPPER_MARCO("[Init] SpawnThreads..."));
         Logger::Flush();
         SpawnThreads();
+
+        Api::Sleep(25);
 
         Logger::Log(WRAPPER_MARCO("[Init] InitOverlay..."));
         Logger::Flush();

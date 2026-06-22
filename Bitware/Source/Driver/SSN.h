@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <string>
 #include <windows.h>
 #include <Infrastructure/EatParser.h>
 #include <Infrastructure/ApiHiding.h>
@@ -21,15 +22,21 @@ namespace SSN {
 
     inline bool Resolve()
     {
-        auto ntdll = EatParser::FindModuleInPEB(L"ntdll.dll");
+        auto ntdll = EatParser::FindModuleInPEB(skCrypt(L"ntdll.dll"));
         if (!ntdll) return false;
 
         struct StubEntry { const char* Name; void** Target; };
+        static const std::string kNames[] = {
+            std::string(skCrypt("NtReadVirtualMemory")),
+            std::string(skCrypt("NtWriteVirtualMemory")),
+            std::string(skCrypt("NtOpenProcess")),
+            std::string(skCrypt("NtQuerySystemInformation")),
+        };
         StubEntry stubs[] = {
-            { "NtReadVirtualMemory", reinterpret_cast<void**>(&DriverReadVirtualMemory) },
-            { "NtWriteVirtualMemory", reinterpret_cast<void**>(&DriverWriteVirtualMemory) },
-            { "NtOpenProcess", reinterpret_cast<void**>(&DriverNtOpenProcess) },
-            { "NtQuerySystemInformation", reinterpret_cast<void**>(&DriverNtQuerySystemInformation) },
+            { kNames[0].c_str(), reinterpret_cast<void**>(&DriverReadVirtualMemory) },
+            { kNames[1].c_str(), reinterpret_cast<void**>(&DriverWriteVirtualMemory) },
+            { kNames[2].c_str(), reinterpret_cast<void**>(&DriverNtOpenProcess) },
+            { kNames[3].c_str(), reinterpret_cast<void**>(&DriverNtQuerySystemInformation) },
         };
 
         for (auto& entry : stubs) {

@@ -114,7 +114,7 @@ bool Graphics::Create_Window()
     }
 
     static std::string szTitle(ThreadObf::RandomString(6 + rand() % 10));
-    Detail->Window = CreateWindowExA(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE,
+    Detail->Window = CreateWindowExA(WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT,
         Detail->WindowClass.lpszClassName,
         szTitle.c_str(),
         WS_POPUP,
@@ -130,19 +130,7 @@ bool Graphics::Create_Window()
 
     Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
 
-    RECT ClientArea{};
-    RECT WindowArea{};
-    Api::GetClientRect(Detail->Window, &ClientArea);
-    Api::GetWindowRect(Detail->Window, &WindowArea);
-    POINT Diff{};
-    Api::ClientToScreen(Detail->Window, &Diff);
-    MARGINS Margins
-    {
-        WindowArea.left + (Diff.x - WindowArea.left),
-        WindowArea.top + (Diff.y - WindowArea.top),
-        WindowArea.right,
-        WindowArea.bottom,
-    };
+    MARGINS Margins{ -1, -1, -1, -1 };
     Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
 
     Api::ShowWindow(Detail->Window, SW_SHOW);
