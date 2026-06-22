@@ -12,12 +12,10 @@
 using ReadVirtualMemoryFn = intptr_t(NTAPI*)(HANDLE, PVOID, PVOID, ULONG, PULONG);
 using WriteVirtualMemoryFn = intptr_t(NTAPI*)(HANDLE, PVOID, PVOID, ULONG, PULONG);
 using OpenProcessFn = NTSTATUS(NTAPI*)(PHANDLE, ACCESS_MASK, POBJECT_ATTRIBUTES, CLIENT_ID*);
-using QuerySysInfoFn = NTSTATUS(NTAPI*)(ULONG, PVOID, ULONG, PULONG);
 
 inline ReadVirtualMemoryFn DriverReadVirtualMemory = nullptr;
 inline WriteVirtualMemoryFn DriverWriteVirtualMemory = nullptr;
 inline OpenProcessFn DriverNtOpenProcess = nullptr;
-inline QuerySysInfoFn DriverNtQuerySystemInformation = nullptr;
 
 using WriteMousePosFn = void(NTAPI*)(HANDLE, PVOID, float, float);
 inline WriteMousePosFn DriverWriteMousePosition = nullptr;

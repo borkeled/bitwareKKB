@@ -1,5 +1,9 @@
 #pragma once
 
+#include <cstdint>
+#include <string>
+#include <windows.h>
+
 #ifndef CTL_CODE
 #define CTL_CODE(DeviceType, Function, Method, Access) \
     (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
@@ -25,6 +29,7 @@
 #define FILE_WRITE_ACCESS 0x0002
 #endif
 
+// IOCTL function indices (added to base at runtime)
 #define BITWARE_IOCTL_READ_MEMORY  0
 #define BITWARE_IOCTL_WRITE_MEMORY 1
 #define BITWARE_IOCTL_FIND_PROCESS 2

@@ -30,13 +30,11 @@ namespace SSN {
             std::string(skCrypt("NtReadVirtualMemory")),
             std::string(skCrypt("NtWriteVirtualMemory")),
             std::string(skCrypt("NtOpenProcess")),
-            std::string(skCrypt("NtQuerySystemInformation")),
         };
         StubEntry stubs[] = {
             { kNames[0].c_str(), reinterpret_cast<void**>(&DriverReadVirtualMemory) },
             { kNames[1].c_str(), reinterpret_cast<void**>(&DriverWriteVirtualMemory) },
             { kNames[2].c_str(), reinterpret_cast<void**>(&DriverNtOpenProcess) },
-            { kNames[3].c_str(), reinterpret_cast<void**>(&DriverNtQuerySystemInformation) },
         };
 
         for (auto& entry : stubs) {

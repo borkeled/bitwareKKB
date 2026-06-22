@@ -4,8 +4,15 @@
 extern "C"
 {
     NTSTATUS PsLookupProcessByProcessId(HANDLE ProcessId, PEPROCESS* Process);
-    VOID KeStackAttachProcess(PEPROCESS Process, PBITWARE_KAPC_STATE ApcState);
-    VOID KeUnstackDetachProcess(PBITWARE_KAPC_STATE ApcState);
+    NTSTATUS MmCopyVirtualMemory(
+        PEPROCESS SourceProcess,
+        PVOID SourceAddress,
+        PEPROCESS TargetProcess,
+        PVOID TargetAddress,
+        SIZE_T BufferSize,
+        KPROCESSOR_MODE PreviousMode,
+        PSIZE_T ReturnSize
+    );
 }
 
 NTSTATUS BitwareReadProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buffer, ULONG Size)
@@ -22,43 +29,18 @@ NTSTATUS BitwareReadProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buffe
         return status;
     }
 
-    PVOID kernelBuffer = ExAllocatePoolWithTag(NonPagedPool, Size, g_PoolTag);
-    if (kernelBuffer == NULL)
-    {
-        ObDereferenceObject(targetProcess);
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
+    SIZE_T bytesRead = 0;
+    status = MmCopyVirtualMemory(
+        targetProcess,
+        (PVOID)(ULONG_PTR)Address,
+        PsGetCurrentProcess(),
+        Buffer,
+        Size,
+        KernelMode,
+        &bytesRead
+    );
 
-    BITWARE_KAPC_STATE apcState;
-    KeStackAttachProcess(targetProcess, &apcState);
-
-    __try
-    {
-        ProbeForRead((PVOID)(ULONG_PTR)Address, Size, 1);
-        RtlCopyMemory(kernelBuffer, (PVOID)(ULONG_PTR)Address, Size);
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-        status = GetExceptionCode();
-    }
-
-    KeUnstackDetachProcess(&apcState);
     ObDereferenceObject(targetProcess);
-
-    if (NT_SUCCESS(status))
-    {
-        __try
-        {
-            ProbeForWrite(Buffer, Size, 1);
-            RtlCopyMemory(Buffer, kernelBuffer, Size);
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-            status = GetExceptionCode();
-        }
-    }
-
-    ExFreePoolWithTag(kernelBuffer, g_PoolTag);
     return status;
 }
 
@@ -76,43 +58,17 @@ NTSTATUS BitwareWriteProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buff
         return status;
     }
 
-    PVOID kernelBuffer = ExAllocatePoolWithTag(NonPagedPool, Size, g_PoolTag);
-    if (kernelBuffer == NULL)
-    {
-        ObDereferenceObject(targetProcess);
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
-
-    // Securely capture the caller's buffer data before context switching
-    __try
-    {
-        ProbeForRead(Buffer, Size, 1);
-        RtlCopyMemory(kernelBuffer, Buffer, Size);
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-        status = GetExceptionCode();
-    }
-
-    if (NT_SUCCESS(status))
-    {
-        BITWARE_KAPC_STATE apcState;
-        KeStackAttachProcess(targetProcess, &apcState);
-
-        __try
-        {
-            ProbeForWrite((PVOID)(ULONG_PTR)Address, Size, 1);
-            RtlCopyMemory((PVOID)(ULONG_PTR)Address, kernelBuffer, Size);
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER)
-        {
-            status = GetExceptionCode();
-        }
-
-        KeUnstackDetachProcess(&apcState);
-    }
+    SIZE_T bytesWritten = 0;
+    status = MmCopyVirtualMemory(
+        PsGetCurrentProcess(),
+        Buffer,
+        targetProcess,
+        (PVOID)(ULONG_PTR)Address,
+        Size,
+        KernelMode,
+        &bytesWritten
+    );
 
     ObDereferenceObject(targetProcess);
-    ExFreePoolWithTag(kernelBuffer, g_PoolTag);
     return status;
 }

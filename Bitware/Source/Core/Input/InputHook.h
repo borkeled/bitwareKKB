@@ -9,6 +9,5 @@ namespace InputHook
     bool IsKeyDown(DWORD vk);
     bool ConsumeMenuKeyPress();
     void SetMenuOpen(bool open);
-    void BlockKey(DWORD vk, bool block);
-    bool IsKeyBlocked(DWORD vk);
+
 }

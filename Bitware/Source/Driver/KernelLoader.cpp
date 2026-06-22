@@ -3,19 +3,32 @@
 #include <Driver/kdmapper/kdmapper.hpp>
 #include <Driver/kdmapper/intel_driver.hpp>
 #include <Driver/kdmapper/bitware_driver_resource.hpp>
+#include "IoctlDefs.h"
 
 namespace KernelLoader
 {
     static HANDLE g_IntelDeviceHandle = nullptr;
     static bool g_DriverLoaded = false;
 
+    static std::wstring BuildDevicePath()
+    {
+        FILETIME ft;
+        GetSystemTimeAsFileTime(&ft);
+        ULONG seed = ft.dwLowDateTime ^ ft.dwHighDateTime;
+        WCHAR name[5];
+        IoctlDerivation::DeriveDeviceName(seed, name, 5);
+        return L"\\\\.\\" + std::wstring(name);
+    }
+
     bool LoadDriver()
     {
         if (g_DriverLoaded)
             return true;
 
-        HANDLE device = CreateFileA(
-            skCrypt("\\\\.\\BitwareDevice"),
+        std::wstring path = BuildDevicePath();
+
+        HANDLE device = CreateFileW(
+            path.c_str(),
             GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr
         );
 
@@ -52,8 +65,8 @@ namespace KernelLoader
 
         Sleep(200);
 
-        device = CreateFileA(
-            skCrypt("\\\\.\\BitwareDevice"),
+        device = CreateFileW(
+            path.c_str(),
             GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr
         );
 

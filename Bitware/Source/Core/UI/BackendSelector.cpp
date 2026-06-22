@@ -1,5 +1,6 @@
 #include "BackendSelector.h"
 #include <Windows.h>
+#include <cstdio>
 
 static BackendSelector::Mode g_SelectedMode = BackendSelector::Usermode;
 
@@ -69,7 +70,9 @@ BackendSelector::Mode BackendSelector::Show()
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)CreateSolidBrush(RGB(25, 25, 30));
-    wc.lpszClassName = L"BitwareBackendSelector";
+    static wchar_t szClass[64];
+    swprintf_s(szClass, L"WndClass_%04X", GetTickCount() & 0xFFFF);
+    wc.lpszClassName = szClass;
     RegisterClassExW(&wc);
 
     int winW = 410, winH = 185;
@@ -78,13 +81,13 @@ BackendSelector::Mode BackendSelector::Show()
     int x = (scrW - winW) / 2;
     int y = (scrH - winH) / 2;
 
-    HWND hwnd = CreateWindowExW(0, L"BitwareBackendSelector", L"Bitware",
+    HWND hwnd = CreateWindowExW(0, szClass, L"Configuration",
         WS_CAPTION | WS_SYSMENU,
         x, y, winW, winH, NULL, NULL, hInstance, NULL);
 
     if (!hwnd)
     {
-        UnregisterClassW(L"BitwareBackendSelector", hInstance);
+        UnregisterClassW(szClass, hInstance);
         return Usermode;
     }
 
@@ -107,6 +110,6 @@ BackendSelector::Mode BackendSelector::Show()
     }
 
     DeleteObject(wc.hbrBackground);
-    UnregisterClassW(L"BitwareBackendSelector", hInstance);
+    UnregisterClassW(szClass, hInstance);
     return g_SelectedMode;
 }

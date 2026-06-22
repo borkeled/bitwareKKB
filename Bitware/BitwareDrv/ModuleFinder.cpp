@@ -7,8 +7,7 @@ extern "C"
     NTSTATUS PsLookupProcessByProcessId(HANDLE ProcessId, PEPROCESS* Process);
     PVOID NTAPI PsGetProcessPeb(PEPROCESS Process);
     PVOID NTAPI PsGetProcessWow64Process(PEPROCESS Process);
-    VOID KeStackAttachProcess(PEPROCESS Process, PBITWARE_KAPC_STATE ApcState);
-    VOID KeUnstackDetachProcess(PBITWARE_KAPC_STATE ApcState);
+    NTSTATUS MmCopyVirtualMemory(PEPROCESS SourceProcess, PVOID SourceAddress, PEPROCESS TargetProcess, PVOID TargetAddress, SIZE_T BufferSize, KPROCESSOR_MODE PreviousMode, PSIZE_T ReturnSize);
 }
 
 // Native 64-Bit PEB & Loader Structures (PEB is incomplete in public headers)
@@ -69,8 +68,13 @@ typedef struct _LDR_DATA_TABLE_ENTRY32 {
     UNICODE_STRING32 BaseDllName;
 } LDR_DATA_TABLE_ENTRY32, *PLDR_DATA_TABLE_ENTRY32;
 
-// Safe comparison helper for native structures
-static BOOLEAN SafeEqualUnicodeString(PCWSTR string1, PUNICODE_STRING string2)
+static NTSTATUS ReadProcessMemory(PEPROCESS target, PVOID src, PVOID dst, SIZE_T size)
+{
+    SIZE_T readSize = 0;
+    return MmCopyVirtualMemory(target, src, PsGetCurrentProcess(), dst, size, KernelMode, &readSize);
+}
+
+static BOOLEAN SafeEqualUnicodeString(PCWSTR string1, PUNICODE_STRING string2, PEPROCESS target)
 {
     if (string1 == NULL || string2 == NULL || string2->Buffer == NULL)
         return FALSE;
@@ -79,29 +83,36 @@ static BOOLEAN SafeEqualUnicodeString(PCWSTR string1, PUNICODE_STRING string2)
     if (len1 * sizeof(WCHAR) != string2->Length)
         return FALSE;
 
-    __try
-    {
-        for (USHORT i = 0; i < len1; i++)
-        {
-            WCHAR c1 = string1[i];
-            WCHAR c2 = string2->Buffer[i];
+    WCHAR* buf = (WCHAR*)ExAllocatePoolWithTag(NonPagedPool, string2->Length, 'mNtS');
+    if (buf == NULL)
+        return FALSE;
 
-            if (c1 >= L'a' && c1 <= L'z') c1 -= 32;
-            if (c2 >= L'a' && c2 <= L'z') c2 -= 32;
-
-            if (c1 != c2)
-                return FALSE;
-        }
-        return TRUE;
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
+    NTSTATUS status = ReadProcessMemory(target, string2->Buffer, buf, string2->Length);
+    if (!NT_SUCCESS(status))
     {
+        ExFreePoolWithTag(buf, 'mNtS');
         return FALSE;
     }
+
+    BOOLEAN match = TRUE;
+    for (USHORT i = 0; i < len1; i++)
+    {
+        WCHAR c1 = string1[i];
+        WCHAR c2 = buf[i];
+        if (c1 >= L'a' && c1 <= L'z') c1 -= 32;
+        if (c2 >= L'a' && c2 <= L'z') c2 -= 32;
+        if (c1 != c2)
+        {
+            match = FALSE;
+            break;
+        }
+    }
+
+    ExFreePoolWithTag(buf, 'mNtS');
+    return match;
 }
 
-// Safe comparison helper for Wow64 structures
-static BOOLEAN SafeEqualUnicodeString32(PCWSTR string1, PUNICODE_STRING32 string2)
+static BOOLEAN SafeEqualUnicodeString32(PCWSTR string1, PUNICODE_STRING32 string2, PEPROCESS target)
 {
     if (string1 == NULL || string2 == NULL || string2->Buffer == 0)
         return FALSE;
@@ -110,27 +121,33 @@ static BOOLEAN SafeEqualUnicodeString32(PCWSTR string1, PUNICODE_STRING32 string
     if (len1 * sizeof(WCHAR) != string2->Length)
         return FALSE;
 
-    PWCHAR buffer = (PWCHAR)(ULONG_PTR)string2->Buffer;
+    WCHAR* buf = (WCHAR*)ExAllocatePoolWithTag(NonPagedPool, string2->Length, 'mNtS');
+    if (buf == NULL)
+        return FALSE;
 
-    __try
+    NTSTATUS status = ReadProcessMemory(target, (PVOID)(ULONG_PTR)string2->Buffer, buf, string2->Length);
+    if (!NT_SUCCESS(status))
     {
-        for (USHORT i = 0; i < len1; i++)
-        {
-            WCHAR c1 = string1[i];
-            WCHAR c2 = buffer[i];
-
-            if (c1 >= L'a' && c1 <= L'z') c1 -= 32;
-            if (c2 >= L'a' && c2 <= L'z') c2 -= 32;
-
-            if (c1 != c2)
-                return FALSE;
-        }
-        return TRUE;
-    }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
+        ExFreePoolWithTag(buf, 'mNtS');
         return FALSE;
     }
+
+    BOOLEAN match = TRUE;
+    for (USHORT i = 0; i < len1; i++)
+    {
+        WCHAR c1 = string1[i];
+        WCHAR c2 = buf[i];
+        if (c1 >= L'a' && c1 <= L'z') c1 -= 32;
+        if (c2 >= L'a' && c2 <= L'z') c2 -= 32;
+        if (c1 != c2)
+        {
+            match = FALSE;
+            break;
+        }
+    }
+
+    ExFreePoolWithTag(buf, 'mNtS');
+    return match;
 }
 
 NTSTATUS BitwareFindModuleByName(ULONG ProcessId, PCWSTR ModuleName, PULONG64 OutBaseAddress)
@@ -147,86 +164,118 @@ NTSTATUS BitwareFindModuleByName(ULONG ProcessId, PCWSTR ModuleName, PULONG64 Ou
         return status;
     }
 
-    BITWARE_KAPC_STATE apcState;
-    KeStackAttachProcess(targetProcess, &apcState);
-
     BOOLEAN found = FALSE;
     ULONG64 baseAddress = 0;
 
-    __try
+    PVOID wow64Process = PsGetProcessWow64Process(targetProcess);
+
+    if (wow64Process != NULL)
     {
-        PVOID wow64Process = PsGetProcessWow64Process(targetProcess);
-        if (wow64Process != NULL)
+        // Walk Wow64 (32-bit) PEB using MmCopyVirtualMemory
+        PEB32 peb32;
+        status = ReadProcessMemory(targetProcess, wow64Process, &peb32, sizeof(peb32));
+        if (!NT_SUCCESS(status))
         {
-            // Walk Wow64 (32-bit) PEB
-            PPEB32 peb32 = (PPEB32)wow64Process;
-            if (peb32->Ldr != 0)
+            ObDereferenceObject(targetProcess);
+            return status;
+        }
+
+        if (peb32.Ldr != 0)
+        {
+            PEB_LDR_DATA32 ldr32;
+            status = ReadProcessMemory(targetProcess, (PVOID)(ULONG_PTR)peb32.Ldr, &ldr32, sizeof(ldr32));
+            if (!NT_SUCCESS(status))
             {
-                PPEB_LDR_DATA32 ldr32 = (PPEB_LDR_DATA32)(ULONG_PTR)peb32->Ldr;
-                ULONG head = ldr32->InLoadOrderModuleList.Flink;
-                ULONG curr = head;
+                ObDereferenceObject(targetProcess);
+                return status;
+            }
 
-                while (curr != 0 && curr != (ULONG)(ULONG_PTR)&ldr32->InLoadOrderModuleList)
+            ULONG head = ldr32.InLoadOrderModuleList.Flink;
+            ULONG curr = head;
+
+            while (curr != 0 && curr != peb32.Ldr + FIELD_OFFSET(PEB_LDR_DATA32, InLoadOrderModuleList))
+            {
+                LDR_DATA_TABLE_ENTRY32 entry;
+                status = ReadProcessMemory(targetProcess, (PVOID)(ULONG_PTR)curr, &entry, sizeof(entry));
+                if (!NT_SUCCESS(status))
+                    break;
+
+                if (SafeEqualUnicodeString32(ModuleName, &entry.BaseDllName, targetProcess))
                 {
-                    PLDR_DATA_TABLE_ENTRY32 entry = (PLDR_DATA_TABLE_ENTRY32)(ULONG_PTR)curr;
+                    baseAddress = entry.DllBase;
+                    found = TRUE;
+                    break;
+                }
 
-                    if (SafeEqualUnicodeString32(ModuleName, &entry->BaseDllName))
+                curr = entry.InLoadOrderLinks.Flink;
+            }
+        }
+    }
+    else
+    {
+        // Walk native 64-bit PEB using MmCopyVirtualMemory
+        PVOID pebAddr = PsGetProcessPeb(targetProcess);
+        if (pebAddr != NULL)
+        {
+            BITWARE_PEB peb;
+            status = ReadProcessMemory(targetProcess, pebAddr, &peb, sizeof(peb));
+            if (!NT_SUCCESS(status))
+            {
+                ObDereferenceObject(targetProcess);
+                return status;
+            }
+
+            if (peb.Ldr != NULL)
+            {
+                BITWARE_PEB_LDR_DATA ldr;
+                status = ReadProcessMemory(targetProcess, peb.Ldr, &ldr, sizeof(ldr));
+                if (!NT_SUCCESS(status))
+                {
+                    ObDereferenceObject(targetProcess);
+                    return status;
+                }
+
+                LIST_ENTRY head = ldr.InLoadOrderModuleList;
+                LIST_ENTRY curr = {0};
+                status = ReadProcessMemory(targetProcess, head.Flink, &curr, sizeof(curr));
+                if (!NT_SUCCESS(status))
+                {
+                    ObDereferenceObject(targetProcess);
+                    return status;
+                }
+
+                while (curr.Flink != NULL && curr.Flink != head.Flink)
+                {
+                    BITWARE_LDR_DATA_TABLE_ENTRY entry;
+                    status = ReadProcessMemory(targetProcess, CONTAINING_RECORD(&curr, BITWARE_LDR_DATA_TABLE_ENTRY, InLoadOrderLinks), &entry, sizeof(entry));
+                    if (!NT_SUCCESS(status))
+                        break;
+
+                    if (SafeEqualUnicodeString(ModuleName, &entry.BaseDllName, targetProcess))
                     {
-                        baseAddress = entry->DllBase;
+                        baseAddress = (ULONG64)entry.DllBase;
                         found = TRUE;
                         break;
                     }
 
-                    curr = entry->InLoadOrderLinks.Flink;
-                }
-            }
-        }
-        else
-        {
-            // Walk native 64-bit PEB
-            PBITWARE_PEB peb = (PBITWARE_PEB)PsGetProcessPeb(targetProcess);
-            if (peb != NULL && peb->Ldr != NULL)
-            {
-                PBITWARE_PEB_LDR_DATA ldr = peb->Ldr;
-                PLIST_ENTRY head = &ldr->InLoadOrderModuleList;
-                PLIST_ENTRY curr = head->Flink;
-
-                while (curr != NULL && curr != head)
-                {
-                    PBITWARE_LDR_DATA_TABLE_ENTRY entry = CONTAINING_RECORD(curr, BITWARE_LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
-
-                    if (SafeEqualUnicodeString(ModuleName, &entry->BaseDllName))
-                    {
-                        baseAddress = (ULONG64)entry->DllBase;
-                        found = TRUE;
+                    LIST_ENTRY next = {0};
+                    status = ReadProcessMemory(targetProcess, entry.InLoadOrderLinks.Flink, &next, sizeof(next));
+                    if (!NT_SUCCESS(status))
                         break;
-                    }
 
-                    curr = curr->Flink;
+                    curr = next;
                 }
             }
         }
     }
-    __except (EXCEPTION_EXECUTE_HANDLER)
-    {
-        status = GetExceptionCode();
-    }
 
-    KeUnstackDetachProcess(&apcState);
     ObDereferenceObject(targetProcess);
 
-    if (NT_SUCCESS(status))
+    if (found)
     {
-        if (found)
-        {
-            *OutBaseAddress = baseAddress;
-            return STATUS_SUCCESS;
-        }
-        else
-        {
-            return STATUS_NOT_FOUND;
-        }
+        *OutBaseAddress = baseAddress;
+        return STATUS_SUCCESS;
     }
 
-    return status;
+    return STATUS_NOT_FOUND;
 }

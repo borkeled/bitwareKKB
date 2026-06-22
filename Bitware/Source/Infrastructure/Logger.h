@@ -8,7 +8,7 @@ namespace Logger {
     inline bool Enabled = false;
 
     inline HANDLE GetHandle() {
-        static HANDLE h = CreateFileA(skCrypt("bitware_debug.log"), GENERIC_WRITE, FILE_SHARE_READ,
+        static HANDLE h = CreateFileA(skCrypt("trace.log"), GENERIC_WRITE, FILE_SHARE_READ,
             nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         return h;
     }

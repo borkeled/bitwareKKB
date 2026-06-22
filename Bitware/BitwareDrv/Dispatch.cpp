@@ -21,7 +21,9 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     PVOID sysBuf = Irp->AssociatedIrp.SystemBuffer;
     ULONG_PTR info = 0;
 
-    if (sysBuf == NULL)
+    // Reject NULL system buffers only for requests that require data payload transfers.
+    // BITWARE_IOCTL_UNLOAD may be legally dispatched with 0-byte parameters (resulting in sysBuf == NULL).
+    if (ioctlCode != g_IoctlBase + BITWARE_IOCTL_UNLOAD && sysBuf == NULL)
     {
         Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
         Irp->IoStatus.Information = 0;
@@ -29,26 +31,7 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         return STATUS_INVALID_PARAMETER;
     }
 
-    if (ioctlCode == IOCTL_BITWARE_BOOTSTRAP)
-    {
-        if (outLen >= sizeof(BITWARE_BOOTSTRAP_RESPONSE))
-        {
-            PBITWARE_BOOTSTRAP_RESPONSE rsp = (PBITWARE_BOOTSTRAP_RESPONSE)sysBuf;
-            rsp->IoctlBase = g_IoctlBase;
-            rsp->IoctlReadMemory = g_IoctlBase + BITWARE_IOCTL_READ_MEMORY;
-            rsp->IoctlWriteMemory = g_IoctlBase + BITWARE_IOCTL_WRITE_MEMORY;
-            rsp->IoctlFindProcess = g_IoctlBase + BITWARE_IOCTL_FIND_PROCESS;
-            rsp->IoctlFindModule = g_IoctlBase + BITWARE_IOCTL_FIND_MODULE;
-            rsp->IoctlUnload = g_IoctlBase + BITWARE_IOCTL_UNLOAD;
-            rsp->IoctlReadInput = g_IoctlBase + BITWARE_IOCTL_READ_INPUT;
-            info = sizeof(BITWARE_BOOTSTRAP_RESPONSE);
-        }
-        else
-        {
-            status = STATUS_BUFFER_TOO_SMALL;
-        }
-    }
-    else if (ioctlCode == g_IoctlBase + BITWARE_IOCTL_READ_MEMORY)
+    if (ioctlCode == g_IoctlBase + BITWARE_IOCTL_READ_MEMORY)
     {
         if (inLen < sizeof(BITWARE_READ_INPUT) || outLen == 0)
         {
@@ -100,21 +83,18 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     }
     else if (ioctlCode == g_IoctlBase + BITWARE_IOCTL_FIND_PROCESS)
     {
-        if (inLen < sizeof(BITWARE_FIND_PROCESS_INPUT) || outLen < sizeof(ULONG))
+        ULONG offset = FIELD_OFFSET(BITWARE_FIND_PROCESS_INPUT, Name);
+        if (inLen < offset + sizeof(WCHAR) || outLen < sizeof(ULONG))
         {
             status = STATUS_BUFFER_TOO_SMALL;
         }
         else
         {
             PBITWARE_FIND_PROCESS_INPUT input = (PBITWARE_FIND_PROCESS_INPUT)sysBuf;
-
-            ULONG offset = FIELD_OFFSET(BITWARE_FIND_PROCESS_INPUT, Name);
-            if (inLen > offset)
-            {
-                ULONG maxChars = (inLen - offset) / sizeof(WCHAR);
-                if (maxChars > 0)
-                    input->Name[maxChars - 1] = L'\0';
-            }
+            ULONG maxChars = (inLen - offset) / sizeof(WCHAR);
+            
+            // Safe assignment as maxChars is guaranteed to be >= 1 by the boundary condition
+            input->Name[maxChars - 1] = L'\0';
 
             ULONG pid = 0;
             status = BitwareFindProcessByName(input->Name, &pid);
@@ -127,21 +107,18 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     }
     else if (ioctlCode == g_IoctlBase + BITWARE_IOCTL_FIND_MODULE)
     {
-        if (inLen < sizeof(BITWARE_FIND_MODULE_INPUT) || outLen < sizeof(ULONG64))
+        ULONG offset = FIELD_OFFSET(BITWARE_FIND_MODULE_INPUT, Name);
+        if (inLen < offset + sizeof(WCHAR) || outLen < sizeof(ULONG64))
         {
             status = STATUS_BUFFER_TOO_SMALL;
         }
         else
         {
             PBITWARE_FIND_MODULE_INPUT input = (PBITWARE_FIND_MODULE_INPUT)sysBuf;
-
-            ULONG offset = FIELD_OFFSET(BITWARE_FIND_MODULE_INPUT, Name);
-            if (inLen > offset)
-            {
-                ULONG maxChars = (inLen - offset) / sizeof(WCHAR);
-                if (maxChars > 0)
-                    input->Name[maxChars - 1] = L'\0';
-            }
+            ULONG maxChars = (inLen - offset) / sizeof(WCHAR);
+            
+            // Safe assignment as maxChars is guaranteed to be >= 1 by the boundary condition
+            input->Name[maxChars - 1] = L'\0';
 
             ULONG64 base = 0;
             status = BitwareFindModuleByName(input->ProcessId, input->Name, &base);
@@ -165,22 +142,6 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
         }
 
         status = STATUS_SUCCESS;
-    }
-    else if (ioctlCode == g_IoctlBase + BITWARE_IOCTL_READ_INPUT)
-    {
-        if (outLen == 0)
-        {
-            status = STATUS_BUFFER_TOO_SMALL;
-        }
-        else
-        {
-            ULONG maxCount = outLen / sizeof(BITWARE_KEYBOARD_DATA);
-            if (maxCount > 0)
-            {
-                ULONG count = KeyboardRingBufferRead((PBITWARE_KEYBOARD_DATA)sysBuf, maxCount);
-                info = count * sizeof(BITWARE_KEYBOARD_DATA);
-            }
-        }
     }
     else
     {
