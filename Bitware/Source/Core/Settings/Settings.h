@@ -158,5 +158,4 @@ namespace SettingsStore {
 
     inline bool Explorer_Open = false;
 
-    inline bool Settings_KernelMode = false;
 }

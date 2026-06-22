@@ -25,6 +25,8 @@ public:
     std::uint64_t Get_Module()  const override { return m_BaseAddress; }
     HANDLE   Get_Handle()  const override { return m_ProcessHandle; }
 
+    void Shutdown() override;
+
 private:
     HANDLE m_DriverHandle = INVALID_HANDLE_VALUE;
 

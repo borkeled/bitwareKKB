@@ -143,6 +143,22 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             break;
         }
 
+        case IOCTL_BITWARE_UNLOAD:
+        {
+            UNICODE_STRING symLink;
+            RtlInitUnicodeString(&symLink, L"\\DosDevices\\BitwareDevice");
+            IoDeleteSymbolicLink(&symLink);
+
+            if (g_DeviceObject)
+            {
+                IoDeleteDevice(g_DeviceObject);
+                g_DeviceObject = NULL;
+            }
+
+            status = STATUS_SUCCESS;
+            break;
+        }
+
         default:
             status = STATUS_INVALID_DEVICE_REQUEST;
             break;

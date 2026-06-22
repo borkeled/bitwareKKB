@@ -47,6 +47,8 @@ public:
     virtual uint64_t Get_Module()  const = 0;
     virtual HANDLE   Get_Handle()  const = 0;
 
+    virtual void Shutdown() {}
+
 protected:
     uint32_t m_ProcessId = 0;
     uint64_t m_BaseAddress = 0;

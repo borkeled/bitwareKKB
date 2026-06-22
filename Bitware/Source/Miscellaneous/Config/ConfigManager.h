@@ -102,8 +102,6 @@ public:
         WriteBool(ss, WRAPPER_MARCO("Misc_Speed"), SettingsStore::Misc_Speed);
         WriteBool(ss, WRAPPER_MARCO("Misc_Jump"), SettingsStore::Misc_Jump);
 
-        WriteBool(ss, WRAPPER_MARCO("Settings_KernelMode"), SettingsStore::Settings_KernelMode);
-
         // Int
         WriteInt(ss, WRAPPER_MARCO("Aimbot_type"), SettingsStore::Aimbot_type);
         WriteInt(ss, WRAPPER_MARCO("Aimbot_HitPart"), SettingsStore::Aimbot_HitPart);
@@ -474,7 +472,6 @@ private:
 
         SET_BOOL(Misc_Speed);
         SET_BOOL(Misc_Jump);
-        SET_BOOL(Settings_KernelMode);
 #undef SET_BOOL
         return false;
     }

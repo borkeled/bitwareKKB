@@ -10,12 +10,7 @@ KernelMemory::KernelMemory()
 
 KernelMemory::~KernelMemory()
 {
-    Detach_Process();
-    if (m_DriverHandle != INVALID_HANDLE_VALUE && m_DriverHandle != nullptr)
-    {
-        CloseHandle(m_DriverHandle);
-        m_DriverHandle = INVALID_HANDLE_VALUE;
-    }
+    Shutdown();
 }
 
 bool KernelMemory::Connect()
@@ -94,6 +89,19 @@ void KernelMemory::Detach_Process()
 {
     m_ProcessId = 0;
     m_BaseAddress = 0;
+}
+
+void KernelMemory::Shutdown()
+{
+    if (m_DriverHandle != INVALID_HANDLE_VALUE && m_DriverHandle != nullptr)
+    {
+        DWORD bytesReturned = 0;
+        DeviceIoControl(m_DriverHandle, IOCTL_BITWARE_UNLOAD, nullptr, 0, nullptr, 0, &bytesReturned, nullptr);
+        CloseHandle(m_DriverHandle);
+        m_DriverHandle = INVALID_HANDLE_VALUE;
+    }
+    KernelLoader::UnloadDriver();
+    Detach_Process();
 }
 
 bool KernelMemory::ReadRaw(std::uint64_t addr, void* buf, size_t size)

@@ -81,6 +81,7 @@ namespace KernelLoader
 
     void UnloadDriver()
     {
+        g_IntelDeviceHandle = nullptr;
         g_DriverLoaded = false;
     }
 }

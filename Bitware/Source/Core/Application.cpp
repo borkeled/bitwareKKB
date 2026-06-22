@@ -241,6 +241,8 @@ bool Application::InitOverlay()
 
 bool Application::Init()
 {
+    m_SelectedBackend = BackendSelector::Show();
+
     Logger::Log(WRAPPER_MARCO("[Init] starting"));
     Logger::Flush();
 
@@ -269,7 +271,7 @@ void Application::InitBackend()
     Logger::Log(WRAPPER_MARCO("[Init] memory backend..."));
     Logger::Flush();
 
-    if (SettingsStore::Settings_KernelMode)
+    if (m_SelectedBackend == BackendSelector::KernelMode)
     {
         auto kernelMem = std::make_unique<KernelMemory>();
         if (kernelMem->Connect())
@@ -406,6 +408,8 @@ void Application::Run()
             Globals::LocalPlayer = SDK::Player{};
             Globals::Datamodel = SDK::Datamodel{};
 
+            if (g_Memory) g_Memory->Shutdown();
+
             DWORD old;
             Api::VirtualProtect(panic_triggered ? (void*)0x1000 : (void*)0x2000, 0x1000, PAGE_NOACCESS, &old);
             ExitProcess(0);
@@ -444,6 +448,8 @@ void Application::Shutdown()
     AntiDump::Disable();
     AntiInjection::Stop();
     InputHook::Remove();
+
+    if (g_Memory) g_Memory->Shutdown();
 
     for (auto& thread : m_WorkerThreads)
     {
