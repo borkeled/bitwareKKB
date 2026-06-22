@@ -1,7 +1,7 @@
 #include "KernelMemory.h"
 #include <Auth/skStr.h>
 #include <Infrastructure/Obfuscation.h>
-#include <Infrastructure/ApiHiding.h>
+#include <windows.h>
 
 KernelMemory::KernelMemory()
 {
@@ -12,7 +12,7 @@ KernelMemory::~KernelMemory()
     Detach_Process();
     if (m_DriverHandle != INVALID_HANDLE_VALUE && m_DriverHandle != nullptr)
     {
-        Api::CloseHandle(m_DriverHandle);
+        CloseHandle(m_DriverHandle);
         m_DriverHandle = INVALID_HANDLE_VALUE;
     }
 }
@@ -21,7 +21,7 @@ bool KernelMemory::Connect()
 {
     OBF_PROLOGUE;
 
-    m_DriverHandle = Api::CreateFileA(
+    m_DriverHandle = CreateFileA(
         skCrypt("\\\\.\\BitwareDevice"),
         GENERIC_READ | GENERIC_WRITE,
         0, nullptr, OPEN_EXISTING, 0, nullptr
@@ -36,7 +36,7 @@ bool KernelMemory::SendIoctl(DWORD code, const void* in_buf, DWORD in_size, void
         return false;
 
     DWORD bytes_returned = 0;
-    return Api::DeviceIoControl(
+    return DeviceIoControl(
         m_DriverHandle, code,
         const_cast<void*>(in_buf), in_size,
         out_buf, out_size,
@@ -108,22 +108,24 @@ bool KernelMemory::ReadRaw(std::uint64_t addr, void* buf, size_t size)
     return SendIoctl(0x80002001, &input, sizeof(input), buf, (DWORD)size);
 }
 
+struct KernelWriteInput {
+    uint32_t pid;
+    uint64_t address;
+    uint32_t size;
+    char data[1];
+};
+
 bool KernelMemory::WriteRaw(std::uint64_t addr, const void* buf, size_t size)
 {
     OBF_PROLOGUE;
-    struct {
-        uint32_t pid;
-        uint64_t address;
-        uint32_t size;
-        char data[1];
-    }* input = (decltype(input)*)alloca(sizeof(*input) + size);
+    KernelWriteInput* input = (KernelWriteInput*)alloca(sizeof(KernelWriteInput) + size);
 
     input->pid = m_ProcessId;
     input->address = addr;
     input->size = (uint32_t)size;
     memcpy(input->data, buf, size);
 
-    return SendIoctl(0x80002002, input, (DWORD)(sizeof(*input) + size - 1), nullptr, 0);
+    return SendIoctl(0x80002002, input, (DWORD)(sizeof(KernelWriteInput) + size - 1), nullptr, 0);
 }
 
 std::string KernelMemory::Read_String(std::uint64_t addr)

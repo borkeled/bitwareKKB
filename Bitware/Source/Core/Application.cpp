@@ -244,51 +244,61 @@ bool Application::Init()
     Logger::Log(WRAPPER_MARCO("[Init] starting"));
     Logger::Flush();
 
+    Logger::Log(WRAPPER_MARCO("[Init] badstrings..."));
+    Logger::Flush();
+    FakeStringss::Generate();
+
+    Logger::Log(WRAPPER_MARCO("[Init] anti inject..."));
+    Logger::Flush();
+    AntiInjection::Start();
+
+    Logger::Log(WRAPPER_MARCO("[Init] anti dump..."));
+    Logger::Flush();
+    AntiDump::Enable();
+    OBF_JUNK_BLOCK;
+
+    Api::Sleep(50);
+
+    InitBackend();
+
+    return InitSeh();
+}
+
+void Application::InitBackend()
+{
+    Logger::Log(WRAPPER_MARCO("[Init] memory backend..."));
+    Logger::Flush();
+
+    if (SettingsStore::Settings_KernelMode)
+    {
+        auto kernelMem = std::make_unique<KernelMemory>();
+        if (kernelMem->Connect())
+        {
+            g_Memory = std::move(kernelMem);
+            Logger::Log(WRAPPER_MARCO("[Init] kernel driver connected"));
+            Logger::Flush();
+        }
+        else
+        {
+            Logger::Log(WRAPPER_MARCO("[Init] kernel driver unavailable, falling back to usermode"));
+            Logger::Flush();
+            SSN::Resolve();
+            g_Memory = std::make_unique<UsermodeMemory>();
+        }
+    }
+    else
+    {
+        SSN::Resolve();
+        g_Memory = std::make_unique<UsermodeMemory>();
+    }
+}
+
+bool Application::InitSeh()
+{
     PEXCEPTION_POINTERS exc = nullptr;
     __try {
         OBF_JUNK_DECLARE;
         timeBeginPeriod(1);
-
-        Logger::Log(WRAPPER_MARCO("[Init] badstrings..."));
-        Logger::Flush();
-        FakeStringss::Generate();
-
-        Logger::Log(WRAPPER_MARCO("[Init] anti inject..."));
-        Logger::Flush();
-        AntiInjection::Start();
-
-        Logger::Log(WRAPPER_MARCO("[Init] anti dump..."));
-        Logger::Flush();
-        AntiDump::Enable();
-        OBF_JUNK_BLOCK;
-
-        Api::Sleep(50);
-
-        Logger::Log(WRAPPER_MARCO("[Init] memory backend..."));
-        Logger::Flush();
-
-        if (SettingsStore::Settings_KernelMode)
-        {
-            auto kernelMem = std::make_unique<KernelMemory>();
-            if (kernelMem->Connect())
-            {
-                g_Memory = std::move(kernelMem);
-                Logger::Log(WRAPPER_MARCO("[Init] kernel driver connected"));
-                Logger::Flush();
-            }
-            else
-            {
-                Logger::Log(WRAPPER_MARCO("[Init] kernel driver unavailable, falling back to usermode"));
-                Logger::Flush();
-                SSN::Resolve();
-                g_Memory = std::make_unique<UsermodeMemory>();
-            }
-        }
-        else
-        {
-            SSN::Resolve();
-            g_Memory = std::make_unique<UsermodeMemory>();
-        }
 
         Api::Sleep(25);
 

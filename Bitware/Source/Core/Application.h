@@ -22,6 +22,8 @@ private:
     bool InitSDK();
     bool InitOverlay();
     void SpawnThreads();
+    void InitBackend();
+    bool InitSeh();
 
     std::unique_ptr<IMenuRenderer> m_MenuRenderer;
     std::vector<std::thread> m_WorkerThreads;

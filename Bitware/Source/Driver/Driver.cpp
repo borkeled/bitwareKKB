@@ -221,7 +221,7 @@ bool UsermodeMemory::Attach_Process(const std::string& Process_Name)
 void UsermodeMemory::Detach_Process()
 {
     if (m_ProcessHandle && m_ProcessHandle != INVALID_HANDLE_VALUE) {
-        Api::NtClose(m_ProcessHandle);
+        Api::CloseHandle(m_ProcessHandle);
         m_ProcessHandle = nullptr;
     }
     m_ProcessId = 0;
