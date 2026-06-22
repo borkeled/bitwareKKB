@@ -20,6 +20,14 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
     PVOID sysBuf = Irp->AssociatedIrp.SystemBuffer;
     ULONG_PTR info = 0;
 
+    if (sysBuf == NULL)
+    {
+        Irp->IoStatus.Status = STATUS_INVALID_PARAMETER;
+        Irp->IoStatus.Information = 0;
+        IoCompleteRequest(Irp, IO_NO_INCREMENT);
+        return STATUS_INVALID_PARAMETER;
+    }
+
     switch (ioctlCode)
     {
         case IOCTL_BITWARE_READ_MEMORY:
@@ -57,9 +65,8 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
 
             PBITWARE_WRITE_INPUT input = (PBITWARE_WRITE_INPUT)sysBuf;
             ULONG dataSize = input->Size;
-            ULONG totalSize = sizeof(BITWARE_WRITE_INPUT) + dataSize;
 
-            if (inLen < totalSize)
+            if (inLen < sizeof(BITWARE_WRITE_INPUT) || inLen - sizeof(BITWARE_WRITE_INPUT) < dataSize)
             {
                 status = STATUS_BUFFER_TOO_SMALL;
                 break;
@@ -85,8 +92,18 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             }
 
             PBITWARE_FIND_PROCESS_INPUT input = (PBITWARE_FIND_PROCESS_INPUT)sysBuf;
-            ULONG pid = 0;
+            
+            ULONG offset = FIELD_OFFSET(BITWARE_FIND_PROCESS_INPUT, Name);
+            if (inLen > offset)
+            {
+                ULONG maxChars = (inLen - offset) / sizeof(WCHAR);
+                if (maxChars > 0)
+                {
+                    input->Name[maxChars - 1] = L'\0';
+                }
+            }
 
+            ULONG pid = 0;
             status = BitwareFindProcessByName(input->Name, &pid);
             if (NT_SUCCESS(status))
             {
@@ -105,8 +122,18 @@ NTSTATUS BitwareDeviceControl(PDEVICE_OBJECT DeviceObject, PIRP Irp)
             }
 
             PBITWARE_FIND_MODULE_INPUT input = (PBITWARE_FIND_MODULE_INPUT)sysBuf;
-            ULONG64 base = 0;
+            
+            ULONG offset = FIELD_OFFSET(BITWARE_FIND_MODULE_INPUT, Name);
+            if (inLen > offset)
+            {
+                ULONG maxChars = (inLen - offset) / sizeof(WCHAR);
+                if (maxChars > 0)
+                {
+                    input->Name[maxChars - 1] = L'\0';
+                }
+            }
 
+            ULONG64 base = 0;
             status = BitwareFindModuleByName(input->ProcessId, input->Name, &base);
             if (NT_SUCCESS(status))
             {

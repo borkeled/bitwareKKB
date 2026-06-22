@@ -24,6 +24,7 @@ NTSTATUS BitwareFindModuleByName(ULONG ProcessId, PCWSTR ModuleName, PULONG64 Ou
 
 VOID DriverUnload(PDRIVER_OBJECT DriverObject)
 {
+    UNREFERENCED_PARAMETER(DriverObject);
     if (g_DeviceObject)
     {
         UNICODE_STRING symLink;
@@ -37,7 +38,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
     UNREFERENCED_PARAMETER(RegistryPath);
 
-    for (ULONG i = 0; i < IRP_MJ_MAXIMUM_FUNCTION; i++)
+    for (ULONG i = 0; i <= IRP_MJ_MAXIMUM_FUNCTION; i++)
     {
         DriverObject->MajorFunction[i] = BitwareCreateClose;
     }
@@ -75,6 +76,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
         g_DeviceObject = NULL;
         return status;
     }
+
+    g_DeviceObject->Flags &= ~DO_DEVICE_INITIALIZING;
 
     return STATUS_SUCCESS;
 }

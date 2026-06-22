@@ -51,23 +51,44 @@ extern "C"
 
 NTSTATUS BitwareFindProcessByName(PCWSTR ProcessName, PULONG OutProcessId)
 {
-    NTSTATUS status;
-    ULONG bufferSize = 256 * 1024;
-    PVOID buffer = ExAllocatePool2(POOL_FLAG_NON_PAGED, bufferSize, 'nBsP');
-    if (!buffer)
+    if (ProcessName == NULL || OutProcessId == NULL)
     {
-        return STATUS_INSUFFICIENT_RESOURCES;
+        return STATUS_INVALID_PARAMETER;
     }
 
-    ULONG returnLength = 0;
-    status = ZwQuerySystemInformation(BITWARE_SYSTEM_INFO_CLASS, buffer, bufferSize, &returnLength);
-    if (!NT_SUCCESS(status))
+    NTSTATUS status;
+    ULONG bufferSize = 256 * 1024; // Start with 256 KB
+    PVOID buffer = NULL;
+
+    // Loop to dynamically size the buffer in case of length mismatches
+    do
     {
-        ExFreePool(buffer);
-        return status;
-    }
+        buffer = ExAllocatePoolWithTag(PagedPool, bufferSize, 'nBsP');
+        if (!buffer)
+        {
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
+
+        ULONG returnLength = 0;
+        status = ZwQuerySystemInformation(BITWARE_SYSTEM_INFO_CLASS, buffer, bufferSize, &returnLength);
+
+        if (status == STATUS_INFO_LENGTH_MISMATCH)
+        {
+            ExFreePoolWithTag(buffer, 'nBsP');
+            buffer = NULL;
+            
+            // Add a safety padding margin to account for new processes spawning between calls
+            bufferSize = returnLength + (32 * 1024);
+        }
+        else if (!NT_SUCCESS(status))
+        {
+            ExFreePoolWithTag(buffer, 'nBsP');
+            return status;
+        }
+    } while (status == STATUS_INFO_LENGTH_MISMATCH);
 
     PBITWARE_SYSTEM_PROCESS_INFORMATION spi = (PBITWARE_SYSTEM_PROCESS_INFORMATION)buffer;
+    PUCHAR bufferEnd = (PUCHAR)buffer + bufferSize;
     BOOLEAN found = FALSE;
 
     UNICODE_STRING targetName;
@@ -75,13 +96,24 @@ NTSTATUS BitwareFindProcessByName(PCWSTR ProcessName, PULONG OutProcessId)
 
     while (TRUE)
     {
+        // Boundary sanity check to prevent out-of-bounds reading
+        if ((PUCHAR)spi + sizeof(BITWARE_SYSTEM_PROCESS_INFORMATION) > bufferEnd)
+        {
+            break;
+        }
+
         if (spi->ImageName.Buffer && spi->ImageName.Length > 0)
         {
-            if (RtlCompareUnicodeString(&spi->ImageName, &targetName, TRUE) == 0)
+            // Verify that the string buffer resides fully inside our allocated pool limits
+            if ((PUCHAR)spi->ImageName.Buffer >= (PUCHAR)buffer && 
+                ((PUCHAR)spi->ImageName.Buffer + spi->ImageName.Length) <= bufferEnd)
             {
-                *OutProcessId = HandleToULong(spi->UniqueProcessId);
-                found = TRUE;
-                break;
+                if (RtlCompareUnicodeString(&spi->ImageName, &targetName, TRUE) == 0)
+                {
+                    *OutProcessId = HandleToULong(spi->UniqueProcessId);
+                    found = TRUE;
+                    break;
+                }
             }
         }
 
@@ -90,9 +122,16 @@ NTSTATUS BitwareFindProcessByName(PCWSTR ProcessName, PULONG OutProcessId)
             break;
         }
 
-        spi = (PBITWARE_SYSTEM_PROCESS_INFORMATION)((PUCHAR)spi + spi->NextEntryOffset);
+        // Advance and verify that the next entry's offset is within buffer limits
+        ULONG_PTR nextAddress = (ULONG_PTR)spi + spi->NextEntryOffset;
+        if (nextAddress >= (ULONG_PTR)bufferEnd || nextAddress < (ULONG_PTR)buffer)
+        {
+            break;
+        }
+
+        spi = (PBITWARE_SYSTEM_PROCESS_INFORMATION)nextAddress;
     }
 
-    ExFreePool(buffer);
+    ExFreePoolWithTag(buffer, 'nBsP');
     return found ? STATUS_SUCCESS : STATUS_NOT_FOUND;
 }
