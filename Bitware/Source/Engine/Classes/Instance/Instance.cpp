@@ -8,31 +8,31 @@ namespace SDK {
         OBF_PROLOGUE;
         OBF_JUNK_DECLARE;
         if (!Address) return std::string(skCrypt("?"));
-        uintptr_t StringPointer = Driver->Read<uintptr_t>(Address + Offsets::Instance::Name);
+        uintptr_t StringPointer = g_Memory->Read<uintptr_t>(Address + Offsets::Instance::Name);
         if (!StringPointer) return std::string(skCrypt("?"));
-        return Driver->Read_String(StringPointer);
+        return g_Memory->Read_String(StringPointer);
     }
 
     std::string Instance::Text() const {
         OBF_PROLOGUE;
         OBF_JUNK_BLOCK;
-        return Driver->Read_String(this->Address + Offsets::GuiObject::Text);
+        return g_Memory->Read_String(this->Address + Offsets::GuiObject::Text);
     }
 
     std::string Instance::Class() const {
         OBF_PROLOGUE;
         if (!Address) return std::string(skCrypt("?"));
-        uintptr_t Descriptor = Driver->Read<uintptr_t>(Address + Offsets::Instance::ClassDescriptor);
+        uintptr_t Descriptor = g_Memory->Read<uintptr_t>(Address + Offsets::Instance::ClassDescriptor);
         if (!Descriptor) return std::string(skCrypt("?"));
-        uintptr_t StringPointer = Driver->Read<uintptr_t>(Descriptor + 0x8);
+        uintptr_t StringPointer = g_Memory->Read<uintptr_t>(Descriptor + 0x8);
         if (!StringPointer) return std::string(skCrypt("?"));
-        return Driver->Read_String(StringPointer);
+        return g_Memory->Read_String(StringPointer);
     }
 
     Instance Instance::Parent() const {
         OBF_PROLOGUE;
         if (!Address) return Instance();
-        return Driver->Read<Instance>(Address + Offsets::Instance::Parent);
+        return g_Memory->Read<Instance>(Address + Offsets::Instance::Parent);
     }
 
     std::vector<Instance> Instance::Children() const {
@@ -40,13 +40,13 @@ namespace SDK {
         std::vector<Instance> Container;
         if (!Address) return Container;
 
-        auto Start = Driver->Read<uintptr_t>(Address + Offsets::Instance::ChildrenStart);
+        auto Start = g_Memory->Read<uintptr_t>(Address + Offsets::Instance::ChildrenStart);
         if (!Start) return Container;
 
-        auto End = Driver->Read<uintptr_t>(Start + Offsets::Instance::ChildrenEnd);
+        auto End = g_Memory->Read<uintptr_t>(Start + Offsets::Instance::ChildrenEnd);
         OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-        for (auto instances = Driver->Read<uintptr_t>(Start); instances != End; instances += 16)
-            Container.emplace_back(Driver->Read<Instance>(instances));
+        for (auto instances = g_Memory->Read<uintptr_t>(Start); instances != End; instances += 16)
+            Container.emplace_back(g_Memory->Read<Instance>(instances));
 
         return Container;
     }

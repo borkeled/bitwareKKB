@@ -108,7 +108,7 @@ static bool IsPlayerKnocked(SDK::Player& Player)
     }
 
     if (KoAddr != 0) {
-        return Driver->Read<bool>(KoAddr + Offsets::Misc::Value);
+        return g_Memory->Read<bool>(KoAddr + Offsets::Misc::Value);
     }
     return false;
 }
@@ -229,17 +229,17 @@ static SDK::Player GetClosestPlayerFromCursor()
 
 static std::uint64_t GetCurrentInputObject(std::uint64_t BaseAddress)
 {
-    return Driver->Read<std::uint64_t>(BaseAddress + Offsets::MouseService::InputObject + sizeof(std::shared_ptr<void*>));
+    return g_Memory->Read<std::uint64_t>(BaseAddress + Offsets::MouseService::InputObject + sizeof(std::shared_ptr<void*>));
 }
 
 void SilentHelper::SetFramePosX(std::uint64_t Position)
 {
-    Driver->Write<std::uint64_t>(Address + Offsets::Silent::FramePositionOffsetX, Position);
+    g_Memory->Write<std::uint64_t>(Address + Offsets::Silent::FramePositionOffsetX, Position);
 }
 
 void SilentHelper::SetFramePosY(std::uint64_t Position)
 {
-    Driver->Write<std::uint64_t>(Address + Offsets::Silent::FramePositionOffsetY, Position);
+    g_Memory->Write<std::uint64_t>(Address + Offsets::Silent::FramePositionOffsetY, Position);
 }
 
 void SilentHelper::InitializeMouseService(std::uint64_t Address)
@@ -261,12 +261,9 @@ void SilentHelper::WriteMousePosition(std::uint64_t Address, float X, float Y)
     CachedInputObject = GetCurrentInputObject(Address);
     if (CachedInputObject != 0 && CachedInputObject != 0xFFFFFFFFFFFFFFFF)
     {
-        DriverWriteMousePosition(
-            Driver->Get_Handle(),
-            reinterpret_cast<PVOID>(CachedInputObject + Offsets::MouseService::MousePosition),
-            X,
-            Y
-        );
+        auto mouse_base = CachedInputObject + Offsets::MouseService::MousePosition;
+        g_Memory->Write<float>(mouse_base + 0xEC, X);
+        g_Memory->Write<float>(mouse_base + 0xF0, Y);
     }
 }
 
@@ -354,18 +351,18 @@ void Silent::SilentFramePos() {
 
         if (SilentAimInstance.Address != 0 && SilentHasOriginalSizes) {
             if (Globals::Silent::Enabled) {
-                Driver->Write<SDK::Vector2>(SilentAimInstance.Address + Offsets::GuiObject::Size, { 0, 0 });
+                g_Memory->Write<SDK::Vector2>(SilentAimInstance.Address + Offsets::GuiObject::Size, { 0, 0 });
 
                 auto Children = SilentAimInstance.Children();
                 for (auto& Child : Children) {
                     if (Child.Address)
-                        Driver->Write<SDK::Vector2>(Child.Address + Offsets::GuiObject::Size, { 0, 0 });
+                        g_Memory->Write<SDK::Vector2>(Child.Address + Offsets::GuiObject::Size, { 0, 0 });
                 }
             }
             else {
-                Driver->Write<SDK::Vector2>(SilentAimInstance.Address + Offsets::GuiObject::Size, SilentOriginalSize);
+                g_Memory->Write<SDK::Vector2>(SilentAimInstance.Address + Offsets::GuiObject::Size, SilentOriginalSize);
                 for (const auto& [ChildAddr, OrigSize] : SilentOriginalChildrenSizes) {
-                    Driver->Write<SDK::Vector2>(ChildAddr, OrigSize);
+                    g_Memory->Write<SDK::Vector2>(ChildAddr, OrigSize);
                 }
             }
         }
@@ -382,7 +379,7 @@ void Silent::SilentFramePos() {
             try {
                 static SDK::Instance CachedLocalPlayer{};
                 if (CachedLocalPlayer.Address == 0 && Globals::Players.Address != 0) {
-                    CachedLocalPlayer = SDK::Instance(Driver->Read<std::uintptr_t>(Globals::Players.Address + Offsets::Player::LocalPlayer));
+                    CachedLocalPlayer = SDK::Instance(g_Memory->Read<std::uintptr_t>(Globals::Players.Address + Offsets::Player::LocalPlayer));
                 }
 
                 SDK::Instance PlayerGui = CachedLocalPlayer.Find_First_Child(std::string(skCrypt("PlayerGui")));
@@ -424,11 +421,11 @@ void Silent::SilentFramePos() {
                         SilentOriginalChildrenSizes.clear();
 
                         if (SilentAimInstance.Address != 0) {
-                            SilentOriginalSize = Driver->Read<SDK::Vector2>(SilentAimInstance.Address + Offsets::GuiObject::Size);
+                            SilentOriginalSize = g_Memory->Read<SDK::Vector2>(SilentAimInstance.Address + Offsets::GuiObject::Size);
                             auto AimChildren = SilentAimInstance.Children();
                             for (auto& C : AimChildren) {
                                 if (C.Address) {
-                                    SDK::Vector2 CSize = Driver->Read<SDK::Vector2>(C.Address + Offsets::GuiObject::Size);
+                                    SDK::Vector2 CSize = g_Memory->Read<SDK::Vector2>(C.Address + Offsets::GuiObject::Size);
                                     SilentOriginalChildrenSizes.push_back({ C.Address, CSize });
                                 }
                             }

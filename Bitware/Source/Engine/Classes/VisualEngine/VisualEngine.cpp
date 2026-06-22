@@ -7,13 +7,13 @@ namespace SDK {
 	SDK::Vector2 SDK::VisualEngine::Get_Dimensions() const {
         OBF_PROLOGUE;
         OBF_JUNK_BLOCK;
-		return Driver->Read<SDK::Vector2>(this->Address + Offsets::VisualEngine::Dimensions);
+		return g_Memory->Read<SDK::Vector2>(this->Address + Offsets::VisualEngine::Dimensions);
 	}
 
 	SDK::Matrix4 SDK::VisualEngine::Get_ViewMatrix() const {
         OBF_PROLOGUE;
         OBF_JUNK_DECLARE;
-		return Driver->Read<SDK::Matrix4>(this->Address + Offsets::VisualEngine::ViewMatrix);
+		return g_Memory->Read<SDK::Matrix4>(this->Address + Offsets::VisualEngine::ViewMatrix);
 	}
 
 	static bool IsValidViewMatrix(const SDK::Matrix4& M) {

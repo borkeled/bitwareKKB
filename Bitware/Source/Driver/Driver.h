@@ -7,6 +7,7 @@
 #include <memory>
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
+#include "MemoryInterface.h"
 
 using ReadVirtualMemoryFn = intptr_t(NTAPI*)(HANDLE, PVOID, PVOID, ULONG, PULONG);
 using WriteVirtualMemoryFn = intptr_t(NTAPI*)(HANDLE, PVOID, PVOID, ULONG, PULONG);
@@ -21,65 +22,23 @@ inline QuerySysInfoFn DriverNtQuerySystemInformation = nullptr;
 using WriteMousePosFn = void(NTAPI*)(HANDLE, PVOID, float, float);
 inline WriteMousePosFn DriverWriteMousePosition = nullptr;
 
-
-
-union RbxStringData {
-    char Inline[16];
-    std::uint64_t Pointer;
-};
-
-struct RbxString {
-    RbxStringData Data;
-    std::uint64_t Length;
-    std::uint64_t Capacity;
-};
-
-class Driver_t final {
+class UsermodeMemory final : public MemoryInterface {
 public:
-    Driver_t() = default;
-    ~Driver_t() = default;
+    UsermodeMemory() = default;
+    ~UsermodeMemory() override;
 
-    std::uint32_t Find_Process(const std::string& Process_Name);
-    std::uint64_t Find_Module(const std::string& Module_Name);
-    bool Attach_Process(const std::string& Process_Name);
+    std::uint32_t Find_Process(const std::string& Process_Name) override;
+    std::uint64_t Find_Module(const std::string& Module_Name) override;
+    bool Attach_Process(const std::string& Process_Name) override;
+    void Detach_Process() override;
 
-    std::string Read_String(std::uint64_t Address);
-    void Write_String(std::uint64_t Address, const std::string& Value);
+    bool ReadRaw(std::uint64_t Address, void* Buffer, size_t Size) override;
+    bool WriteRaw(std::uint64_t Address, const void* Buffer, size_t Size) override;
 
-    template <typename T>
-    T Read(std::uint64_t Address);
+    std::string Read_String(std::uint64_t Address) override;
+    void Write_String(std::uint64_t Address, const std::string& Value) override;
 
-    template <typename T>
-    void Write(std::uint64_t Address, T Value);
-
-    std::uint32_t Get_Process();
-    std::uint64_t Get_Module();
-    HANDLE Get_Handle();
-
-private:
-    std::uint32_t Process_ID;
-    std::uint64_t Base_Address;
-    HANDLE Process_Handle;
+    std::uint32_t Get_Process() const override { return m_ProcessId; }
+    std::uint64_t Get_Module()  const override { return m_BaseAddress; }
+    HANDLE   Get_Handle()  const override { return m_ProcessHandle; }
 };
-
-template <typename T>
-T Driver_t::Read(std::uint64_t Address) {
-    OBF_PROLOGUE;
-    T Buffer{};
-    if (DriverReadVirtualMemory) {
-        DriverReadVirtualMemory(Process_Handle, reinterpret_cast<void*>(Address), &Buffer, sizeof(T), nullptr);
-    }
-    OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-    return Buffer;
-}
-
-template <typename T>
-void Driver_t::Write(std::uint64_t Address, T Value) {
-    OBF_PROLOGUE;
-    OBF_JUNK_DECLARE;
-    if (DriverWriteVirtualMemory) {
-        DriverWriteVirtualMemory(Process_Handle, reinterpret_cast<void*>(Address), &Value, sizeof(T), nullptr);
-    }
-}
-
-inline std::unique_ptr<Driver_t> Driver = std::make_unique<Driver_t>();

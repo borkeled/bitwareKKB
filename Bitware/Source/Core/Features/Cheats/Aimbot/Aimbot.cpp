@@ -96,9 +96,9 @@ namespace Aimbot {
         else targetAddr = Plr.HumanoidRootPart.Address;
 
         if (!targetAddr) return SDK::Vector3{};
-        uintptr_t primAddr = Driver->Read<uintptr_t>(targetAddr + Offsets::BasePart::Primitive);
+        uintptr_t primAddr = g_Memory->Read<uintptr_t>(targetAddr + Offsets::BasePart::Primitive);
         if (!primAddr) return SDK::Vector3{};
-        return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
+        return g_Memory->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
     }
 
     void UpdateAimbot() {

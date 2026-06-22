@@ -329,15 +329,15 @@ void Explorer::Explorer::RenderModelTeleport()
 
     SDK::Instance instance = this->selected_node->instance;
 
-    uintptr_t primary_part = Driver->Read<uintptr_t>(instance.Address + Offsets::Model::PrimaryPart);
+    uintptr_t primary_part = g_Memory->Read<uintptr_t>(instance.Address + Offsets::Model::PrimaryPart);
     uintptr_t prim_addr = 0;
     SDK::Vector3 position{};
 
     if (primary_part && primary_part > 0x10000)
     {
-        prim_addr = Driver->Read<uintptr_t>(primary_part + Offsets::BasePart::Primitive);
+        prim_addr = g_Memory->Read<uintptr_t>(primary_part + Offsets::BasePart::Primitive);
         if (prim_addr)
-            position = Driver->Read<SDK::Vector3>(prim_addr + Offsets::Primitive::Position);
+            position = g_Memory->Read<SDK::Vector3>(prim_addr + Offsets::Primitive::Position);
     }
 
     if (!prim_addr)
@@ -438,22 +438,20 @@ void Explorer::Explorer::RenderScriptViewer()
     if (ImGui::Button(std::string(skCrypt("Read Bytecode")).c_str()))
     {
         // read the bytecode wrapper object
-        uintptr_t bytecode_wrapper = Driver->Read<uintptr_t>(instance_addr + bytecode_offset);
+        uintptr_t bytecode_wrapper = g_Memory->Read<uintptr_t>(instance_addr + bytecode_offset);
         if (bytecode_wrapper && bytecode_wrapper > 0x10000)
         {
             // read pointer to bytecode data
-            uintptr_t bytecode_ptr = Driver->Read<uintptr_t>(bytecode_wrapper + Offsets::ByteCode::Pointer);
+            uintptr_t bytecode_ptr = g_Memory->Read<uintptr_t>(bytecode_wrapper + Offsets::ByteCode::Pointer);
             // read size
-            uint64_t bytecode_size = Driver->Read<uint64_t>(bytecode_wrapper + Offsets::ByteCode::Size);
+            uint64_t bytecode_size = g_Memory->Read<uint64_t>(bytecode_wrapper + Offsets::ByteCode::Size);
 
             if (bytecode_ptr && bytecode_ptr > 0x10000 && bytecode_size > 0 && bytecode_size < 0x1000000)
             {
                 // read the raw bytecode data
                 std::string raw_data;
                 raw_data.resize(bytecode_size);
-                if (DriverReadVirtualMemory) {
-                    DriverReadVirtualMemory(Driver->Get_Handle(), reinterpret_cast<void*>(bytecode_ptr), raw_data.data(), static_cast<ULONG>(bytecode_size), nullptr);
-                }
+                g_Memory->ReadRaw(bytecode_ptr, raw_data.data(), static_cast<size_t>(bytecode_size));
 
                 cached_script_bytes = raw_data;
                 cached_script_class = class_name;

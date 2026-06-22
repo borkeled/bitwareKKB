@@ -343,17 +343,17 @@ void WallCheck::find_valid_parts(SDK::Instance* instance, int depth, std::vector
 
         if (is_basepart_class(className))
         {
-            uintptr_t primAddr = Driver->Read<uintptr_t>(child.Address + Offsets::BasePart::Primitive);
+            uintptr_t primAddr = g_Memory->Read<uintptr_t>(child.Address + Offsets::BasePart::Primitive);
             if (!primAddr)
                 continue;
 
-            uintptr_t flags = Driver->Read<uintptr_t>(primAddr + Offsets::Primitive::Flags);
+            uintptr_t flags = g_Memory->Read<uintptr_t>(primAddr + Offsets::Primitive::Flags);
             if (!(flags & Offsets::PrimitiveFlags::CanQuery))
                 continue;
 
-            SDK::Vector3 pos = Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
-            SDK::Matrix3 rot = Driver->Read<SDK::Matrix3>(primAddr + Offsets::Primitive::Rotation);
-            SDK::Vector3 size = Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Size);
+            SDK::Vector3 pos = g_Memory->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
+            SDK::Matrix3 rot = g_Memory->Read<SDK::Matrix3>(primAddr + Offsets::Primitive::Rotation);
+            SDK::Vector3 size = g_Memory->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Size);
 
             if (className.find("MeshPart") != std::string::npos || className.find("Operation") != std::string::npos)
             {
@@ -376,7 +376,7 @@ void WallCheck::find_valid_parts(SDK::Instance* instance, int depth, std::vector
                 else if (className == "CornerWedgePart")
                     shape_val = 4;
                 else if (className == "Part")
-                    shape_val = Driver->Read<uint8_t>(child.Address + Offsets::BasePart::Shape);
+                    shape_val = g_Memory->Read<uint8_t>(child.Address + Offsets::BasePart::Shape);
 
                 OBB obb(pos, size, rot, primAddr, is_mesh_or_op, shape_val);
                 out_obstacles.push_back(obb);
@@ -532,9 +532,9 @@ bool WallCheck::is_visible_raycast(const SDK::Vector3& origin, const SDK::Vector
             continue;
         }
 
-        SDK::Vector3 live_pos = Driver->Read<SDK::Vector3>(box.primitive_address + Offsets::Primitive::Position);
-        SDK::Matrix3 live_rot = Driver->Read<SDK::Matrix3>(box.primitive_address + Offsets::Primitive::Rotation);
-        SDK::Vector3 live_size = Driver->Read<SDK::Vector3>(box.primitive_address + Offsets::Primitive::Size);
+        SDK::Vector3 live_pos = g_Memory->Read<SDK::Vector3>(box.primitive_address + Offsets::Primitive::Position);
+        SDK::Matrix3 live_rot = g_Memory->Read<SDK::Matrix3>(box.primitive_address + Offsets::Primitive::Rotation);
+        SDK::Vector3 live_size = g_Memory->Read<SDK::Vector3>(box.primitive_address + Offsets::Primitive::Size);
 
         if (box.is_mesh_or_operation)
         {

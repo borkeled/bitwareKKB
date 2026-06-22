@@ -54,7 +54,7 @@ namespace PlayerUtils {
         }
 
         if (KoAddr != 0) {
-            return Driver->Read<bool>(KoAddr + Offsets::Misc::Value);
+            return g_Memory->Read<bool>(KoAddr + Offsets::Misc::Value);
         }
         return false;
     }

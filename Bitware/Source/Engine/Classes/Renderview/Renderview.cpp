@@ -6,22 +6,22 @@ namespace SDK {
 
     std::uint64_t Renderview::GetRenderview() {
         OBF_PROLOGUE;
-        auto Rv1 = Driver->Read<std::uintptr_t>(Globals::Datamodel.Address + Offsets::RenderJob::RenderView);
+        auto Rv1 = g_Memory->Read<std::uintptr_t>(Globals::Datamodel.Address + Offsets::RenderJob::RenderView);
         OBF_JUNK_BLOCK;
-        auto Rv2 = Driver->Read<std::uintptr_t>(Rv1 + Offsets::DataModel::ToRenderView2);
-        auto Rv3 = Driver->Read<std::uintptr_t>(Rv2 + Offsets::DataModel::ToRenderView3);
+        auto Rv2 = g_Memory->Read<std::uintptr_t>(Rv1 + Offsets::DataModel::ToRenderView2);
+        auto Rv3 = g_Memory->Read<std::uintptr_t>(Rv2 + Offsets::DataModel::ToRenderView3);
         return Rv3;
     }
 
     void Renderview::InvalidateLighting() {
         OBF_PROLOGUE;
         OBF_JUNK_DECLARE;
-        Driver->Write<bool>(Globals::Renderview.GetRenderview() + 0x148, false);
+        g_Memory->Write<bool>(Globals::Renderview.GetRenderview() + 0x148, false);
     }
 
     void Renderview::ValidateSkybox() {
         OBF_PROLOGUE;
-        Driver->Write<bool>(Globals::Renderview.GetRenderview() + Offsets::RenderView::SkyValidAlt, false);
+        g_Memory->Write<bool>(Globals::Renderview.GetRenderview() + Offsets::RenderView::SkyValidAlt, false);
         OBF_OPAQUE_FALSE { OBF_JUNK_BLOCK; }
     }
 }

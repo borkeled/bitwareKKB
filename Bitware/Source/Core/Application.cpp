@@ -6,8 +6,10 @@
 #include <Windows.h>
 #include <imgui/imgui.h>
 
+#include <Driver/MemoryInterface.h>
 #include <Driver/Driver.h>
 #include <Driver/SSN.h>
+#include <Driver/KernelMemory.h>
 #include <Globals.hxx>
 #include <Miscellaneous/Output/Output.h>
 #include <Core/Graphics/Graphics.h>
@@ -54,7 +56,7 @@ static void DrawCursor()
     DWORD now = GetTickCount();
     if (now - last_read > 100)
     {
-        is_visible = Driver->Read<bool>(SilentAimInstance.Address + Offsets::GuiObject::Visible);
+        is_visible = g_Memory->Read<bool>(SilentAimInstance.Address + Offsets::GuiObject::Visible);
         last_read = now;
         OBF_JUNK_BLOCK;
     }
@@ -127,18 +129,18 @@ bool Application::InitProcess()
 
     for (int Retries = 0; Retries < 10; Retries++)
     {
-        Driver->Find_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
-        Driver->Attach_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
-        Driver->Find_Module(std::string(skCrypt("RobloxPlayerBeta.exe")));
+        g_Memory->Find_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
+        g_Memory->Attach_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
+        g_Memory->Find_Module(std::string(skCrypt("RobloxPlayerBeta.exe")));
 
-        if (Driver->Get_Handle())
+        if (g_Memory->Get_Handle())
             break;
 
         Output::Warning(WRAPPER_MARCO("Retrying process attachment..."));
         Api::Sleep(500);
     }
 
-    if (!Driver->Get_Handle())
+    if (!g_Memory->Get_Handle())
     {
         Output::Error(WRAPPER_MARCO("Failed to attach to process"));
         return false;
@@ -155,7 +157,7 @@ bool Application::InitProcess()
 bool Application::InitSDK()
 {
     OBF_PROLOGUE;
-    auto ModuleBase = Driver->Get_Module();
+    auto ModuleBase = g_Memory->Get_Module();
     if (!ModuleBase) {
         OBF_JUNK_BLOCK;
         return false;
@@ -165,20 +167,20 @@ bool Application::InitSDK()
         return true;
     }
 
-    auto FakeDataModel = Driver->Read<std::uint64_t>(ModuleBase + Offsets::FakeDataModel::Pointer);
+    auto FakeDataModel = g_Memory->Read<std::uint64_t>(ModuleBase + Offsets::FakeDataModel::Pointer);
     if (!FakeDataModel) {
         OBF_JUNK_BLOCK;
         return false;
     }
 
-    Globals::Datamodel.Address = Driver->Read<std::uint64_t>(FakeDataModel + Offsets::FakeDataModel::RealDataModel);
+    Globals::Datamodel.Address = g_Memory->Read<std::uint64_t>(FakeDataModel + Offsets::FakeDataModel::RealDataModel);
     if (!Globals::Datamodel.Address) {
         OBF_JUNK_BLOCK;
         OBF_JUNK_DECLARE;
         return false;
     }
 
-    Globals::VisualEngine.Address = Driver->Read<std::uint64_t>(ModuleBase + Offsets::VisualEngine::Pointer);
+    Globals::VisualEngine.Address = g_Memory->Read<std::uint64_t>(ModuleBase + Offsets::VisualEngine::Pointer);
     Globals::Players.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Players")).c_str()).Address;
     Globals::Workspace.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Workspace")).c_str()).Address;
     Globals::Camera.Address = Globals::Workspace.Find_First_Child_Of_Class(std::string(skCrypt("Camera")).c_str()).Address;
@@ -187,7 +189,7 @@ bool Application::InitSDK()
     Globals::Lighting = SDK::Lighting(Lightin.Address);
 
     {
-        DWORD target_pid = Driver->Get_Process();
+        DWORD target_pid = g_Memory->Get_Process();
         EnumWindows([](HWND hwnd, LPARAM lparam) -> BOOL {
             DWORD pid = 0;
             GetWindowThreadProcessId(hwnd, &pid);
@@ -201,10 +203,10 @@ bool Application::InitSDK()
 
     if (Globals::Workspace.Address)
     {
-        auto workspacetoworld = Driver->Read<uintptr_t>(Globals::Workspace.Address + Offsets::Workspace::TerrainPhysics);
+        auto workspacetoworld = g_Memory->Read<uintptr_t>(Globals::Workspace.Address + Offsets::Workspace::TerrainPhysics);
         if (workspacetoworld)
         {
-            Driver->Write<float>(workspacetoworld + Offsets::World::SkyDistance, 200 * 4.f);
+            g_Memory->Write<float>(workspacetoworld + Offsets::World::SkyDistance, 200 * 4.f);
         }
     }
 
@@ -262,9 +264,31 @@ bool Application::Init()
 
         Api::Sleep(50);
 
-        Logger::Log(WRAPPER_MARCO("[Init] SSN resolver..."));
+        Logger::Log(WRAPPER_MARCO("[Init] memory backend..."));
         Logger::Flush();
-        SSN::Resolve();
+
+        if (SettingsStore::Settings_KernelMode)
+        {
+            auto kernelMem = std::make_unique<KernelMemory>();
+            if (kernelMem->Connect())
+            {
+                g_Memory = std::move(kernelMem);
+                Logger::Log(WRAPPER_MARCO("[Init] kernel driver connected"));
+                Logger::Flush();
+            }
+            else
+            {
+                Logger::Log(WRAPPER_MARCO("[Init] kernel driver unavailable, falling back to usermode"));
+                Logger::Flush();
+                SSN::Resolve();
+                g_Memory = std::make_unique<UsermodeMemory>();
+            }
+        }
+        else
+        {
+            SSN::Resolve();
+            g_Memory = std::make_unique<UsermodeMemory>();
+        }
 
         Api::Sleep(25);
 

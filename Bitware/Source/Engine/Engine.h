@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "../Driver/Driver.h"
+#include "../Driver/MemoryInterface.h"
 #include "Offsets/Offsets.h"
 #include "Math/Math.h"
 

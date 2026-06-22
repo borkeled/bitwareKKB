@@ -15,9 +15,9 @@ namespace SDK {
             float f;
         } EasyConversion;
 
-        uintptr_t healthPtr = Driver->Read<uintptr_t>(this->Address + Offsets::Humanoid::Health);
+        uintptr_t healthPtr = g_Memory->Read<uintptr_t>(this->Address + Offsets::Humanoid::Health);
         OBF_JUNK_BLOCK;
-        uintptr_t healthRead = Driver->Read<uintptr_t>(healthPtr);
+        uintptr_t healthRead = g_Memory->Read<uintptr_t>(healthPtr);
         EasyConversion.hex = healthPtr ^ healthRead;
 
         return EasyConversion.f;
@@ -35,8 +35,8 @@ namespace SDK {
             float f;
         } EasyConversion;
 
-        uintptr_t healthPtr = Driver->Read<uintptr_t>(this->Address + Offsets::Humanoid::MaxHealth);
-        uintptr_t healthRead = Driver->Read<uintptr_t>(healthPtr);
+        uintptr_t healthPtr = g_Memory->Read<uintptr_t>(this->Address + Offsets::Humanoid::MaxHealth);
+        uintptr_t healthRead = g_Memory->Read<uintptr_t>(healthPtr);
         OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
         EasyConversion.hex = healthPtr ^ healthRead;
 
@@ -49,7 +49,7 @@ namespace SDK {
         if (!this->Address)
             return;
 
-        Driver->Write<uintptr_t>(this->Address + Offsets::Humanoid::Health, 0);
+        g_Memory->Write<uintptr_t>(this->Address + Offsets::Humanoid::Health, 0);
     }
 
     int Humanoid::Get_RigType() const
@@ -59,6 +59,6 @@ namespace SDK {
         if (!this->Address)
             return 0;
 
-        return Driver->Read<int>(this->Address + Offsets::Humanoid::RigType);
+        return g_Memory->Read<int>(this->Address + Offsets::Humanoid::RigType);
     }
 }

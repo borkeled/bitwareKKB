@@ -34,6 +34,7 @@ namespace Globals {
         inline int& Performance_Mode = SettingsStore::Settings_Performance_Mode;
         inline int& WallCheck_Method = SettingsStore::WallCheck_Method;
         inline ImGuiKey& Menu_Keybind = SettingsStore::Settings_Menu_Keybind;
+        inline bool& KernelMode = SettingsStore::Settings_KernelMode;
 	}
 
 	namespace World {

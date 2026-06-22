@@ -91,14 +91,14 @@ namespace Cache {
         while (true) {
             try {
                 OBF_JUNK_BLOCK;
-                auto Module_Base = Driver->Get_Module();
+                auto Module_Base = g_Memory->Get_Module();
                 if (Module_Base != 0) {
-                    auto FakeDataModel = Driver->Read<std::uint64_t>(Module_Base + Offsets::FakeDataModel::Pointer);
+                    auto FakeDataModel = g_Memory->Read<std::uint64_t>(Module_Base + Offsets::FakeDataModel::Pointer);
                     if (FakeDataModel != 0) {
-                        Globals::Datamodel.Address = Driver->Read<std::uint64_t>(FakeDataModel + Offsets::FakeDataModel::RealDataModel);
+                        Globals::Datamodel.Address = g_Memory->Read<std::uint64_t>(FakeDataModel + Offsets::FakeDataModel::RealDataModel);
 
                         if (Globals::Datamodel.Address != 0) {
-                            std::uint64_t GameID = Driver->Read<uint64_t>(Globals::Datamodel.Address + Offsets::DataModel::PlaceId);
+                            std::uint64_t GameID = g_Memory->Read<uint64_t>(Globals::Datamodel.Address + Offsets::DataModel::PlaceId);
 
                             if (ForceReInit.exchange(false)) {
                                 Stored_GameID = 0;
@@ -132,7 +132,7 @@ namespace Cache {
                 }
 
                 if (Module_Base != 0) {
-                    uint64_t veAddr = Driver->Read<std::uint64_t>(Module_Base + Offsets::VisualEngine::Pointer);
+                    uint64_t veAddr = g_Memory->Read<std::uint64_t>(Module_Base + Offsets::VisualEngine::Pointer);
                     if (veAddr != 0) {
                         Globals::VisualEngine.Address = veAddr;
                     }
@@ -141,7 +141,7 @@ namespace Cache {
                 static int window_refresh_counter = 0;
                 if (++window_refresh_counter >= 20) {
                     window_refresh_counter = 0;
-                    DWORD target_pid = Driver->Get_Process();
+                    DWORD target_pid = g_Memory->Get_Process();
                     EnumWindows([](HWND hwnd, LPARAM lparam) -> BOOL {
                         DWORD pid = 0;
                         GetWindowThreadProcessId(hwnd, &pid);

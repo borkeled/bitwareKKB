@@ -157,4 +157,6 @@ namespace SettingsStore {
     inline ImKeyBindMode Misc_Jump_Key_Mode = ImKeyBindMode_Toggle;
 
     inline bool Explorer_Open = false;
+
+    inline bool Settings_KernelMode = false;
 }

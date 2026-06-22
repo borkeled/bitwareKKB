@@ -293,6 +293,8 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Core\UI\UIBridge.h" />
     <ClInclude Include="Source\Core\Application.h" />
     <ClInclude Include="Source\Driver\Driver.h" />
+    <ClInclude Include="Source\Driver\MemoryInterface.h" />
+    <ClInclude Include="Source\Driver\KernelMemory.h" />
     <ClInclude Include="Source\Engine\Classes\Datamodel\Datamodel.cpp" />
     <ClInclude Include="Source\Engine\Engine.h" />
     <ClInclude Include="Source\Engine\Math\Math.h" />
@@ -331,6 +333,7 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Source\Core\Input\InputHook.cpp" />
     <ClCompile Include="Source\Core\UI\LegacyMenuRenderer.cpp" />
     <ClCompile Include="Source\Driver\Driver.cpp" />
+    <ClCompile Include="Source\Driver\KernelMemory.cpp" />
     <ClCompile Include="Source\Engine\Classes\Camera\Camera.cpp" />
     <ClCompile Include="Source\Engine\Classes\Humanoid\Humanoid.cpp" />
     <ClCompile Include="Source\Engine\Classes\Instance\Instance.cpp" />

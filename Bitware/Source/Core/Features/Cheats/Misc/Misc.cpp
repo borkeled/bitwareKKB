@@ -25,8 +25,8 @@ namespace Misc {
 
         for (int i = 0; i < 3; i++)
         {
-            Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, targetSpeed);
-            Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, targetSpeed);
+            g_Memory->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, targetSpeed);
+            g_Memory->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, targetSpeed);
         }
     }
 
@@ -50,17 +50,17 @@ namespace Misc {
         {
             if (!capturedOriginal)
             {
-                originalJumpPower = Driver->Read<float>(humanoidAddr + Offsets::Humanoid::JumpPower);
+                originalJumpPower = g_Memory->Read<float>(humanoidAddr + Offsets::Humanoid::JumpPower);
                 capturedOriginal = true;
             }
 
-            Driver->Write<bool>(humanoidAddr + Offsets::Humanoid::UseJumpPower, true);
-            Driver->Write<float>(humanoidAddr + Offsets::Humanoid::JumpPower, Globals::Misc::Jump_Value);
+            g_Memory->Write<bool>(humanoidAddr + Offsets::Humanoid::UseJumpPower, true);
+            g_Memory->Write<float>(humanoidAddr + Offsets::Humanoid::JumpPower, Globals::Misc::Jump_Value);
             wasActive = true;
         }
         else if (wasActive)
         {
-            Driver->Write<float>(humanoidAddr + Offsets::Humanoid::JumpPower, originalJumpPower);
+            g_Memory->Write<float>(humanoidAddr + Offsets::Humanoid::JumpPower, originalJumpPower);
             wasActive = false;
             capturedOriginal = false;
         }
@@ -87,8 +87,8 @@ namespace Misc {
             {
                 if (Globals::LocalPlayer.Humanoid.Address)
                 {
-                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, 16.0f);
-                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, 16.0f);
+                    g_Memory->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, 16.0f);
+                    g_Memory->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, 16.0f);
                 }
                 speedWasActive = false;
             }
@@ -113,7 +113,7 @@ namespace Misc {
             {
                 if (Globals::LocalPlayer.Humanoid.Address)
                 {
-                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::JumpPower, 50.0f);
+                    g_Memory->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::JumpPower, 50.0f);
                 }
                 jumpWasActive = false;
             }

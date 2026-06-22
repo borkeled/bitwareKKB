@@ -2,7 +2,34 @@
 #include <Auth/skStr.h>
 #include <psapi.h>
 
-std::uint32_t Driver_t::Find_Process(const std::string& Process_Name)
+UsermodeMemory::~UsermodeMemory()
+{
+    Detach_Process();
+}
+
+bool UsermodeMemory::ReadRaw(std::uint64_t Address, void* Buffer, size_t Size)
+{
+    OBF_PROLOGUE;
+    if (!DriverReadVirtualMemory || !m_ProcessHandle)
+        return false;
+
+    DriverReadVirtualMemory(m_ProcessHandle, reinterpret_cast<void*>(Address),
+        Buffer, static_cast<ULONG>(Size), nullptr);
+    return true;
+}
+
+bool UsermodeMemory::WriteRaw(std::uint64_t Address, const void* Buffer, size_t Size)
+{
+    OBF_PROLOGUE;
+    if (!DriverWriteVirtualMemory || !m_ProcessHandle)
+        return false;
+
+    DriverWriteVirtualMemory(m_ProcessHandle, reinterpret_cast<void*>(Address),
+        const_cast<void*>(Buffer), static_cast<ULONG>(Size), nullptr);
+    return true;
+}
+
+std::uint32_t UsermodeMemory::Find_Process(const std::string& Process_Name)
 {
     OBF_PROLOGUE;
     std::uint32_t Local_Process = 0;
@@ -36,7 +63,7 @@ std::uint32_t Driver_t::Find_Process(const std::string& Process_Name)
 
                 if (proc_lower == name_lower) {
                     Local_Process = static_cast<std::uint32_t>(reinterpret_cast<uintptr_t>(entry->UniqueProcessId));
-                    Process_ID = Local_Process;
+                    m_ProcessId = Local_Process;
                     break;
                 }
             }
@@ -49,19 +76,19 @@ std::uint32_t Driver_t::Find_Process(const std::string& Process_Name)
     return Local_Process;
 }
 
-std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
+std::uint64_t UsermodeMemory::Find_Module(const std::string& Module_Name)
 {
     OBF_PROLOGUE;
     std::uint64_t Module_Address = 0;
 
-    if (!Process_Handle || Process_Handle == INVALID_HANDLE_VALUE || !DriverNtOpenProcess) {
+    if (!m_ProcessHandle || m_ProcessHandle == INVALID_HANDLE_VALUE || !DriverNtOpenProcess) {
         OBF_JUNK_BLOCK;
         return Module_Address;
     }
 
     PROCESS_BASIC_INFORMATION pbi;
     ULONG ret_len = 0;
-    auto nq_status = Api::NtQueryInformationProcess(Process_Handle,
+    auto nq_status = Api::NtQueryInformationProcess(m_ProcessHandle,
         ProcessBasicInformation, &pbi, sizeof(pbi), &ret_len);
     if (nq_status < 0 || !pbi.PebBaseAddress) {
         OBF_JUNK_BLOCK;
@@ -70,7 +97,7 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
 
     uint64_t image_base = 0;
     if (DriverReadVirtualMemory) {
-        DriverReadVirtualMemory(Process_Handle,
+        DriverReadVirtualMemory(m_ProcessHandle,
             reinterpret_cast<PVOID>(reinterpret_cast<uint64_t>(pbi.PebBaseAddress) + 0x10),
             &image_base, sizeof(image_base), nullptr);
     }
@@ -81,13 +108,13 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
     }
 
     if (_stricmp(Module_Name.c_str(), skCrypt("RobloxPlayerBeta.exe")) == 0) {
-        Base_Address = image_base;
+        m_BaseAddress = image_base;
         return image_base;
     }
 
     uint64_t ldr_addr = 0;
     if (DriverReadVirtualMemory) {
-        DriverReadVirtualMemory(Process_Handle,
+        DriverReadVirtualMemory(m_ProcessHandle,
             reinterpret_cast<PVOID>(reinterpret_cast<uint64_t>(pbi.PebBaseAddress) + 0x18),
             &ldr_addr, sizeof(ldr_addr), nullptr);
     }
@@ -98,7 +125,7 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
 
     LIST_ENTRY module_list;
     if (DriverReadVirtualMemory) {
-        DriverReadVirtualMemory(Process_Handle,
+        DriverReadVirtualMemory(m_ProcessHandle,
             reinterpret_cast<PVOID>(ldr_addr + 0x30),
             &module_list, sizeof(module_list), nullptr);
     }
@@ -111,7 +138,7 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
         LDR_DATA_TABLE_ENTRY entry_data;
         bool read_ok = false;
         if (DriverReadVirtualMemory) {
-            read_ok = DriverReadVirtualMemory(Process_Handle,
+            read_ok = DriverReadVirtualMemory(m_ProcessHandle,
                 reinterpret_cast<PVOID>(current_flink), &entry_data, sizeof(entry_data), nullptr) >= 0;
         }
 
@@ -137,7 +164,7 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
 
                 if (mod_lower == fname_lower) {
                     Module_Address = reinterpret_cast<std::uint64_t>(entry_data.DllBase);
-                    Base_Address = Module_Address;
+                    m_BaseAddress = Module_Address;
                     break;
                 }
             }
@@ -146,7 +173,7 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
         if (current_flink == head_flink) break;
         uint64_t next_flink = 0;
         if (DriverReadVirtualMemory) {
-            DriverReadVirtualMemory(Process_Handle,
+            DriverReadVirtualMemory(m_ProcessHandle,
                 reinterpret_cast<PVOID>(current_flink),
                 &next_flink, sizeof(next_flink), nullptr);
         }
@@ -156,18 +183,17 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
     return Module_Address;
 }
 
-
-bool Driver_t::Attach_Process(const std::string& Process_Name)
+bool UsermodeMemory::Attach_Process(const std::string& Process_Name)
 {
     OBF_PROLOGUE;
 
-    if (!DriverNtOpenProcess || !Process_ID) {
+    if (!DriverNtOpenProcess || !m_ProcessId) {
         OBF_JUNK_BLOCK;
         return false;
     }
 
     CLIENT_ID cid;
-    cid.UniqueProcess = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(Process_ID));
+    cid.UniqueProcess = reinterpret_cast<HANDLE>(static_cast<uintptr_t>(m_ProcessId));
     cid.UniqueThread = nullptr;
 
     OBJECT_ATTRIBUTES oa;
@@ -188,11 +214,21 @@ bool Driver_t::Attach_Process(const std::string& Process_Name)
         return false;
     }
 
-    Process_Handle = Process;
+    m_ProcessHandle = Process;
     return true;
 }
 
-std::string Driver_t::Read_String(std::uint64_t Address)
+void UsermodeMemory::Detach_Process()
+{
+    if (m_ProcessHandle && m_ProcessHandle != INVALID_HANDLE_VALUE) {
+        Api::NtClose(m_ProcessHandle);
+        m_ProcessHandle = nullptr;
+    }
+    m_ProcessId = 0;
+    m_BaseAddress = 0;
+}
+
+std::string UsermodeMemory::Read_String(std::uint64_t Address)
 {
     OBF_PROLOGUE;
     std::int32_t String_Length = Read<std::int32_t>(Address + 0x10);
@@ -207,13 +243,13 @@ std::string Driver_t::Read_String(std::uint64_t Address)
 
     std::vector<char> Buffer(String_Length + 1, 0);
     if (DriverReadVirtualMemory) {
-        DriverReadVirtualMemory(Process_Handle, reinterpret_cast<void*>(String_Address), Buffer.data(), (ULONG)Buffer.size(), nullptr);
+        DriverReadVirtualMemory(m_ProcessHandle, reinterpret_cast<void*>(String_Address), Buffer.data(), (ULONG)Buffer.size(), nullptr);
     }
 
     return std::string(Buffer.data(), String_Length);
 }
 
-void Driver_t::Write_String(std::uint64_t Address, const std::string& Value)
+void UsermodeMemory::Write_String(std::uint64_t Address, const std::string& Value)
 {
     OBF_PROLOGUE;
     auto Str = Read<RbxString>(Address);
@@ -225,7 +261,7 @@ void Driver_t::Write_String(std::uint64_t Address, const std::string& Value)
 
         Str.Data.Pointer = reinterpret_cast<std::uint64_t>(
             Api::VirtualAllocEx(
-                Process_Handle,
+                m_ProcessHandle,
                 nullptr,
                 Str.Capacity,
                 MEM_RESERVE | MEM_COMMIT,
@@ -247,7 +283,7 @@ void Driver_t::Write_String(std::uint64_t Address, const std::string& Value)
         Write<RbxString>(Address, Str);
         if (DriverWriteVirtualMemory) {
             DriverWriteVirtualMemory(
-                Process_Handle,
+                m_ProcessHandle,
                 reinterpret_cast<void*>(Str.Data.Pointer),
                 (void*)Value.data(),
                 (ULONG)Value.length(),
@@ -261,7 +297,7 @@ void Driver_t::Write_String(std::uint64_t Address, const std::string& Value)
         Write<RbxString>(Address, Str);
         if (DriverWriteVirtualMemory) {
             DriverWriteVirtualMemory(
-                Process_Handle,
+                m_ProcessHandle,
                 reinterpret_cast<void*>(Address),
                 (void*)Value.data(),
                 (ULONG)Value.length(),
@@ -269,19 +305,4 @@ void Driver_t::Write_String(std::uint64_t Address, const std::string& Value)
             );
         }
     }
-}
-
-std::uint32_t Driver_t::Get_Process()
-{
-    return Process_ID;
-}
-
-std::uint64_t Driver_t::Get_Module()
-{
-    return Base_Address;
-}
-
-HANDLE Driver_t::Get_Handle()
-{
-    return Process_Handle;
 }
