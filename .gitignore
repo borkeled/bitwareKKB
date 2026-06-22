@@ -24,6 +24,12 @@ x86/
 *.sln.docstates
 *.vcxproj.user
 *.pdb
+*.aps
+*.tlog
+*.ipdb
+*.iobj
+*.sbr
+*.ilk
 
 ## Compiled Object files
 *.obj
@@ -87,6 +93,9 @@ Thumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 
+## Build intermediate
+/Build/Extra/
+
 ## Temporary files
 *.tmp
 *.temp
@@ -95,6 +104,13 @@ $RECYCLE.BIN/
 *.seed
 *.pid.lock
 *.nfs*
+
+## NuGet packages
+packages/
+*.nupkg
+
+## Driver output
+*.sys
 
 ## Packages
 *.7z

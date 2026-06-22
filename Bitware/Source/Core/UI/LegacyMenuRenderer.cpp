@@ -558,6 +558,7 @@ void LegacyMenuRenderer::Render()
                 ImGui::SameLine(ImGui::GetContentRegionAvail().x - 37.0f);
                 Menu::KeyBind(WRAPPER_MARCO("Menu Key"), &Globals::Settings::Menu_Keybind);
                 Menu::CheckBox(WRAPPER_MARCO("Streamproof"), &Globals::Settings::Streamproof);
+                Menu::CheckBox(WRAPPER_MARCO("Kernel Mode"), &Globals::Settings::KernelMode);
                 Menu::Combo(WRAPPER_MARCO("Performance Type"), &Globals::Settings::Performance_Mode, { WRAPPER_MARCO("Low"), WRAPPER_MARCO("Medium"), WRAPPER_MARCO("High") });
                 Menu::Combo(WRAPPER_MARCO("Wall Check Method"), &Globals::Settings::WallCheck_Method, { WRAPPER_MARCO("OBB"), WRAPPER_MARCO("Raycast") });
 

@@ -1,6 +1,6 @@
 # Bitware
 
-External cheat for Roblox (Windows x64). Targets `RobloxPlayerBeta.exe` via direct syscalls — no injection, no DLL hooks.
+External cheat for Roblox (Windows x64). Targets `RobloxPlayerBeta.exe` with a **dual-path memory architecture** — runtime-switchable between direct-syscall usermode and a custom kernel driver (unsigned, mapped via kdmapper exploit). No injection, no DLL hooks.
 
 ---
 
@@ -9,17 +9,22 @@ External cheat for Roblox (Windows x64). Targets `RobloxPlayerBeta.exe` via dire
 ```
 Bitware.cxx → main()
   → Application::Init()
-      ├── FakeStrings::Generate()     – plant decoy strings
-      ├── AntiInjection::Start()      – monitor modules/threads/hooks
-      ├── AntiDump::Enable()          – VEH + PAGE_NOACCESS protection
-      ├── InitProcess()               – attach to RobloxPlayerBeta.exe
-      ├── InitSDK()                   – resolve DataModel, VisualEngine, Players, Camera, Lighting
-      ├── InputHook::Install()        – low-level keyboard hook
-      ├── SpawnThreads()              – launch worker threads
-      └── InitOverlay()               – create D3D11 overlay window + ImGui
+      ├── FakeStrings::Generate()       – plant decoy strings
+      ├── AntiInjection::Start()        – monitor modules/threads/hooks
+      ├── AntiDump::Enable()            – VEH + PAGE_NOACCESS protection
+      ├── InitSeh()                     – SEH handler (separated to avoid C2712)
+      ├── InitBackend()                 – 
+      │   ├── Select backend: UsermodeMemory or KernelMemory (per Settings_KernelMode)
+      │   ├── KernelMemory::Connect()   – CreateFileA → KernelLoader → kdmapper load
+      │   └── init global g_Memory
+      ├── InitProcess()                 – attach to RobloxPlayerBeta.exe via g_Memory
+      ├── InitSDK()                     – resolve DataModel, VisualEngine, Players, Camera, Lighting
+      ├── InputHook::Install()          – low-level keyboard hook
+      ├── SpawnThreads()                – launch worker threads
+      └── InitOverlay()                 – create D3D11 overlay window + ImGui
 ```
 
-Execution model: **external process** with **runtime-generated direct syscall stubs** for all memory reads/writes. No DLL injection. Overlay uses ImGui + D3D11 (resolved dynamically, no IAT entry for d3d11.dll).
+Execution model: **external process**. Memory backend is abstracted behind `MemoryInterface` — `g_Memory->Read<T>()` / `Write<T>()` resolves to either direct syscalls or IOCTL calls into a WDM driver mapped via kdmapper. No DLL injection. Overlay uses ImGui + D3D11 (resolved dynamically, no IAT entry for d3d11.dll).
 
 ---
 
@@ -50,7 +55,12 @@ Execution model: **external process** with **runtime-generated direct syscall st
 | `Bitware/Source/Core/Features/Cheats/Common/WallCheck.h/.cpp` | OBB raycasting visibility checks |
 | `Bitware/Source/Core/Features/Cheats/Common/PlayerUtils.h` | Knock detection utility |
 | `Bitware/Source/Core/Features/Explorer/Explorer.h/.cpp` | Instance tree browser, script viewer, teleport |
-| `Bitware/Source/Driver/Driver.h/.cpp` | Process/module attach, typed read/write wrappers |
+| `Bitware/Source/Driver/Driver.h/.cpp` | `UsermodeMemory` — direct syscall read/write (non-kernel backend) |
+| `Bitware/Source/Driver/MemoryInterface.h` | Abstract base `MemoryInterface` + global `g_Memory` pointer |
+| `Bitware/Source/Driver/KernelMemory.h/.cpp` | `KernelMemory` — kernel-driver client via CreateFile + DeviceIoControl |
+| `Bitware/Source/Driver/KernelLoader.h/.cpp` | `LoadDriver()` — tries direct connection, falls back to kdmapper |
+| `Bitware/Source/Driver/IoctlDefs.h` | Shared IOCTL codes + packed structs (user + kernel) |
+| `Bitware/Source/Driver/kdmapper/` | kdmapper exploit (Intel vulnerable driver loader, PE mapper, service mgmt) |
 | `Bitware/Source/Driver/SSN.h` | Dynamic SSN resolution + runtime stub generation |
 | `Bitware/Source/Driver/luck.asm` | **Dead** — all functions removed; kept for MSBuild MASM integration |
 | `Bitware/Source/Engine/Engine.h` | Roblox SDK class declarations |
@@ -75,6 +85,7 @@ Execution model: **external process** with **runtime-generated direct syscall st
 | `Bitware/Dependencies/Clipper2Lib/` | Clipper2 polygon clipping (used by chams) |
 | `Bitware/Dependencies/FreeType/` | FreeType font rasterizer |
 | `Bitware/Dependencies/Auth/skStr.h` | skCrypt compile-time string encryption |
+| `BitwareDrv/` | WDM kernel driver project (6 sources: entry, IOCTL dispatch, read/write, process finder, module finder) |
 
 ---
 
@@ -85,11 +96,16 @@ Execution model: **external process** with **runtime-generated direct syscall st
  1. FakeStrings::Generate()           – plant decoy strings in memory
  2. AntiInjection::Start()            – monitor modules/threads/hooks
  3. AntiDump::Enable()                – VEH + PAGE_NOACCESS on .text section
- 4. InitProcess()                     – attach to RobloxPlayerBeta.exe via syscalls
- 5. InitSDK()                         – resolve DataModel, VisualEngine, Players, Camera, Lighting
- 6. InputHook::Install()              – install low-level keyboard hook
- 7. SpawnThreads()                    – launch Cache, Aimbot, Silent, Triggerbot, World, Misc threads
- 8. InitOverlay()                     – create overlay window + D3D11 + ImGui
+ 4. InitSeh()                         – install SEH handler (isolated to avoid C2712 with ~objects)
+ 5. InitBackend()                     – select + connect memory backend:
+   a. Settings_KernelMode ? KernelMemory::Connect() : UsermodeMemory()
+   b. KernelMemory::Connect() → KernelLoader::LoadDriver() → kdmapper → CreateFile
+   c. sets global g_Memory (abstract MemoryInterface*)
+ 6. InitProcess()                     – attach to RobloxPlayerBeta.exe via g_Memory
+ 7. InitSDK()                         – resolve DataModel, VisualEngine, Players, Camera, Lighting
+ 8. InputHook::Install()              – install low-level keyboard hook
+ 9. SpawnThreads()                    – launch Cache, Aimbot, Silent, Triggerbot, World, Misc threads
+10. InitOverlay()                     – create overlay window + D3D11 + ImGui
 ```
 
 ### `Application::Run()`
@@ -100,31 +116,133 @@ Disables anti-dump, stops anti-injection, removes input hook, joins all worker t
 
 ---
 
-## Driver Layer
+## Driver Layer — Dual-Path Memory Architecture
 
-### `Driver_t` (`Driver.h`)
-Template-based memory read/write via direct syscalls:
+All memory operations go through the abstract `MemoryInterface` base, dispatched at runtime via the global `g_Memory` pointer. Two backends are available, chosen at startup via `Settings_KernelMode`.
 
-| Function | Description |
+### Memory Backend Selection
+
+```
+Application::InitBackend()
+  │
+  ├─ Settings_KernelMode == false
+  │   └─ g_Memory = new UsermodeMemory()   ← direct syscalls (existing)
+  │
+  └─ Settings_KernelMode == true
+      └─ g_Memory = new KernelMemory()
+          └─ Connect()
+              ├─ CreateFileA("\\.\\BitwareDevice")  → already loaded?
+              │   └─ if yes, done
+              ├─ KernelLoader::LoadDriver()
+              │   ├─ intel_driver::Load()           → register + start iqvw64e.sys
+              │   ├─ kdmapper::MapDriver()          → map BitwareDrv.sys in kernel
+              │   ├─ intel_driver::Unload()         → stop + remove iqvw64e.sys
+              │   └─ Sleep(200)                     → wait for driver to initialize
+              └─ CreateFileA("\\.\\BitwareDevice")  → connect to our driver
+```
+
+### `MemoryInterface` (`MemoryInterface.h`)
+
+Shared abstract interface used by all feature code:
+
+| Method | Description |
 |---|---|
-| `Read<T>(address)` | Read `T` from remote process |
-| `Write<T>(address, value)` | Write `T` to remote process |
-| `Read_String(address)` | Read Roblox-style string (inline or pointer) |
-| `Write_String(address, value)` | Write string to remote process |
-| `Find_Process(name)` | Find process by name via NtQuerySystemInformation |
-| `Attach_Process(name)` | NtOpenProcess with required access |
-| `Find_Module(name)` | Get module base address via PEB walking |
+| `Read<T>(address)` | Read typed value from remote process |
+| `Write<T>(address, value)` | Write typed value to remote process |
+| `Read_Raw(address, buffer, size)` | Raw memory read |
+| `Write_Raw(address, buffer, size)` | Raw memory write |
+| `Read_String(address)` | Read Roblox-style string |
+| `Write_String(address, value)` | Write string value |
+| `Find_Process(name)` | Find PID by process name |
+| `Attach_Process(name)` | Open process handle with required access |
+| `Find_Module(name)` | Get module base address (PEB walking) |
+| `Get_Process_Id()` | Return attached process ID |
+
+All feature code (`Aimbot`, `Visuals`, `Cache`, etc.) uses `g_Memory->Read<T>()` / `g_Memory->Write<T>()` — the backend is transparent.
+
+---
+
+### Backend 1: `UsermodeMemory` (`Driver.h/.cpp`)
+
+Direct syscall approach (original Bitware method). Inherits `MemoryInterface`.
+
+| Component | Description |
+|---|---|
+| **Syscall stubs** | `NtOpenProcess`, `NtReadVirtualMemory`, `NtWriteVirtualMemory` resolved via SSN + EAT parsing |
+| **Stub generation** | `SyscallObf::GenerateSyscallStub()` — XOR-encrypted at rest, RW→RX pages, randomized garbage |
+| **Process operations** | `NtOpenProcess` via direct syscall, PEB walking for modules |
+| **SSN resolution** | `SSN.h` — dynamic SSN via EAT parsing, no hardcoded values |
 
 ### Runtime Syscall Stubs (`SSN.h` + `SyscallObf.h`)
-All syscall stubs and writable memory stubs are generated at runtime with randomized garbage instructions:
 
 | Stub | Method |
 |---|---|
-| `DriverReadVirtualMemory` | SSN resolved via EAT parsing → `SyscallObf::GenerateSyscallStub()` |
-| `DriverWriteVirtualMemory` | SSN resolved via EAT parsing → `SyscallObf::GenerateSyscallStub()` |
-| `DriverWriteMousePosition` | Runtime-generated via `SyscallObf::GenerateWriteStub(0xEC, 0xF0)` |
+| `NtReadVirtualMemory` | SSN resolved via EAT parsing → `GenerateSyscallStub()` |
+| `NtWriteVirtualMemory` | SSN resolved via EAT parsing → `GenerateSyscallStub()` |
+| `DriverWriteMousePosition` | Runtime-generated via `GenerateWriteStub(0xEC, 0xF0)` |
 
 Stubs are XOR-encrypted at rest, decrypted before use. Allocated as `PAGE_READWRITE`, then protected to `PAGE_EXECUTE_READ` (no RWX pages at rest). No static ASM bytes remain in `.text` — `luck.asm` is empty.
+
+---
+
+### Backend 2: `KernelMemory` (`KernelMemory.h/.cpp`, `IoctlDefs.h`)
+
+Kernel-driver client. Uses `CreateFileA("\\.\\BitwareDevice")` + `DeviceIoControl` to communicate with a WDM driver. Handles are obtained via `KernelLoader`.
+
+| IOCTL | Code | Description |
+|---|---|---|
+| `IOCTL_BITWARE_READ_MEMORY` | `0x00226004` | Read from target process (METHOD_BUFFERED) |
+| `IOCTL_BITWARE_WRITE_MEMORY` | `0x0022A005` | Write to target process (METHOD_BUFFERED) |
+| `IOCTL_BITWARE_FIND_PROCESS` | `0x00226008` | Find PID by process name |
+| `IOCTL_BITWARE_FIND_MODULE` | `0x0022600C` | Get module base by name |
+
+IOCTL input/output structs are defined in `IoctlDefs.h` as packed structs (portable to both user and kernel modes).
+
+---
+
+### Driver Loader (`KernelLoader.h/.cpp`)
+
+`KernelLoader::LoadDriver()` handles the complete driver loading sequence:
+
+1. **Direct check** — tries `CreateFileA("\\\\.\\BitwareDevice")` (in case already loaded)
+2. **Intel vulnerable driver** — loads `iqvw64e.sys` via service registration → provides physical memory access
+3. **kdmapper** — maps `BitwareDrv.sys` (embedded as byte array, never written to disk) into kernel space via Intel driver IOCTL
+4. **Cleanup** — unloads Intel driver (service stop + delete) to leave no trace
+5. **Retry** — waits 200ms, retries `CreateFileA` to connect to our driver
+
+### kdmapper (`Bitware/Source/Driver/kdmapper/`)
+
+Fork of [eddeeh/kdmapper](https://github.com/eddeeh/kdmapper) adapted for indirect loading:
+
+| File | Purpose |
+|---|---|
+| `intel_driver.hpp/.cpp` | `\\.\Nal` IOCTL interface (`0x80862007`) for physical read/write + map |
+| `intel_driver_resource.hpp` | Embedded `iqvw64e.sys` binary (209 KB) |
+| `kdmapper.hpp/.cpp` | `MapDriver()` — PE relocations, import resolution, kernel call |
+| `nt.hpp` | NT structures (`SYSTEM_HANDLE_INFORMATION_EX`, `POOL_TYPE`) |
+| `portable_executable.hpp/.cpp` | PE parsing |
+| `utils.hpp/.cpp` | `GetKernelModuleAddress`, file I/O |
+| `service.hpp/.cpp` | SCM service register/start/stop/remove |
+| `bitware_driver_resource.hpp` | Auto-generated embedded `BitwareDrv.sys` byte array |
+
+kdmapper works by loading the vulnerable Intel driver (access to physical memory), then using it to allocate kernel memory, write PE sections, resolve imports, call `DriverEntry`, and hook `NtGdiDdDDIReclaimAllocations2` in `win32kbase.sys` as an execution gadget.
+
+---
+
+### WDM Driver (`BitwareDrv/`)
+
+Custom WDM kernel driver (no KMDF dependencies, no generated type tables):
+
+| Source | Purpose |
+|---|---|
+| `DriverEntry.cpp` | Driver entry — registers `DRIVER_DISPATCH` for create/close/device control |
+| `MemoryOps.cpp` | Read/write via `KeStackAttachProcess` with custom `BITWARE_KAPC_STATE` |
+| `ProcessFinder.cpp` | `ZwQuerySystemInformation` with `SystemProcessInformation` for PID lookup |
+| `ModuleFinder.cpp` | `PsGetProcessSectionBaseAddress` for module base retrieval |
+| `IoctlDefs.h` | Shared IOCTL definitions (copied from user project) |
+| `BitwareDrv.vcxproj` | WDK project targeting `10.0.28000.0` via NuGet WDK package |
+
+Build output: `Build/BitwareDrv.sys` (6,144 bytes). Embedded into the cheat executable as a C byte array at build time via a manual step (`bitware_driver_resource.hpp`).
 
 ---
 
@@ -357,7 +475,7 @@ Settings are defined as `inline` variables in `Settings.h` (namespace `SettingsS
 - `Globals::Triggerbot` — delay, randomization, hit part, FOV, wall check, keybind
 - `Globals::Silent` — silent aim FOVs, gun-based FOV, target part, wall check, keybind
 - `Globals::Whitelist` — whitelist enable, color, user IDs
-- `Globals::Settings` — streamproof, performance mode, team/client check, wall check method
+- `Globals::Settings` — streamproof, performance mode, team/client check, wall check method, kernel mode toggle
 - `Globals::Misc` — speed hack, jump hack with keybinds
 - `Globals::Explorer` — explorer panel state
 
@@ -423,12 +541,42 @@ Settings are defined as `inline` variables in `Settings.h` (namespace `SettingsS
 
 ## Build
 
-- **Solution**: `Bitware.sln` (Visual Studio 2022)
-- **Toolset**: v145, Windows SDK 10.0
-- **Platform**: x64, C++20
+### Prerequisites
+
+- Visual Studio 2022 with **Desktop development with C++** workload
+- Windows SDK 10.0.26100.0 (or matching installed version)
+- **For the kernel driver**: WDK NuGet package (`Microsoft.Windows.WDK.x64.10.0.28000.1839`) — restored automatically by NuGet in `BitwareDrv.vcxproj`
+- MASM (ML64) — for `luck.asm` (empty stub, kept for MSBuild integration)
+
+### Projects
+
+| Project | File | Output |
+|---|---|---|
+| **Bitware** (main cheat) | `Bitware/Bitware.vcxproj` | `Build/Bitware.exe` |
+| **BitwareDrv** (kernel driver) | `Bitware/BitwareDrv/BitwareDrv.vcxproj` | `Build/BitwareDrv.sys` |
+
+### Bitware (main cheat)
+
+- **Toolset**: v145, Windows SDK 10.0, C++20
+- **Platform**: x64 Release
 - **Entry**: `main()` via `mainCRTStartup` (subsystem: Windows)
-- **Libraries**: `d3d11.lib`, `d3dcompiler.lib`, `dxgi.lib`, `Ole32.lib`, `Shell32.lib`, `winmm.lib`, `freetype.lib`
-- **MASM**: `luck.asm` kept for MSBuild MASM integration only (empty — all stubs generated at runtime via `SyscallObf.h` + `SSN.h`)
+- **Libraries**: `d3d11.lib`, `d3dcompiler.lib`, `dxgi.lib`, `Ole32.lib`, `Advapi32.lib`, `Shell32.lib`, `winmm.lib`, `freetype.lib`
 - **UAC**: RequireAdministrator (Release)
 - **Configurations**: Debug / Release
 - **Release post-build**: Cleans PDB, iobj, ipdb, and tlog build artifacts
+
+### BitwareDrv (kernel driver)
+
+- **WDK**: NuGet package `Microsoft.Windows.WDK.x64.10.0.28000.1839`
+- **SDK**: `10.0.28000.0` (provided by NuGet WDK package)
+- **Toolset**: v145, KMDF (uses WDM directly — no KMDF library dependency)
+- **Build**: `BuildBitwareDrv.bat` or manual MSBuild of `BitwareDrv.vcxproj`
+- **Output**: `Build/BitwareDrv.sys` (6,144 bytes)
+
+### Driver Resource Embedding
+
+After building `BitwareDrv.sys`, the binary must be converted to a C byte array and placed at `Bitware/Source/Driver/kdmapper/bitware_driver_resource.hpp`. This header provides `bitware_driver_resource::driver[]` and `bitware_driver_resource::size` for embedding the driver directly in the cheat executable (never written to disk).
+
+### Note on NuGet Packages
+
+The main `Bitware.vcxproj` intentionally does **not** reference `Microsoft.Windows.SDK.CPP` or `Microsoft.Windows.WDK` NuGet packages. These packages override standard SDK include/library paths and expect SDK version `10.0.28000.0` which may not match the installed SDK. They are only needed in `BitwareDrv.vcxproj` for kernel-mode headers and libraries.

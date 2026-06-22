@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -135,20 +136,18 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;Ole32.lib</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;Ole32.lib;Advapi32.lib</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <PostBuildEvent>
-      <Command>del /q "$(OutDir)$(TargetName).pdb" "$(IntDir)$(TargetName).iobj" "$(IntDir)$(TargetName).ipdb" "$(IntDir)vc145.pdb" 2>NUL
-rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
+      <Command>del /q "$(OutDir)$(TargetName).pdb" "$(IntDir)$(TargetName).iobj" "$(IntDir)$(TargetName).ipdb" "$(IntDir)vc145.pdb" 2&gt;NUL
+rmdir /s /q "$(IntDir)$(TargetName).tlog" 2&gt;NUL</Command>
       <Message>Cleaning up build artifacts that could leak info...</Message>
     </PostBuildEvent>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
     </Bscmake>
-    <ResourceCompile>
-      <AdditionalIncludeDirectories>C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared;C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um</AdditionalIncludeDirectories>
-    </ResourceCompile>
+    
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="Dependencies\Auth\skStr.h" />
@@ -294,7 +293,16 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Core\Application.h" />
     <ClInclude Include="Source\Driver\Driver.h" />
     <ClInclude Include="Source\Driver\MemoryInterface.h" />
-    <ClInclude Include="Source\Driver\KernelMemory.h" />
+    <ClInclude Include="Source\Driver\KernelLoader.h" />
+    <ClInclude Include="Source\Driver\IoctlDefs.h" />
+    <ClInclude Include="Source\Driver\kdmapper\bitware_driver_resource.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\intel_driver.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\intel_driver_resource.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\kdmapper.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\nt.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\portable_executable.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\service.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\utils.hpp" />
     <ClInclude Include="Source\Engine\Classes\Datamodel\Datamodel.cpp" />
     <ClInclude Include="Source\Engine\Engine.h" />
     <ClInclude Include="Source\Engine\Math\Math.h" />
@@ -334,6 +342,12 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Source\Core\UI\LegacyMenuRenderer.cpp" />
     <ClCompile Include="Source\Driver\Driver.cpp" />
     <ClCompile Include="Source\Driver\KernelMemory.cpp" />
+    <ClCompile Include="Source\Driver\KernelLoader.cpp" />
+    <ClCompile Include="Source\Driver\kdmapper\kdmapper.cpp" />
+    <ClCompile Include="Source\Driver\kdmapper\intel_driver.cpp" />
+    <ClCompile Include="Source\Driver\kdmapper\portable_executable.cpp" />
+    <ClCompile Include="Source\Driver\kdmapper\utils.cpp" />
+    <ClCompile Include="Source\Driver\kdmapper\service.cpp" />
     <ClCompile Include="Source\Engine\Classes\Camera\Camera.cpp" />
     <ClCompile Include="Source\Engine\Classes\Humanoid\Humanoid.cpp" />
     <ClCompile Include="Source\Engine\Classes\Instance\Instance.cpp" />
@@ -361,6 +375,7 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="Bitware.aps" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -447,10 +447,34 @@
     <ClInclude Include="Source\Miscellaneous\Protection\External\oxorany_include.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Miscellaneous\Config\ConfigManager.h">
+    <ClInclude Include="Dependencies\Auth\skStr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Dependencies\Auth\skStr.h">
+    <ClInclude Include="Source\Core\Features\Cheats\Common\WallCheck.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\Settings\Settings.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\Settings\Types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\UI\IMenuRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\UI\LegacyMenuRenderer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\UI\UIBridge.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Core\Application.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Driver\MemoryInterface.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Driver\KernelMemory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -560,6 +584,18 @@
     <ClCompile Include="Source\Miscellaneous\Protection\External\oxorany.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Core\Features\Cheats\Common\WallCheck.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Core\Application.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Core\UI\LegacyMenuRenderer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Driver\KernelMemory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Bitware.rc">
@@ -581,5 +617,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Bitware.aps" />
+    <None Include="packages.config" />
   </ItemGroup>
 </Project>

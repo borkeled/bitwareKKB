@@ -1,7 +1,8 @@
 #include "KernelMemory.h"
+#include "KernelLoader.h"
 #include <Auth/skStr.h>
 #include <Infrastructure/Obfuscation.h>
-#include <windows.h>
+#include "IoctlDefs.h"
 
 KernelMemory::KernelMemory()
 {
@@ -20,6 +21,11 @@ KernelMemory::~KernelMemory()
 bool KernelMemory::Connect()
 {
     OBF_PROLOGUE;
+
+    if (!KernelLoader::LoadDriver())
+    {
+        return false;
+    }
 
     m_DriverHandle = CreateFileA(
         skCrypt("\\\\.\\BitwareDevice"),
@@ -47,12 +53,12 @@ bool KernelMemory::SendIoctl(DWORD code, const void* in_buf, DWORD in_size, void
 std::uint32_t KernelMemory::Find_Process(const std::string& name)
 {
     OBF_PROLOGUE;
-    wchar_t wide_name[260]{};
+    BITWARE_FIND_PROCESS_INPUT input{};
     size_t converted = 0;
-    mbstowcs_s(&converted, wide_name, name.c_str(), 259);
+    mbstowcs_s(&converted, input.Name, name.c_str(), 259);
 
     uint32_t pid = 0;
-    if (SendIoctl(0x80002003, wide_name, (DWORD)(wcslen(wide_name) * 2 + 2), &pid, sizeof(pid)))
+    if (SendIoctl(IOCTL_BITWARE_FIND_PROCESS, &input, sizeof(input), &pid, sizeof(pid)))
     {
         m_ProcessId = pid;
     }
@@ -62,16 +68,13 @@ std::uint32_t KernelMemory::Find_Process(const std::string& name)
 std::uint64_t KernelMemory::Find_Module(const std::string& name)
 {
     OBF_PROLOGUE;
-    struct {
-        uint32_t pid;
-        wchar_t name[260];
-    } input{};
-    input.pid = m_ProcessId;
+    BITWARE_FIND_MODULE_INPUT input{};
+    input.ProcessId = m_ProcessId;
     size_t converted = 0;
-    mbstowcs_s(&converted, input.name, name.c_str(), 259);
+    mbstowcs_s(&converted, input.Name, name.c_str(), 259);
 
     uint64_t base = 0;
-    if (SendIoctl(0x80002004, &input, sizeof(input), &base, sizeof(base)))
+    if (SendIoctl(IOCTL_BITWARE_FIND_MODULE, &input, sizeof(input), &base, sizeof(base)))
     {
         m_BaseAddress = base;
     }
@@ -96,36 +99,28 @@ void KernelMemory::Detach_Process()
 bool KernelMemory::ReadRaw(std::uint64_t addr, void* buf, size_t size)
 {
     OBF_PROLOGUE;
-    struct {
-        uint32_t pid;
-        uint64_t address;
-        uint32_t size;
-    } input{};
-    input.pid = m_ProcessId;
-    input.address = addr;
-    input.size = (uint32_t)size;
+    BITWARE_READ_INPUT input{};
+    input.ProcessId = m_ProcessId;
+    input.Address = addr;
+    input.Size = (ULONG)size;
 
-    return SendIoctl(0x80002001, &input, sizeof(input), buf, (DWORD)size);
+    return SendIoctl(IOCTL_BITWARE_READ_MEMORY, &input, sizeof(input), buf, (DWORD)size);
 }
-
-struct KernelWriteInput {
-    uint32_t pid;
-    uint64_t address;
-    uint32_t size;
-    char data[1];
-};
 
 bool KernelMemory::WriteRaw(std::uint64_t addr, const void* buf, size_t size)
 {
     OBF_PROLOGUE;
-    KernelWriteInput* input = (KernelWriteInput*)alloca(sizeof(KernelWriteInput) + size);
+    ULONG totalSize = sizeof(BITWARE_WRITE_INPUT) + (ULONG)size;
+    void* ioBuffer = alloca(totalSize);
 
-    input->pid = m_ProcessId;
-    input->address = addr;
-    input->size = (uint32_t)size;
-    memcpy(input->data, buf, size);
+    PBITWARE_WRITE_INPUT input = (PBITWARE_WRITE_INPUT)ioBuffer;
+    input->ProcessId = m_ProcessId;
+    input->Address = addr;
+    input->Size = (ULONG)size;
 
-    return SendIoctl(0x80002002, input, (DWORD)(sizeof(KernelWriteInput) + size - 1), nullptr, 0);
+    memcpy((unsigned char*)ioBuffer + sizeof(BITWARE_WRITE_INPUT), buf, size);
+
+    return SendIoctl(IOCTL_BITWARE_WRITE_MEMORY, ioBuffer, totalSize, nullptr, 0);
 }
 
 std::string KernelMemory::Read_String(std::uint64_t addr)
