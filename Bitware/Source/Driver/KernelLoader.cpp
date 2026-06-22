@@ -1,6 +1,5 @@
 #include "KernelLoader.h"
 #include <Auth/skStr.h>
-#include <Infrastructure/Logger.h>
 #include <Driver/kdmapper/kdmapper.hpp>
 #include <Driver/kdmapper/intel_driver.hpp>
 #include <Driver/kdmapper/bitware_driver_resource.hpp>
@@ -23,22 +22,16 @@ namespace KernelLoader
         if (device != INVALID_HANDLE_VALUE && device != nullptr)
         {
             CloseHandle(device);
-            Logger::Log(skCrypt("[KernelLoader] driver already loaded"));
             g_DriverLoaded = true;
             return true;
         }
 
-        Logger::Log(skCrypt("[KernelLoader] loading vulnerable Intel driver"));
-
         g_IntelDeviceHandle = intel_driver::Load();
         if (!g_IntelDeviceHandle || g_IntelDeviceHandle == INVALID_HANDLE_VALUE)
         {
-            Logger::Log(skCrypt("[KernelLoader] failed to load Intel vulnerable driver"));
             g_IntelDeviceHandle = nullptr;
             return false;
         }
-
-        Logger::Log(skCrypt("[KernelLoader] mapping BitwareDrv via kdmapper"));
 
         std::vector<uint8_t> driverData(
             bitware_driver_resource::driver,
@@ -49,13 +42,10 @@ namespace KernelLoader
 
         if (!result)
         {
-            Logger::Log(skCrypt("[KernelLoader] kdmapper mapping failed"));
             intel_driver::Unload(g_IntelDeviceHandle);
             g_IntelDeviceHandle = nullptr;
             return false;
         }
-
-        Logger::LogHex(skCrypt("[KernelLoader] driver mapped at"), result);
 
         intel_driver::Unload(g_IntelDeviceHandle);
         g_IntelDeviceHandle = nullptr;
@@ -70,12 +60,10 @@ namespace KernelLoader
         if (device != INVALID_HANDLE_VALUE && device != nullptr)
         {
             CloseHandle(device);
-            Logger::Log(skCrypt("[KernelLoader] BitwareDevice connected"));
             g_DriverLoaded = true;
             return true;
         }
 
-        Logger::Log(skCrypt("[KernelLoader] BitwareDevice not found after mapping"));
         return false;
     }
 

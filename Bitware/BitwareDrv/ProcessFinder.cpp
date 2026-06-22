@@ -63,7 +63,7 @@ NTSTATUS BitwareFindProcessByName(PCWSTR ProcessName, PULONG OutProcessId)
     // Loop to dynamically size the buffer in case of length mismatches
     do
     {
-        buffer = ExAllocatePoolWithTag(PagedPool, bufferSize, 'nBsP');
+        buffer = ExAllocatePoolWithTag(PagedPool, bufferSize, g_PoolTag);
         if (!buffer)
         {
             return STATUS_INSUFFICIENT_RESOURCES;
@@ -74,7 +74,7 @@ NTSTATUS BitwareFindProcessByName(PCWSTR ProcessName, PULONG OutProcessId)
 
         if (status == STATUS_INFO_LENGTH_MISMATCH)
         {
-            ExFreePoolWithTag(buffer, 'nBsP');
+            ExFreePoolWithTag(buffer, g_PoolTag);
             buffer = NULL;
             
             // Add a safety padding margin to account for new processes spawning between calls
@@ -82,7 +82,7 @@ NTSTATUS BitwareFindProcessByName(PCWSTR ProcessName, PULONG OutProcessId)
         }
         else if (!NT_SUCCESS(status))
         {
-            ExFreePoolWithTag(buffer, 'nBsP');
+            ExFreePoolWithTag(buffer, g_PoolTag);
             return status;
         }
     } while (status == STATUS_INFO_LENGTH_MISMATCH);
@@ -132,6 +132,6 @@ NTSTATUS BitwareFindProcessByName(PCWSTR ProcessName, PULONG OutProcessId)
         spi = (PBITWARE_SYSTEM_PROCESS_INFORMATION)nextAddress;
     }
 
-    ExFreePoolWithTag(buffer, 'nBsP');
+    ExFreePoolWithTag(buffer, g_PoolTag);
     return found ? STATUS_SUCCESS : STATUS_NOT_FOUND;
 }

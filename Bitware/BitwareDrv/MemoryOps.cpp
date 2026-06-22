@@ -22,8 +22,7 @@ NTSTATUS BitwareReadProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buffe
         return status;
     }
 
-    // Allocate an intermediate kernel buffer to securely bridge the context switch
-    PVOID kernelBuffer = ExAllocatePoolWithTag(NonPagedPool, Size, 'twiB'); // Tag: 'Biwt'
+    PVOID kernelBuffer = ExAllocatePoolWithTag(NonPagedPool, Size, g_PoolTag);
     if (kernelBuffer == NULL)
     {
         ObDereferenceObject(targetProcess);
@@ -48,7 +47,6 @@ NTSTATUS BitwareReadProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buffe
 
     if (NT_SUCCESS(status))
     {
-        // Copy back to the caller's buffer in the caller's original address space context
         __try
         {
             ProbeForWrite(Buffer, Size, 1);
@@ -60,7 +58,7 @@ NTSTATUS BitwareReadProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buffe
         }
     }
 
-    ExFreePoolWithTag(kernelBuffer, 'twiB');
+    ExFreePoolWithTag(kernelBuffer, g_PoolTag);
     return status;
 }
 
@@ -78,7 +76,7 @@ NTSTATUS BitwareWriteProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buff
         return status;
     }
 
-    PVOID kernelBuffer = ExAllocatePoolWithTag(NonPagedPool, Size, 'twiB'); // Tag: 'Biwt'
+    PVOID kernelBuffer = ExAllocatePoolWithTag(NonPagedPool, Size, g_PoolTag);
     if (kernelBuffer == NULL)
     {
         ObDereferenceObject(targetProcess);
@@ -115,6 +113,6 @@ NTSTATUS BitwareWriteProcessMemory(HANDLE ProcessId, ULONG64 Address, PVOID Buff
     }
 
     ObDereferenceObject(targetProcess);
-    ExFreePoolWithTag(kernelBuffer, 'twiB');
+    ExFreePoolWithTag(kernelBuffer, g_PoolTag);
     return status;
 }

@@ -16,7 +16,7 @@ powershell -ExecutionPolicy Bypass -Command ^
 $bytes = [System.IO.File]::ReadAllBytes('%SYS_PATH%'); ^
 $sb = [System.Text.StringBuilder]::new(); ^
 $null = $sb.AppendLine('#pragma once'); ^
-$null = $sb.AppendLine('#include <stdint.h>'); ^
+$null = $sb.AppendLine('#include ^<stdint.h^>'); ^
 $null = $sb.AppendLine(''); ^
 $null = $sb.AppendLine('namespace bitware_driver_resource'); ^
 $null = $sb.AppendLine('{'); ^

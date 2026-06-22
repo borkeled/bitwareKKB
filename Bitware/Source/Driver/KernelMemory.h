@@ -21,6 +21,8 @@ public:
     std::string Read_String(std::uint64_t addr) override;
     void        Write_String(std::uint64_t addr, const std::string& val) override;
 
+    bool ReadKeyboardInput(BITWARE_KEYBOARD_DATA* buffer, ULONG* count) override;
+
     std::uint32_t Get_Process() const override { return m_ProcessId; }
     std::uint64_t Get_Module()  const override { return m_BaseAddress; }
     HANDLE   Get_Handle()  const override { return m_ProcessHandle; }
@@ -29,6 +31,13 @@ public:
 
 private:
     HANDLE m_DriverHandle = INVALID_HANDLE_VALUE;
+    DWORD m_IoctlBase = 0;
+    DWORD m_IoctlReadMemory = 0;
+    DWORD m_IoctlWriteMemory = 0;
+    DWORD m_IoctlFindProcess = 0;
+    DWORD m_IoctlFindModule = 0;
+    DWORD m_IoctlUnload = 0;
+    DWORD m_IoctlReadInput = 0;
 
-    bool SendIoctl(DWORD code, const void* in_buf, DWORD in_size, void* out_buf, DWORD out_size);
+    bool SendIoctl(DWORD code, const void* in_buf, DWORD in_size, void* out_buf, DWORD out_size, LPDWORD bytesReturned = nullptr);
 };

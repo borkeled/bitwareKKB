@@ -38,6 +38,8 @@ public:
     std::string Read_String(std::uint64_t Address) override;
     void Write_String(std::uint64_t Address, const std::string& Value) override;
 
+    bool ReadKeyboardInput(BITWARE_KEYBOARD_DATA* buffer, ULONG* count) override;
+
     std::uint32_t Get_Process() const override { return m_ProcessId; }
     std::uint64_t Get_Module()  const override { return m_BaseAddress; }
     HANDLE   Get_Handle()  const override { return m_ProcessHandle; }

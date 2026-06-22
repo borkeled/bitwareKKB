@@ -7,6 +7,15 @@ UsermodeMemory::~UsermodeMemory()
     Detach_Process();
 }
 
+bool UsermodeMemory::ReadKeyboardInput(BITWARE_KEYBOARD_DATA* buffer, ULONG* count)
+{
+    // Usermode fallback: no kernel buffer available
+    // Key states are tracked via GetAsyncKeyState in InputHook::PollKeys
+    UNREFERENCED_PARAMETER(buffer);
+    if (count) *count = 0;
+    return false;
+}
+
 bool UsermodeMemory::ReadRaw(std::uint64_t Address, void* Buffer, size_t Size)
 {
     OBF_PROLOGUE;

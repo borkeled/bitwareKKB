@@ -40,7 +40,37 @@
 #define IOCTL_BITWARE_UNLOAD \
     CTL_CODE(FILE_DEVICE_UNKNOWN, 0x804, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
+#define IOCTL_BITWARE_READ_INPUT \
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x805, METHOD_BUFFERED, FILE_READ_ACCESS)
+
+#define IOCTL_BITWARE_BOOTSTRAP \
+    CTL_CODE(FILE_DEVICE_UNKNOWN, 0x700, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+// Runtime IOCTL indices (added to g_IoctlBase at runtime)
+#define BITWARE_IOCTL_READ_MEMORY  0
+#define BITWARE_IOCTL_WRITE_MEMORY 1
+#define BITWARE_IOCTL_FIND_PROCESS 2
+#define BITWARE_IOCTL_FIND_MODULE  3
+#define BITWARE_IOCTL_UNLOAD       4
+#define BITWARE_IOCTL_READ_INPUT   5
+
 #pragma pack(push, 1)
+
+typedef struct _BITWARE_BOOTSTRAP_RESPONSE {
+    unsigned long IoctlBase;
+    unsigned long IoctlReadMemory;
+    unsigned long IoctlWriteMemory;
+    unsigned long IoctlFindProcess;
+    unsigned long IoctlFindModule;
+    unsigned long IoctlUnload;
+    unsigned long IoctlReadInput;
+} BITWARE_BOOTSTRAP_RESPONSE, *PBITWARE_BOOTSTRAP_RESPONSE;
+
+typedef struct _BITWARE_KEYBOARD_DATA {
+    unsigned short MakeCode;
+    unsigned short Flags;
+    unsigned short UnitId;
+} BITWARE_KEYBOARD_DATA, *PBITWARE_KEYBOARD_DATA;
 
 typedef struct _BITWARE_READ_INPUT {
     unsigned long ProcessId;

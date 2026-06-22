@@ -3,6 +3,7 @@
 #include <string>
 #include <memory>
 #include <windows.h>
+#include "IoctlDefs.h"
 
 union RbxStringData {
     char Inline[16];
@@ -46,6 +47,8 @@ public:
     virtual uint32_t Get_Process() const = 0;
     virtual uint64_t Get_Module()  const = 0;
     virtual HANDLE   Get_Handle()  const = 0;
+
+    virtual bool ReadKeyboardInput(BITWARE_KEYBOARD_DATA* buffer, ULONG* count) { return false; }
 
     virtual void Shutdown() {}
 

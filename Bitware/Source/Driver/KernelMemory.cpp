@@ -28,21 +28,43 @@ bool KernelMemory::Connect()
         0, nullptr, OPEN_EXISTING, 0, nullptr
     );
 
-    return m_DriverHandle != INVALID_HANDLE_VALUE && m_DriverHandle != nullptr;
+    if (m_DriverHandle == INVALID_HANDLE_VALUE || m_DriverHandle == nullptr)
+        return false;
+
+    BITWARE_BOOTSTRAP_RESPONSE boot{};
+    if (!SendIoctl(IOCTL_BITWARE_BOOTSTRAP, nullptr, 0, &boot, sizeof(boot)))
+    {
+        CloseHandle(m_DriverHandle);
+        m_DriverHandle = INVALID_HANDLE_VALUE;
+        return false;
+    }
+
+    m_IoctlBase = boot.IoctlBase;
+    m_IoctlReadMemory = boot.IoctlReadMemory;
+    m_IoctlWriteMemory = boot.IoctlWriteMemory;
+    m_IoctlFindProcess = boot.IoctlFindProcess;
+    m_IoctlFindModule = boot.IoctlFindModule;
+    m_IoctlUnload = boot.IoctlUnload;
+    m_IoctlReadInput = boot.IoctlReadInput;
+
+    return true;
 }
 
-bool KernelMemory::SendIoctl(DWORD code, const void* in_buf, DWORD in_size, void* out_buf, DWORD out_size)
+bool KernelMemory::SendIoctl(DWORD code, const void* in_buf, DWORD in_size, void* out_buf, DWORD out_size, LPDWORD bytesReturned)
 {
     if (m_DriverHandle == INVALID_HANDLE_VALUE || !m_DriverHandle)
         return false;
 
     DWORD bytes_returned = 0;
-    return DeviceIoControl(
+    BOOL result = DeviceIoControl(
         m_DriverHandle, code,
         const_cast<void*>(in_buf), in_size,
         out_buf, out_size,
         &bytes_returned, nullptr
-    ) != FALSE;
+    );
+    if (bytesReturned)
+        *bytesReturned = bytes_returned;
+    return result != FALSE;
 }
 
 std::uint32_t KernelMemory::Find_Process(const std::string& name)
@@ -53,7 +75,7 @@ std::uint32_t KernelMemory::Find_Process(const std::string& name)
     mbstowcs_s(&converted, input.Name, name.c_str(), 259);
 
     uint32_t pid = 0;
-    if (SendIoctl(IOCTL_BITWARE_FIND_PROCESS, &input, sizeof(input), &pid, sizeof(pid)))
+    if (SendIoctl(m_IoctlFindProcess, &input, sizeof(input), &pid, sizeof(pid)))
     {
         m_ProcessId = pid;
     }
@@ -69,7 +91,7 @@ std::uint64_t KernelMemory::Find_Module(const std::string& name)
     mbstowcs_s(&converted, input.Name, name.c_str(), 259);
 
     uint64_t base = 0;
-    if (SendIoctl(IOCTL_BITWARE_FIND_MODULE, &input, sizeof(input), &base, sizeof(base)))
+    if (SendIoctl(m_IoctlFindModule, &input, sizeof(input), &base, sizeof(base)))
     {
         m_BaseAddress = base;
     }
@@ -96,7 +118,7 @@ void KernelMemory::Shutdown()
     if (m_DriverHandle != INVALID_HANDLE_VALUE && m_DriverHandle != nullptr)
     {
         DWORD bytesReturned = 0;
-        DeviceIoControl(m_DriverHandle, IOCTL_BITWARE_UNLOAD, nullptr, 0, nullptr, 0, &bytesReturned, nullptr);
+        DeviceIoControl(m_DriverHandle, m_IoctlUnload, nullptr, 0, nullptr, 0, &bytesReturned, nullptr);
         CloseHandle(m_DriverHandle);
         m_DriverHandle = INVALID_HANDLE_VALUE;
     }
@@ -112,7 +134,7 @@ bool KernelMemory::ReadRaw(std::uint64_t addr, void* buf, size_t size)
     input.Address = addr;
     input.Size = (ULONG)size;
 
-    return SendIoctl(IOCTL_BITWARE_READ_MEMORY, &input, sizeof(input), buf, (DWORD)size);
+    return SendIoctl(m_IoctlReadMemory, &input, sizeof(input), buf, (DWORD)size);
 }
 
 bool KernelMemory::WriteRaw(std::uint64_t addr, const void* buf, size_t size)
@@ -128,7 +150,7 @@ bool KernelMemory::WriteRaw(std::uint64_t addr, const void* buf, size_t size)
 
     memcpy((unsigned char*)ioBuffer + sizeof(BITWARE_WRITE_INPUT), buf, size);
 
-    return SendIoctl(IOCTL_BITWARE_WRITE_MEMORY, ioBuffer, totalSize, nullptr, 0);
+    return SendIoctl(m_IoctlWriteMemory, ioBuffer, totalSize, nullptr, 0);
 }
 
 std::string KernelMemory::Read_String(std::uint64_t addr)
@@ -146,6 +168,24 @@ std::string KernelMemory::Read_String(std::uint64_t addr)
     std::string result(len, '\0');
     ReadRaw(str_addr, result.data(), len);
     return result;
+}
+
+bool KernelMemory::ReadKeyboardInput(BITWARE_KEYBOARD_DATA* buffer, ULONG* count)
+{
+    if (!buffer || !count || *count == 0 || m_DriverHandle == INVALID_HANDLE_VALUE || !m_DriverHandle)
+        return false;
+
+    DWORD outSize = *count * sizeof(BITWARE_KEYBOARD_DATA);
+    DWORD bytesReturned = 0;
+
+    if (SendIoctl(m_IoctlReadInput, nullptr, 0, buffer, outSize, &bytesReturned))
+    {
+        *count = bytesReturned / sizeof(BITWARE_KEYBOARD_DATA);
+        return true;
+    }
+
+    *count = 0;
+    return false;
 }
 
 void KernelMemory::Write_String(std::uint64_t addr, const std::string& val)

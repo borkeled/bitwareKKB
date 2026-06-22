@@ -89,6 +89,7 @@
     <ClCompile Include="MemoryOps.cpp" />
     <ClCompile Include="ProcessFinder.cpp" />
     <ClCompile Include="ModuleFinder.cpp" />
+    <ClCompile Include="InputCapture.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BitwareDrv.h" />
