@@ -1,6 +1,8 @@
 #include "kdmapper.hpp"
+#include <Infrastructure/Logger.h>
+#include <Miscellaneous/Protection/External/oxorany_include.h>  // for WRAPPER_MARCO
 
-uint64_t kdmapper::MapDriver(HANDLE iqvw64e_device_handle, const std::string& driver_path)
+uint64_t kdmapper::MapDriver(IDriverAbstraction* driver, const std::string& driver_path)
 {
 	std::vector<uint8_t> raw_image = { 0 };
 
@@ -9,10 +11,10 @@ uint64_t kdmapper::MapDriver(HANDLE iqvw64e_device_handle, const std::string& dr
 		return 0;
 	}
 
-	return MapDriver(iqvw64e_device_handle, raw_image);
+	return MapDriver(driver, raw_image);
 }
 
-uint64_t kdmapper::MapDriver(HANDLE iqvw64e_device_handle, const std::vector<uint8_t>& raw_image)
+uint64_t kdmapper::MapDriver(IDriverAbstraction* driver, const std::vector<uint8_t>& raw_image)
 {
 	const PIMAGE_NT_HEADERS64 nt_headers = portable_executable::GetNtHeaders(const_cast<uint8_t*>(raw_image.data()));
 
@@ -28,13 +30,19 @@ uint64_t kdmapper::MapDriver(HANDLE iqvw64e_device_handle, const std::vector<uin
 
 	const uint32_t image_size = nt_headers->OptionalHeader.SizeOfImage;
 
+	Logger::LogHex(WRAPPER_MARCO("[kdmapper] image_size"), image_size);
+
 	void* local_image_base = VirtualAlloc(nullptr, image_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
-	uint64_t kernel_image_base = intel_driver::AllocatePool(iqvw64e_device_handle, nt::NonPagedPool, image_size);
+
+	Logger::Log(WRAPPER_MARCO("[kdmapper] calling AllocatePool..."));
+	uint64_t kernel_image_base = driver->AllocatePool(nt::NonPagedPool, image_size);
+	Logger::LogHex(WRAPPER_MARCO("[kdmapper] kernel_image_base"), kernel_image_base);
 
 	do
 	{
 		if (!kernel_image_base)
 		{
+			Logger::Log(WRAPPER_MARCO("[kdmapper] FAIL AllocatePool returned 0"));
 			break;
 		}
 
@@ -50,34 +58,52 @@ uint64_t kdmapper::MapDriver(HANDLE iqvw64e_device_handle, const std::vector<uin
 
 		RelocateImageByDelta(portable_executable::GetRelocs(local_image_base), kernel_image_base - nt_headers->OptionalHeader.ImageBase);
 
-		if (!ResolveImports(iqvw64e_device_handle, portable_executable::GetImports(local_image_base)))
+		Logger::Log(WRAPPER_MARCO("[kdmapper] ResolveImports..."));
+		if (!ResolveImports(driver, portable_executable::GetImports(local_image_base)))
 		{
+			Logger::Log(WRAPPER_MARCO("[kdmapper] FAIL ResolveImports"));
 			break;
 		}
 
-		if (!intel_driver::WriteMemory(iqvw64e_device_handle, kernel_image_base, local_image_base, image_size))
+		Logger::Log(WRAPPER_MARCO("[kdmapper] WriteMemory..."));
+		if (!driver->WriteMemory(kernel_image_base, local_image_base, image_size))
 		{
+			Logger::Log(WRAPPER_MARCO("[kdmapper] FAIL WriteMemory"));
 			break;
 		}
+		Logger::Log(WRAPPER_MARCO("[kdmapper] WriteMemory OK"));
 
 		VirtualFree(local_image_base, 0, MEM_RELEASE);
 
+		// Call entry point with null arguments (the driver self-allocates its DriverObject)
 		const uint64_t address_of_entry_point = kernel_image_base + nt_headers->OptionalHeader.AddressOfEntryPoint;
+		Logger::LogHex(WRAPPER_MARCO("[kdmapper] address_of_entry_point"), address_of_entry_point);
 
 		NTSTATUS status = 0;
 
-		if (!intel_driver::CallKernelFunction(iqvw64e_device_handle, &status, address_of_entry_point))
+		Logger::Log(WRAPPER_MARCO("[kdmapper] CallKernelFunction(entry_point)..."));
+		if (!driver->CallKernelFunction(&status, address_of_entry_point, 0ULL, 0ULL))
 		{
+			Logger::Log(WRAPPER_MARCO("[kdmapper] FAIL CallKernelFunction"));
+			Logger::LogHex(WRAPPER_MARCO("[kdmapper] entry_point NTSTATUS"), status);
 			break;
 		}
+		Logger::LogHex(WRAPPER_MARCO("[kdmapper] entry_point NTSTATUS"), status);
 
-		intel_driver::SetMemory(iqvw64e_device_handle, kernel_image_base, 0, nt_headers->OptionalHeader.SizeOfHeaders);
+		Logger::Log(WRAPPER_MARCO("[kdmapper] SetMemory (clear headers)..."));
+		driver->SetMemory(kernel_image_base, 0, nt_headers->OptionalHeader.SizeOfHeaders);
+		Logger::LogHex(WRAPPER_MARCO("[kdmapper] MapDriver SUCCESS, base"), kernel_image_base);
+
+		VirtualFree(local_image_base, 0, MEM_RELEASE);
+		local_image_base = nullptr;
 		return kernel_image_base;
 
 	} while (false);
 
-	VirtualFree(local_image_base, 0, MEM_RELEASE);
-	intel_driver::FreePool(iqvw64e_device_handle, kernel_image_base);
+	if (local_image_base)
+		VirtualFree(local_image_base, 0, MEM_RELEASE);
+	if (kernel_image_base)
+		driver->FreePool(kernel_image_base);
 
 	return 0;
 }
@@ -97,7 +123,7 @@ void kdmapper::RelocateImageByDelta(portable_executable::vec_relocs relocs, cons
 	}
 }
 
-bool kdmapper::ResolveImports(HANDLE iqvw64e_device_handle, portable_executable::vec_imports imports)
+bool kdmapper::ResolveImports(IDriverAbstraction* driver, portable_executable::vec_imports imports)
 {
 	for (const auto& current_import : imports)
 	{
@@ -108,7 +134,7 @@ bool kdmapper::ResolveImports(HANDLE iqvw64e_device_handle, portable_executable:
 
 		for (auto& current_function_data : current_import.function_datas)
 		{
-			const uint64_t function_address = intel_driver::GetKernelModuleExport(iqvw64e_device_handle, utils::GetKernelModuleAddress(current_import.module_name), current_function_data.name);
+			const uint64_t function_address = driver->GetKernelModuleExport(utils::GetKernelModuleAddress(current_import.module_name), current_function_data.name);
 
 			if (!function_address)
 			{

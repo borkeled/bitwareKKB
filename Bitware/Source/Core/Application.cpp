@@ -282,10 +282,10 @@ void Application::InitBackend()
         }
         else
         {
-            Logger::Log(WRAPPER_MARCO("[Init] kernel driver unavailable, falling back to usermode"));
+            Logger::Log(WRAPPER_MARCO("[Init] kernel driver unavailable"));
             Logger::Flush();
-            SSN::Resolve();
-            g_Memory = std::make_unique<UsermodeMemory>();
+            MessageBoxW(nullptr, L"Failed to load kernel driver.\nThe application cannot continue.", L"Bitware - Driver Error", MB_OK | MB_ICONERROR);
+            TerminateProcess(GetCurrentProcess(), 1);
         }
     }
     else

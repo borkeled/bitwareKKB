@@ -1,20 +1,20 @@
 #include "KernelLoader.h"
+#include <memory>
 #include <Auth/skStr.h>
 #include <Driver/kdmapper/kdmapper.hpp>
-#include <Driver/kdmapper/intel_driver.hpp>
 #include <Driver/kdmapper/bitware_driver_resource.hpp>
+#include <Driver/DriverAbstraction/EneIo64Driver.h>
+#include <Infrastructure/Logger.h>
+#include <Miscellaneous/Protection/External/oxorany_include.h>
 #include "IoctlDefs.h"
 
 namespace KernelLoader
 {
-    static HANDLE g_IntelDeviceHandle = nullptr;
     static bool g_DriverLoaded = false;
 
     static std::wstring BuildDevicePath()
     {
-        FILETIME ft;
-        GetSystemTimeAsFileTime(&ft);
-        ULONG seed = ft.dwLowDateTime ^ ft.dwHighDateTime;
+        ULONG seed = kBitwareSeed;
         WCHAR name[5];
         IoctlDerivation::DeriveDeviceName(seed, name, 5);
         return L"\\\\.\\" + std::wstring(name);
@@ -34,15 +34,16 @@ namespace KernelLoader
 
         if (device != INVALID_HANDLE_VALUE && device != nullptr)
         {
+            Logger::Log(WRAPPER_MARCO("[KernelLoader] bitware device already exists (driver already loaded)"));
             CloseHandle(device);
             g_DriverLoaded = true;
             return true;
         }
 
-        g_IntelDeviceHandle = intel_driver::Load();
-        if (!g_IntelDeviceHandle || g_IntelDeviceHandle == INVALID_HANDLE_VALUE)
+        Logger::Log(WRAPPER_MARCO("[KernelLoader] creating EneIo64Driver..."));
+        auto temp_driver = std::make_unique<EneIo64Driver>();
+        if (!temp_driver->Load())
         {
-            g_IntelDeviceHandle = nullptr;
             return false;
         }
 
@@ -51,38 +52,56 @@ namespace KernelLoader
             bitware_driver_resource::driver + bitware_driver_resource::size
         );
 
-        uint64_t result = kdmapper::MapDriver(g_IntelDeviceHandle, driverData);
+        Logger::Log(WRAPPER_MARCO("[KernelLoader] calling kdmapper::MapDriver..."));
+        uint64_t result = kdmapper::MapDriver(temp_driver.get(), driverData);
+        Logger::LogHex(WRAPPER_MARCO("[KernelLoader] kdmapper::MapDriver result"), result);
 
         if (!result)
         {
-            intel_driver::Unload(g_IntelDeviceHandle);
-            g_IntelDeviceHandle = nullptr;
+            Logger::Log(WRAPPER_MARCO("[KernelLoader] FAIL MapDriver, unloading eneio..."));
+            temp_driver->Unload();
             return false;
         }
 
-        intel_driver::Unload(g_IntelDeviceHandle);
-        g_IntelDeviceHandle = nullptr;
+        temp_driver->Unload();
+        temp_driver.reset();
 
-        Sleep(200);
+        Logger::Log(WRAPPER_MARCO("[KernelLoader] opening bitware device after unload..."));
+        
+        constexpr int max_retries = 10;
+        constexpr DWORD retry_delay_ms = 100;
+        bool opened_successfully = false;
 
-        device = CreateFileW(
-            path.c_str(),
-            GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr
-        );
-
-        if (device != INVALID_HANDLE_VALUE && device != nullptr)
+        for (int retry = 0; retry < max_retries; ++retry)
         {
+            device = CreateFileW(
+                path.c_str(),
+                GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr
+            );
+
+            if (device != INVALID_HANDLE_VALUE && device != nullptr)
+            {
+                opened_successfully = true;
+                break;
+            }
+            Sleep(retry_delay_ms);
+        }
+
+        if (opened_successfully)
+        {
+            Logger::Log(WRAPPER_MARCO("[KernelLoader] bitware device opened OK"));
             CloseHandle(device);
             g_DriverLoaded = true;
             return true;
         }
 
+        Logger::LogHex(WRAPPER_MARCO("[KernelLoader] FAIL open bitware device, error"), GetLastError());
+        Logger::Flush();
         return false;
     }
 
     void UnloadDriver()
     {
-        g_IntelDeviceHandle = nullptr;
         g_DriverLoaded = false;
     }
 }

@@ -25,9 +25,7 @@ NTSTATUS BitwareFindModuleByName(ULONG ProcessId, PCWSTR ModuleName, PULONG64 Ou
 
 static ULONG ComputeSharedSeed()
 {
-    LARGE_INTEGER t;
-    KeQuerySystemTime(&t);
-    return t.LowPart ^ t.HighPart;
+    return kBitwareSeed;
 }
 
 static VOID BuildDeviceName(PWCHAR buf, ULONG maxLen)
@@ -46,10 +44,8 @@ static VOID BuildDeviceName(PWCHAR buf, ULONG maxLen)
     buf[pos] = L'\0';
 }
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
+NTSTATUS DriverEntry()
 {
-    UNREFERENCED_PARAMETER(RegistryPath);
-
     ULONG seed = ComputeSharedSeed();
 
     // Fully randomized pool tag
@@ -72,6 +68,27 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
         g_SymlinkName[pos] = g_DeviceName[i];
     g_SymlinkName[pos] = L'\0';
 
+    // Allocate fake DRIVER_OBJECT since we were not called by the kernel's loader
+    PDRIVER_OBJECT DriverObject = (PDRIVER_OBJECT)ExAllocatePoolWithTag(
+        NonPagedPool, sizeof(DRIVER_OBJECT), g_PoolTag);
+    if (!DriverObject)
+        return STATUS_INSUFFICIENT_RESOURCES;
+    RtlZeroMemory(DriverObject, sizeof(DRIVER_OBJECT));
+    DriverObject->Type = IO_TYPE_DRIVER;
+    DriverObject->Size = (SHORT)sizeof(DRIVER_OBJECT);
+
+    // Allocate and link minimal DRIVER_EXTENSION
+    PDRIVER_EXTENSION Extension = (PDRIVER_EXTENSION)ExAllocatePoolWithTag(
+        NonPagedPool, sizeof(DRIVER_EXTENSION), g_PoolTag);
+    if (!Extension)
+    {
+        ExFreePoolWithTag(DriverObject, g_PoolTag);
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+    RtlZeroMemory(Extension, sizeof(DRIVER_EXTENSION));
+    Extension->DriverObject = DriverObject;
+    DriverObject->DriverExtension = Extension;
+
     for (ULONG i = 0; i <= IRP_MJ_MAXIMUM_FUNCTION; i++)
         DriverObject->MajorFunction[i] = BitwareCreateClose;
 
@@ -88,7 +105,11 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
         FILE_DEVICE_UNKNOWN, 0, FALSE, &g_DeviceObject
     );
     if (!NT_SUCCESS(status))
+    {
+        ExFreePoolWithTag(Extension, g_PoolTag);
+        ExFreePoolWithTag(DriverObject, g_PoolTag);
         return status;
+    }
 
     UNICODE_STRING symLink;
     RtlInitUnicodeString(&symLink, g_SymlinkName);
@@ -98,6 +119,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
     {
         IoDeleteDevice(g_DeviceObject);
         g_DeviceObject = NULL;
+        ExFreePoolWithTag(Extension, g_PoolTag);
+        ExFreePoolWithTag(DriverObject, g_PoolTag);
         return status;
     }
 

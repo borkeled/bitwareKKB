@@ -15,16 +15,24 @@ bool utils::ReadFileToMemory(const std::string& file_path, std::vector<uint8_t>*
 
 bool utils::CreateFileFromMemory(const std::string& desired_file_path, const char* address, size_t size)
 {
-	std::ofstream file_ofstream(desired_file_path.c_str(), std::ios_base::out | std::ios_base::binary);
+	HANDLE hFile = CreateFileA(
+		desired_file_path.c_str(),
+		GENERIC_WRITE,
+		0,
+		nullptr,
+		CREATE_ALWAYS,
+		FILE_ATTRIBUTE_NORMAL,
+		nullptr
+	);
 
-	if (!file_ofstream.write(address, size))
-	{
-		file_ofstream.close();
+	if (hFile == INVALID_HANDLE_VALUE)
 		return false;
-	}
 
-	file_ofstream.close();
-	return true;
+	DWORD bytes_written = 0;
+	bool success = WriteFile(hFile, address, static_cast<DWORD>(size), &bytes_written, nullptr) && bytes_written == size;
+
+	CloseHandle(hFile);
+	return success;
 }
 
 uint64_t utils::GetKernelModuleAddress(const std::string& module_name)

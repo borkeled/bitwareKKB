@@ -296,7 +296,10 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2&gt;NUL</Command>
     <ClInclude Include="Source\Driver\MemoryInterface.h" />
     <ClInclude Include="Source\Driver\KernelLoader.h" />
     <ClInclude Include="Source\Driver\IoctlDefs.h" />
+    <ClInclude Include="Source\Driver\DriverAbstraction\IDriverAbstraction.h" />
+    <ClInclude Include="Source\Driver\DriverAbstraction\EneIo64Driver.h" />
     <ClInclude Include="Source\Driver\kdmapper\bitware_driver_resource.hpp" />
+    <ClInclude Include="Source\Driver\kdmapper\eneio64_driver_resource.hpp" />
     <ClInclude Include="Source\Driver\kdmapper\intel_driver.hpp" />
     <ClInclude Include="Source\Driver\kdmapper\intel_driver_resource.hpp" />
     <ClInclude Include="Source\Driver\kdmapper\kdmapper.hpp" />
@@ -345,6 +348,7 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2&gt;NUL</Command>
     <ClCompile Include="Source\Driver\Driver.cpp" />
     <ClCompile Include="Source\Driver\KernelMemory.cpp" />
     <ClCompile Include="Source\Driver\KernelLoader.cpp" />
+    <ClCompile Include="Source\Driver\DriverAbstraction\EneIo64Driver.cpp" />
     <ClCompile Include="Source\Driver\kdmapper\kdmapper.cpp" />
     <ClCompile Include="Source\Driver\kdmapper\intel_driver.cpp" />
     <ClCompile Include="Source\Driver\kdmapper\portable_executable.cpp" />

@@ -33,6 +33,8 @@
 #define BITWARE_IOCTL_READ_INPUT   5
 #define BITWARE_IOCTL_COUNT        6
 
+constexpr ULONG kBitwareSeed = 0xA3F7C92E;
+
 namespace IoctlDerivation {
 
     inline void DeriveDeviceName(unsigned long seed, wchar_t* name, unsigned long maxLen)

@@ -4,8 +4,8 @@ setlocal enabledelayedexpansion
 set MSBuild="D:\visualstudio\MSBuild\Current\Bin\MSBuild.exe"
 set ROOT=%~dp0
 
-echo ===== Building BitwareDrv.sys =====
-%MSBuild% "%ROOT%Bitware\BitwareDrv\BitwareDrv.vcxproj" /p:Configuration=Release /p:Platform=x64 /t:Rebuild /v:m
+echo ===== Building BitwareDrv.sys (incremental) =====
+%MSBuild% "%ROOT%Bitware\BitwareDrv\BitwareDrv.vcxproj" /p:Configuration=Release /p:Platform=x64 /v:m
 if %errorlevel% neq 0 ( echo Driver build FAILED & exit /b %errorlevel% )
 
 echo ===== Generating driver resource header =====
@@ -35,8 +35,8 @@ $null = $sb.AppendLine('}'); ^
 Set-Content -Path '%HPP_PATH%' -Value $sb.ToString() -Encoding UTF8
 if %errorlevel% neq 0 ( echo Resource generation FAILED & exit /b %errorlevel% )
 
-echo ===== Building Bitware.exe =====
-%MSBuild% "%ROOT%Bitware\Bitware.vcxproj" /p:Configuration=Release /p:Platform=x64 /t:Rebuild /v:m
+echo ===== Building Bitware.exe (incremental) =====
+%MSBuild% "%ROOT%Bitware\Bitware.vcxproj" /p:Configuration=Release /p:Platform=x64 /v:m
 if %errorlevel% neq 0 ( echo Main build FAILED & exit /b %errorlevel% )
 
 echo ===== Done =====

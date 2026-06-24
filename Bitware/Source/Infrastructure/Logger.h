@@ -5,7 +5,7 @@
 
 namespace Logger {
 
-    inline bool Enabled = false;
+    inline bool Enabled = true;
 
     inline HANDLE GetHandle() {
         static HANDLE h = CreateFileA(skCrypt("trace.log"), GENERIC_WRITE, FILE_SHARE_READ,

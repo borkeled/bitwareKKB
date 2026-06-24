@@ -15,9 +15,7 @@ KernelMemory::~KernelMemory()
 
 ULONG KernelMemory::ComputeSharedSeed()
 {
-    FILETIME ft;
-    GetSystemTimeAsFileTime(&ft);
-    return ft.dwLowDateTime ^ ft.dwHighDateTime;
+    return kBitwareSeed;
 }
 
 std::wstring KernelMemory::BuildDevicePath()
