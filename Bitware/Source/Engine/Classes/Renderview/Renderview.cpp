@@ -20,8 +20,6 @@ namespace SDK {
     }
 
     void Renderview::ValidateSkybox() {
-        OBF_PROLOGUE;
-        Driver->Write<bool>(Globals::Renderview.GetRenderview() + Offsets::RenderView::SkyValidAlt, false);
-        OBF_OPAQUE_FALSE { OBF_JUNK_BLOCK; }
+        // stub: SkyValidAlt not in auto dump
     }
 }

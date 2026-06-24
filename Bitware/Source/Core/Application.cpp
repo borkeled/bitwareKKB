@@ -17,7 +17,6 @@
 #include <Core/Features/Cheats/Misc/Misc.h>
 #include <Core/Features/Cheats/World/World.h>
 #include <Core/Features/Cheats/Aimbot/Aimbot.h>
-#include <Core/Features/Cheats/Aimbot/Silent/Silent.h>
 #include <Core/Features/Cheats/Triggerbot/Triggerbot.h>
 #include <Core/Features/Cheats/Visuals/Visuals.h>
 #include <Miscellaneous/Protection/FakeStrings.h>
@@ -37,75 +36,6 @@
 #include <ShlObj.h>
 #pragma comment(lib, "Shell32.lib")
 #pragma comment(lib, "winmm.lib")
-
-static void DrawCursor()
-{
-    OBF_PROLOGUE;
-    OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-
-    if (!SilentAimInstance.Address) {
-        OBF_JUNK_BLOCK;
-        return;
-    }
-    OBF_JUNK_DECLARE;
-
-    static bool is_visible = false;
-    static DWORD last_read = 0;
-    DWORD now = GetTickCount();
-    if (now - last_read > 100)
-    {
-        is_visible = Driver->Read<bool>(SilentAimInstance.Address + Offsets::GuiObject::Visible);
-        last_read = now;
-        OBF_JUNK_BLOCK;
-    }
-
-    OBF_OPAQUE_FALSE {
-        OBF_JUNK_BLOCK;
-        // unreachable
-        is_visible = !is_visible;
-    }
-
-    if (!is_visible)
-    {
-        OBF_JUNK_BLOCK;
-        return;
-    }
-
-    POINT pt;
-    if (!GetCursorPos(&pt)) {
-        OBF_JUNK_BLOCK;
-        return;
-    }
-    OBF_JUNK_DECLARE;
-
-    bool right_click_held = GetAsyncKeyState(VK_RBUTTON) & 0x8000;
-    OBF_OPAQUE_TRUE {
-        volatile int x = 0;
-        if (x) right_click_held = !right_click_held;
-    }
-    float gap = right_click_held ? 4.0f : 10.0f;
-    ImDrawList* draw = ImGui::GetBackgroundDrawList();
-    ImU32 col = IM_COL32(255, 255, 255, 255);
-    float dot_size = 4.0f;
-    float line_width = 2.0f;
-    float line_length = 10.0f;
-    ImVec2 center = { (float)pt.x, (float)pt.y };
-    ImVec2 dot_min(center.x - dot_size * 0.5f, center.y - dot_size * 0.5f);
-    ImVec2 dot_max(center.x + dot_size * 0.5f, center.y + dot_size * 0.5f);
-    draw->AddRectFilled(dot_min, dot_max, col, 0.0f);
-    ImVec2 top_min(center.x - line_width * 0.5f, center.y - gap - line_length);
-    ImVec2 top_max(center.x + line_width * 0.5f, center.y - gap);
-    draw->AddRectFilled(top_min, top_max, col, 0.0f);
-    ImVec2 bottom_min(center.x - line_width * 0.5f, center.y + gap);
-    ImVec2 bottom_max(center.x + line_width * 0.5f, center.y + gap + line_length);
-    draw->AddRectFilled(bottom_min, bottom_max, col, 0.0f);
-    ImVec2 left_min(center.x - gap - line_length, center.y - line_width * 0.5f);
-    ImVec2 left_max(center.x - gap, center.y + line_width * 0.5f);
-    draw->AddRectFilled(left_min, left_max, col, 0.0f);
-    ImVec2 right_min(center.x + gap, center.y - line_width * 0.5f);
-    ImVec2 right_max(center.x + gap + line_length, center.y + line_width * 0.5f);
-    draw->AddRectFilled(right_min, right_max, col, 0.0f);
-}
 
 Application::Application()
 {
@@ -199,15 +129,6 @@ bool Application::InitSDK()
         }, static_cast<LPARAM>(target_pid));
     }
 
-    if (Globals::Workspace.Address)
-    {
-        auto workspacetoworld = Driver->Read<uintptr_t>(Globals::Workspace.Address + Offsets::Workspace::TerrainPhysics);
-        if (workspacetoworld)
-        {
-            Driver->Write<float>(workspacetoworld + Offsets::World::SkyDistance, 200 * 4.f);
-        }
-    }
-
     return true;
 }
 
@@ -217,7 +138,6 @@ void Application::SpawnThreads()
     m_WorkerThreads.emplace_back(Cache::RunService, token);
     m_WorkerThreads.emplace_back(World::RunService, token);
     m_WorkerThreads.emplace_back(Aimbot::RunService, token);
-    m_WorkerThreads.emplace_back(Silent::RunService, token);
     m_WorkerThreads.emplace_back(Triggerbot::RunService, token);
     m_WorkerThreads.emplace_back(Misc::RunService, token);
 }
@@ -376,6 +296,11 @@ void Application::Run()
             ExitProcess(0);
         }
 
+        if (WaitForSingleObject(Driver->Get_Handle(), 0) == WAIT_OBJECT_0)
+        {
+            return;
+        }
+
         while (PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
         {
             TranslateMessage(&msg);
@@ -393,7 +318,6 @@ void Application::Run()
         }
 
         Graphic->NewFrame();
-        DrawCursor();
 
         {
             auto visStart = std::chrono::steady_clock::now();

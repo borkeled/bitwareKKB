@@ -275,7 +275,6 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Core\Features\Cache\Cache.h" />
     <ClInclude Include="Source\Core\Features\Cache\PhantomForces\PhantomForces.h" />
     <ClInclude Include="Source\Core\Features\Cheats\Aimbot\Aimbot.h" />
-    <ClInclude Include="Source\Core\Features\Cheats\Aimbot\Silent\Silent.h" />
     <ClInclude Include="Source\Core\Features\Cheats\Common\WallCheck.h" />
     <ClInclude Include="Source\Core\Features\Cheats\Triggerbot\Triggerbot.h" />
     <ClInclude Include="Source\Core\Features\Cheats\Misc\Misc.h" />
@@ -323,7 +322,6 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Dependencies\ImGui\misc\imgui_freetype.cpp" />
     <ClCompile Include="Source\Core\Features\Cache\Cache.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Aimbot\Aimbot.cpp" />
-    <ClCompile Include="Source\Core\Features\Cheats\Aimbot\Silent\Silent.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Common\WallCheck.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Triggerbot\Triggerbot.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Misc\Misc.cpp" />

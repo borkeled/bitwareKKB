@@ -65,13 +65,13 @@ BEGIN
         BLOCK "040904B0"
         BEGIN
             VALUE "CompanyName",      "Bitware"
-            VALUE "FileDescription",  "Bitware - External enhancement for Roblox"
-            VALUE "FileVersion",      "1.0.0.0"
+            VALUE "FileDescription",  "Bitware - External tool"
+            VALUE "FileVersion",      "1.1.1.0"
             VALUE "InternalName",     "Bitware"
             VALUE "LegalCopyright",   "Copyright (C) 2026"
             VALUE "OriginalFilename", "Bitware.exe"
             VALUE "ProductName",      "Bitware"
-            VALUE "ProductVersion",   "1.0.0.0"
+            VALUE "ProductVersion",   "1.1.1.0"
         END
     END
     BLOCK "VarFileInfo"

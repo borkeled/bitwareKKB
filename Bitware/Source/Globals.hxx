@@ -124,30 +124,6 @@ namespace Globals {
 		}
 	}
 
-	namespace Silent
-	{
-		inline bool& DrawFov = SettingsStore::Silent_DrawFov;
-		inline bool& Enabled = SettingsStore::Silent_Enabled;
-		inline bool& StickyAim = SettingsStore::Silent_StickyAim;
-		inline bool& SpoofMouse = SettingsStore::Silent_SpoofMouse;
-		inline bool& UseFov = SettingsStore::Silent_UseFov;
-        inline bool& KnockedCheck = SettingsStore::Silent_KnockedCheck;
-        inline bool& WallCheck = SettingsStore::Silent_WallCheck;
-        inline bool& GunBasedFov = SettingsStore::Silent_GunBasedFov;
-		inline float& Fov = SettingsStore::Silent_Fov;
-		inline float& FovDoubleBarrel = SettingsStore::Silent_FovDoubleBarrel;
-		inline float& FovTacticalShotgun = SettingsStore::Silent_FovTacticalShotgun;
-		inline float& FovRevolver = SettingsStore::Silent_FovRevolver;
-		inline ImGuiKey& Silent_Key = SettingsStore::Silent_Key;
-		inline ImKeyBindMode& Silent_Mode = SettingsStore::Silent_Mode;
-		inline int& AimPart = SettingsStore::Silent_AimPart;
-		inline int& FovSpinDirection = SettingsStore::Silent_FovSpinDirection;
-		inline int& FovSpinSpeed = SettingsStore::Silent_FovSpinSpeed;
-		inline float (&FovColor)[4] = SettingsStore::Silent_FovColor;
-		inline bool& FovSpin = SettingsStore::Silent_FovSpin;
-		inline bool& FillFov = SettingsStore::Silent_FillFov;
-	}
-
 	namespace Visuals {
 
 		inline bool& Enabled = SettingsStore::Visuals_Enabled;

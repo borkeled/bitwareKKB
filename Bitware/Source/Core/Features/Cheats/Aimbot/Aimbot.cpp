@@ -205,7 +205,7 @@ namespace Aimbot {
             bool LastPressed = false;
             std::uint64_t StoredGameID = 0;
             auto LastTick = std::chrono::steady_clock::now();
-            const std::chrono::microseconds TickInterval(1000000 / 60);
+            const std::chrono::microseconds TickInterval(1000000 / 144);
 
             while (!st.stop_requested()) {
                 OBF_PROLOGUE;

@@ -426,9 +426,6 @@
     <ClInclude Include="Dependencies\Clipper2Lib\include\clipper2\clipper.version.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Core\Features\Cheats\Aimbot\Silent\Silent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Core\Features\Cheats\Triggerbot\Triggerbot.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -543,9 +540,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Dependencies\Clipper2Lib\src\clipper.rectclip.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Source\Core\Features\Cheats\Aimbot\Silent\Silent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Core\Features\Cheats\Triggerbot\Triggerbot.cpp">

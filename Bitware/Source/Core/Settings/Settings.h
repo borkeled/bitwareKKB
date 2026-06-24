@@ -101,27 +101,6 @@ namespace SettingsStore {
     inline float World_AmbienceColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
     inline float World_FogColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
 
-    inline bool Silent_Enabled;
-    inline bool Silent_DrawFov;
-    inline bool Silent_StickyAim;
-    inline bool Silent_SpoofMouse;
-    inline bool Silent_UseFov;
-    inline bool Silent_KnockedCheck;
-    inline bool Silent_WallCheck;
-    inline bool Silent_GunBasedFov;
-    inline bool Silent_FovSpin;
-    inline bool Silent_FillFov;
-    inline float Silent_Fov = 67.67f;
-    inline float Silent_FovDoubleBarrel = 67.67f;
-    inline float Silent_FovTacticalShotgun = 67.67f;
-    inline float Silent_FovRevolver = 67.67f;
-    inline float Silent_FovColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
-    inline int Silent_AimPart;
-    inline int Silent_FovSpinDirection;
-    inline int Silent_FovSpinSpeed = 1;
-    inline ImGuiKey Silent_Key = ImGuiKey_Q;
-    inline ImKeyBindMode Silent_Mode = ImKeyBindMode_Toggle;
-
     inline bool Settings_Team_Check;
     inline bool Settings_Client_Check;
     inline bool Settings_Streamproof;

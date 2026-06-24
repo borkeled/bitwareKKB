@@ -14,7 +14,6 @@
 #include <mutex>
 #include <ImGui/imgui_internal.h>
 #include "../../../Graphics/Graphics.h"
-#include <Core/Features/Cheats/Aimbot/Silent/Silent.h>
 #include "../Common/WallCheck.h"
 #include <Auth/skStr.h>
 #include <Infrastructure/ApiHiding.h>
@@ -706,26 +705,6 @@ namespace Visuals {
             }
             ImU32 Color = FlotationDevice(Globals::Aimbot::FovColor);
             if (Globals::Aimbot::FillFov) DrawFovList->AddConvexPolyFilled(Points, Sides, Color);
-            DrawFovList->AddPolyline(Points, Sides, Color, true, 2.f);
-        }
-
-        if (Globals::Silent::DrawFov) {
-            static float FovRotation = 0.f;
-            if (Globals::Silent::FovSpin) {
-                float dir = (Globals::Silent::FovSpinDirection == 0) ? 1.0f : -1.0f;
-                FovRotation += Globals::Silent::FovSpinSpeed / 1000.f * dir;
-            }
-            ImVec2 MPos = GetMousePos();
-            ImDrawList* DrawFovList = ImGui::GetBackgroundDrawList();
-            float Radius = Globals::Silent::GunBasedFov ? Silent::GetEffectiveFov() : Globals::Silent::Fov;
-            const int Sides = 10; ImVec2 Points[Sides];
-            float Step = 2.f * IM_PI / Sides;
-            for (int i = 0; i < Sides; i++) {
-                float Angle = i * Step + FovRotation;
-                Points[i] = ImVec2(MPos.x + cosf(Angle) * Radius, MPos.y + sinf(Angle) * Radius);
-            }
-            ImU32 Color = FlotationDevice(Globals::Silent::FovColor);
-            if (Globals::Silent::FillFov) DrawFovList->AddConvexPolyFilled(Points, Sides, Color);
             DrawFovList->AddPolyline(Points, Sides, Color, true, 2.f);
         }
 

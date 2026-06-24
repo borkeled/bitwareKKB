@@ -172,44 +172,6 @@ void LegacyMenuRenderer::Render()
                 Menu::EndChild();
             }
 
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 236);
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + SidePad + 240.0f);
-            if (Menu::BeginChild(WRAPPER_MARCO("Silent FOV"), ImVec2(RightWidth - SidePad, Bottom)))
-            {
-                ImGui::BeginDisabled(true);
-                Menu::CheckBox(WRAPPER_MARCO("Draw FOV"), &Globals::Silent::DrawFov);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
-                Menu::ColorEdit4(WRAPPER_MARCO("Color"), Globals::Silent::FovColor);
-
-                Menu::CheckBox(WRAPPER_MARCO("Fill FOV"), &Globals::Silent::FillFov);
-                Menu::CheckBox(WRAPPER_MARCO("Use FOV"), &Globals::Silent::UseFov);
-
-                Menu::CheckBox(WRAPPER_MARCO("Wall check"), &Globals::Silent::WallCheck);
-
-                Menu::CheckBox(WRAPPER_MARCO("Gun based FOV"), &Globals::Silent::GunBasedFov);
-
-                if (Globals::Silent::GunBasedFov)
-                {
-                    Menu::SliderFloat(WRAPPER_MARCO("Default"), &Globals::Silent::Fov, 0.0f, 300.0f);
-                    Menu::SliderFloat(WRAPPER_MARCO("Double Barrel"), &Globals::Silent::FovDoubleBarrel, 0.0f, 300.0f);
-                    Menu::SliderFloat(WRAPPER_MARCO("Tactical"), &Globals::Silent::FovTacticalShotgun, 0.0f, 300.0f);
-                    Menu::SliderFloat(WRAPPER_MARCO("Revolver"), &Globals::Silent::FovRevolver, 0.0f, 300.0f);
-                }
-                else
-                {
-                    Menu::SliderFloat(WRAPPER_MARCO("Static FOV"), &Globals::Silent::Fov, 0.0f, 500.0f);
-                }
-
-                Menu::CheckBox(WRAPPER_MARCO("Spin"), &Globals::Silent::FovSpin);
-                if (Globals::Silent::FovSpin)
-                {
-                    Menu::Combo(WRAPPER_MARCO("Direction"), &Globals::Silent::FovSpinDirection, { WRAPPER_MARCO("Clockwise"), WRAPPER_MARCO("Counter-Clockwise") });
-                    Menu::SliderInt(WRAPPER_MARCO("Speed"), &Globals::Silent::FovSpinSpeed, 1, 5);
-                }
-                ImGui::EndDisabled();
-
-                Menu::EndChild();
-            }
         }
 
         if (Section == 1)

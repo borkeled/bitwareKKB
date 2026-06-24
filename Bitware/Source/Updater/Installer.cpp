@@ -85,7 +85,7 @@ namespace {
             IID_IShellLinkW, reinterpret_cast<void**>(&pShellLink));
         if (SUCCEEDED(hr) && pShellLink) {
             pShellLink->SetPath(exePath.c_str());
-            pShellLink->SetDescription(WS(skCrypt(L"Bitware - External enhancement for Roblox")).c_str());
+            pShellLink->SetDescription(WS(skCrypt(L"Bitware - External")).c_str());
 
             IPersistFile* pPersistFile = nullptr;
             hr = pShellLink->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&pPersistFile));
@@ -141,7 +141,7 @@ namespace {
         DWORD dwOne = 1;
 
         std::wstring displayName = WS(skCrypt(L"Bitware"));
-        std::wstring displayVersion = WS(skCrypt(L"1.0.0"));
+        std::wstring displayVersion = WS(skCrypt(L"1.1.0"));
         std::wstring publisher = WS(skCrypt(L"Bitware"));
 
         RegSetValueExW(hKey, WS(skCrypt(L"DisplayName")).c_str(), 0, REG_SZ,
@@ -211,7 +211,7 @@ namespace Installer {
             IID_IShellLinkW, reinterpret_cast<void**>(&pShellLink));
         if (SUCCEEDED(hr) && pShellLink) {
             pShellLink->SetPath(installedPath);
-            pShellLink->SetDescription(WS(skCrypt(L"Bitware - External enhancement for Roblox")).c_str());
+            pShellLink->SetDescription(WS(skCrypt(L"Bitware - External tool")).c_str());
 
             IPersistFile* pPersistFile = nullptr;
             hr = pShellLink->QueryInterface(IID_IPersistFile, reinterpret_cast<void**>(&pPersistFile));

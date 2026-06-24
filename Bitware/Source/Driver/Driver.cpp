@@ -180,7 +180,7 @@ bool Driver_t::Attach_Process(const std::string& Process_Name)
 
     HANDLE Process = nullptr;
     NTSTATUS status = DriverNtOpenProcess(&Process,
-        PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION,
+        PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION | PROCESS_QUERY_INFORMATION | SYNCHRONIZE,
         &oa, &cid);
 
     if (status < 0 || !Process || Process == INVALID_HANDLE_VALUE) {

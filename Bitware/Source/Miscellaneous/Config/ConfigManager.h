@@ -78,17 +78,6 @@ public:
         WriteBool(ss, WRAPPER_MARCO("World_Exposure"), SettingsStore::World_Exposure);
         WriteBool(ss, WRAPPER_MARCO("World_FOV"), SettingsStore::World_FOV);
 
-        WriteBool(ss, WRAPPER_MARCO("Silent_Enabled"), SettingsStore::Silent_Enabled);
-        WriteBool(ss, WRAPPER_MARCO("Silent_DrawFov"), SettingsStore::Silent_DrawFov);
-        WriteBool(ss, WRAPPER_MARCO("Silent_StickyAim"), SettingsStore::Silent_StickyAim);
-        WriteBool(ss, WRAPPER_MARCO("Silent_SpoofMouse"), SettingsStore::Silent_SpoofMouse);
-        WriteBool(ss, WRAPPER_MARCO("Silent_UseFov"), SettingsStore::Silent_UseFov);
-        WriteBool(ss, WRAPPER_MARCO("Silent_KnockedCheck"), SettingsStore::Silent_KnockedCheck);
-        WriteBool(ss, WRAPPER_MARCO("Silent_WallCheck"), SettingsStore::Silent_WallCheck);
-        WriteBool(ss, WRAPPER_MARCO("Silent_GunBasedFov"), SettingsStore::Silent_GunBasedFov);
-        WriteBool(ss, WRAPPER_MARCO("Silent_FovSpin"), SettingsStore::Silent_FovSpin);
-        WriteBool(ss, WRAPPER_MARCO("Silent_FillFov"), SettingsStore::Silent_FillFov);
-
         WriteBool(ss, WRAPPER_MARCO("Settings_Team_Check"), SettingsStore::Settings_Team_Check);
         WriteBool(ss, WRAPPER_MARCO("Settings_Client_Check"), SettingsStore::Settings_Client_Check);
         WriteBool(ss, WRAPPER_MARCO("Settings_Streamproof"), SettingsStore::Settings_Streamproof);
@@ -119,10 +108,6 @@ public:
 
         WriteInt(ss, WRAPPER_MARCO("World_Skybox_Type"), SettingsStore::World_Skybox_Type);
 
-        WriteInt(ss, WRAPPER_MARCO("Silent_AimPart"), SettingsStore::Silent_AimPart);
-        WriteInt(ss, WRAPPER_MARCO("Silent_FovSpinDirection"), SettingsStore::Silent_FovSpinDirection);
-        WriteInt(ss, WRAPPER_MARCO("Silent_FovSpinSpeed"), SettingsStore::Silent_FovSpinSpeed);
-
         WriteInt(ss, WRAPPER_MARCO("Triggerbot_Delay"), SettingsStore::Triggerbot_Delay);
         WriteInt(ss, WRAPPER_MARCO("Triggerbot_Randomize"), SettingsStore::Triggerbot_Randomize);
         WriteInt(ss, WRAPPER_MARCO("Triggerbot_HitPart"), SettingsStore::Triggerbot_HitPart);
@@ -137,8 +122,6 @@ public:
         WriteInt(ss, WRAPPER_MARCO("Aimbot_Mode"), (int)SettingsStore::Aimbot_Mode);
         WriteInt(ss, WRAPPER_MARCO("Aimbot_FovToggleKey"), (int)SettingsStore::Aimbot_FovToggleKey);
         WriteInt(ss, WRAPPER_MARCO("Aimbot_FovToggleMode"), (int)SettingsStore::Aimbot_FovToggleMode);
-        WriteInt(ss, WRAPPER_MARCO("Silent_Key"), (int)SettingsStore::Silent_Key);
-        WriteInt(ss, WRAPPER_MARCO("Silent_Mode"), (int)SettingsStore::Silent_Mode);
         WriteInt(ss, WRAPPER_MARCO("Visuals_ToggleKey"), (int)SettingsStore::Visuals_ToggleKey);
         WriteInt(ss, WRAPPER_MARCO("Visuals_ToggleMode"), (int)SettingsStore::Visuals_ToggleMode);
         WriteInt(ss, WRAPPER_MARCO("Triggerbot_Key"), (int)SettingsStore::Triggerbot_Key);
@@ -167,11 +150,6 @@ public:
         WriteFloat(ss, WRAPPER_MARCO("World_ExposureI"), SettingsStore::World_ExposureI);
         WriteFloat(ss, WRAPPER_MARCO("World_BrightnessI"), SettingsStore::World_BrightnessI);
 
-        WriteFloat(ss, WRAPPER_MARCO("Silent_Fov"), SettingsStore::Silent_Fov);
-        WriteFloat(ss, WRAPPER_MARCO("Silent_FovDoubleBarrel"), SettingsStore::Silent_FovDoubleBarrel);
-        WriteFloat(ss, WRAPPER_MARCO("Silent_FovTacticalShotgun"), SettingsStore::Silent_FovTacticalShotgun);
-        WriteFloat(ss, WRAPPER_MARCO("Silent_FovRevolver"), SettingsStore::Silent_FovRevolver);
-
         WriteFloat(ss, WRAPPER_MARCO("Misc_Speed_Value"), SettingsStore::Misc_Speed_Value);
         WriteFloat(ss, WRAPPER_MARCO("Misc_Jump_Value"), SettingsStore::Misc_Jump_Value);
 
@@ -196,8 +174,6 @@ public:
 
         WriteFloatArray(ss, WRAPPER_MARCO("World_AmbienceColor"), SettingsStore::World_AmbienceColor);
         WriteFloatArray(ss, WRAPPER_MARCO("World_FogColor"), SettingsStore::World_FogColor);
-
-        WriteFloatArray(ss, WRAPPER_MARCO("Silent_FovColor"), SettingsStore::Silent_FovColor);
 
         WriteFloatArray(ss, WRAPPER_MARCO("Whitelist_Color"), SettingsStore::Whitelist_Color);
 
@@ -316,7 +292,7 @@ public:
         std::vector<std::string> names;
         try
         {
-            for (const auto& entry : fs::directory_iterator(fs::current_path()))
+            for (const auto& entry : fs::directory_iterator(GetExeDirectory()))
             {
                 if (entry.is_regular_file())
                 {
@@ -340,6 +316,13 @@ public:
     }
 
 private:
+    static fs::path GetExeDirectory()
+    {
+        char path[MAX_PATH];
+        GetModuleFileNameA(nullptr, path, MAX_PATH);
+        return fs::path(path).parent_path();
+    }
+
     std::string GetConfigPath(const char* name)
     {
         OBF_PROLOGUE;
@@ -347,7 +330,7 @@ private:
         std::string sname = name;
         if (sname.size() >= 5 && sname.substr(sname.size() - 5) == ".json")
             sname = sname.substr(0, sname.size() - 5);
-        return (fs::current_path() / (sname + ".json")).string();
+        return (GetExeDirectory() / (sname + ".json")).string();
     }
 
     void WriteBool(std::stringstream& f, const char* key, bool val)
@@ -397,7 +380,6 @@ private:
         if (key == WRAPPER_MARCO("Visuals_OccludedColor")) { ParseFloatArray(val, SettingsStore::Visuals_OccludedColor); return; }
         if (key == WRAPPER_MARCO("World_AmbienceColor")) { ParseFloatArray(val, SettingsStore::World_AmbienceColor); return; }
         if (key == WRAPPER_MARCO("World_FogColor")) { ParseFloatArray(val, SettingsStore::World_FogColor); return; }
-        if (key == WRAPPER_MARCO("Silent_FovColor")) { ParseFloatArray(val, SettingsStore::Silent_FovColor); return; }
         if (key == WRAPPER_MARCO("Whitelist_Color")) { ParseFloatArray(val, SettingsStore::Whitelist_Color); return; }
 
         if (AssignBool(key, val)) return;
@@ -449,17 +431,6 @@ private:
         SET_BOOL(World_Exposure);
         SET_BOOL(World_FOV);
 
-        SET_BOOL(Silent_Enabled);
-        SET_BOOL(Silent_DrawFov);
-        SET_BOOL(Silent_StickyAim);
-        SET_BOOL(Silent_SpoofMouse);
-        SET_BOOL(Silent_UseFov);
-        SET_BOOL(Silent_KnockedCheck);
-        SET_BOOL(Silent_WallCheck);
-        SET_BOOL(Silent_GunBasedFov);
-        SET_BOOL(Silent_FovSpin);
-        SET_BOOL(Silent_FillFov);
-
         SET_BOOL(Settings_Team_Check);
         SET_BOOL(Settings_Client_Check);
         SET_BOOL(Settings_Streamproof);
@@ -499,10 +470,6 @@ private:
 
             SET_INT(World_Skybox_Type);
 
-            SET_INT(Silent_AimPart);
-            SET_INT(Silent_FovSpinDirection);
-            SET_INT(Silent_FovSpinSpeed);
-
             SET_INT(Triggerbot_Delay);
             SET_INT(Triggerbot_Randomize);
             SET_INT(Triggerbot_HitPart);
@@ -518,8 +485,6 @@ private:
             if (key == WRAPPER_MARCO("Aimbot_Mode")) { SettingsStore::Aimbot_Mode = (ImKeyBindMode)i; return true; }
             if (key == WRAPPER_MARCO("Aimbot_FovToggleKey")) { SettingsStore::Aimbot_FovToggleKey = (ImGuiKey)i; return true; }
             if (key == WRAPPER_MARCO("Aimbot_FovToggleMode")) { SettingsStore::Aimbot_FovToggleMode = (ImKeyBindMode)i; return true; }
-            if (key == WRAPPER_MARCO("Silent_Key")) { SettingsStore::Silent_Key = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Silent_Mode")) { SettingsStore::Silent_Mode = (ImKeyBindMode)i; return true; }
             if (key == WRAPPER_MARCO("Visuals_ToggleKey")) { SettingsStore::Visuals_ToggleKey = (ImGuiKey)i; return true; }
             if (key == WRAPPER_MARCO("Visuals_ToggleMode")) { SettingsStore::Visuals_ToggleMode = (ImKeyBindMode)i; return true; }
             if (key == WRAPPER_MARCO("Misc_Speed_Key")) { SettingsStore::Misc_Speed_Key = (ImGuiKey)i; return true; }
@@ -559,11 +524,6 @@ private:
             SET_FLOAT(World_FOV_Distance);
             SET_FLOAT(World_ExposureI);
             SET_FLOAT(World_BrightnessI);
-
-            SET_FLOAT(Silent_Fov);
-            SET_FLOAT(Silent_FovDoubleBarrel);
-            SET_FLOAT(Silent_FovTacticalShotgun);
-            SET_FLOAT(Silent_FovRevolver);
 
             SET_FLOAT(Misc_Speed_Value);
             SET_FLOAT(Misc_Jump_Value);
