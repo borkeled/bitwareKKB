@@ -125,6 +125,7 @@ namespace SettingsStore {
     inline bool Settings_Team_Check;
     inline bool Settings_Client_Check;
     inline bool Settings_Streamproof;
+    inline bool Settings_VSync = false;
     inline int Settings_Performance_Mode = 2;
     inline ImGuiKey Settings_Menu_Keybind = ImGuiKey_Insert;
 

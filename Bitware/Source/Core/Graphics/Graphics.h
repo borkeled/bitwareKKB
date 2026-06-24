@@ -14,6 +14,8 @@ class IMenuRenderer;
 
 inline ImFont* Tahoma_BoldXP = nullptr;
 
+
+
 struct detail_t {
 	HWND Window = nullptr;
 	WNDCLASSEX WindowClass = {};

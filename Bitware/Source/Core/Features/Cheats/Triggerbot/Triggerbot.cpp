@@ -17,6 +17,7 @@
 #include <Core/Input/InputHook.h>
 #include "../Common/PlayerUtils.h"
 #include "../Common/WallCheck.h"
+#include "../Visuals/Visuals.h"
 
 namespace Triggerbot {
 
@@ -38,19 +39,26 @@ namespace Triggerbot {
         return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
     }
 
-    void RunService() {
-        std::thread([]() {
+    static SDK::Vector3 GetBonePosition(const SDK::Instance& Bone) {
+        if (!Bone.Address) return SDK::Vector3{};
+        uintptr_t primAddr = Driver->Read<uintptr_t>(Bone.Address + Offsets::BasePart::Primitive);
+        if (!primAddr) return SDK::Vector3{};
+        return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
+    }
+
+    void RunService(std::stop_token st) {
+        std::thread([st]() {
             OBF_PROLOGUE;
             OBF_JUNK_DECLARE;
             timeBeginPeriod(1);
 
             bool Holding = false;
-            auto LastTick = std::chrono::high_resolution_clock::now();
+            auto LastTick = std::chrono::steady_clock::now();
             auto LastFireTime = std::chrono::steady_clock::now();
-            const std::chrono::microseconds TickInterval(1000000 / 144);
+            const std::chrono::microseconds TickInterval(1000000 / 60);
             const std::chrono::milliseconds TapCooldown(1000);
 
-            while (true) {
+            while (!st.stop_requested()) {
                 OBF_JUNK_BLOCK;
                 if (!Globals::Triggerbot::Enabled) {
                     if (Holding) {
@@ -62,14 +70,13 @@ namespace Triggerbot {
                     continue;
                 }
 
-                auto Now = std::chrono::high_resolution_clock::now();
-                auto Elapsed = std::chrono::duration_cast<std::chrono::microseconds>(Now - LastTick);
-
-                if (Elapsed < TickInterval) {
-                    std::this_thread::sleep_for(std::chrono::microseconds(1));
-                    continue;
+                auto iterStart = std::chrono::steady_clock::now();
+                auto NextTick = LastTick + TickInterval;
+                auto Now = std::chrono::steady_clock::now();
+                if (Now < NextTick) {
+                    std::this_thread::sleep_until(NextTick);
                 }
-                LastTick = Now;
+                LastTick = std::chrono::steady_clock::now();
 
                 int Vk = ImGuiKeyToVK(Globals::Triggerbot::Triggerbot_Key);
                 if (!Vk || !InputHook::IsKeyDown(Vk)) {
@@ -102,17 +109,16 @@ namespace Triggerbot {
                 float ScreenCenterX = (ClientRect.right - ClientRect.left) * 0.5f;
                 float ScreenCenterY = (ClientRect.bottom - ClientRect.top) * 0.5f;
 
-                std::vector<SDK::Player> Snapshot;
+                std::shared_ptr<const std::vector<SDK::Player>> Snapshot;
                 {
                     std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex);
                     Snapshot = Globals::Player_Cache;
                 }
+                if (!Snapshot) continue;
 
                 bool TargetFound = false;
 
-                OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-
-                for (auto& Plr : Snapshot) {
+                for (auto& Plr : *Snapshot) {
                     if (Plr.Local_Player || !Plr.Character.Address || !Plr.Head.Address) continue;
 
                     if (Plr.Distance > 700.f) continue;
@@ -120,36 +126,46 @@ namespace Triggerbot {
                     if (Globals::Triggerbot::KnockedCheck && PlayerUtils::IsPlayerKnocked(Plr)) continue;
 
                     int HitboxIdx = Globals::Triggerbot::HitPart;
-                    int BoneIndices[3];
-                    int BoneCount;
 
                     if (HitboxIdx == 3)
                     {
-                        BoneIndices[0] = 0; BoneIndices[1] = 1; BoneIndices[2] = 2;
-                        BoneCount = 3;
+                        auto& Bones = Visuals::Get_Bones(Plr);
+                        for (auto* Inst : Bones)
+                        {
+                            SDK::Vector3 BonePos = GetBonePosition(*Inst);
+                            if (std::isnan(BonePos.x) || (BonePos.x == 0 && BonePos.y == 0)) continue;
+
+                            SDK::Vector2 ScreenPos = Ve.World_To_Screen(BonePos);
+
+                            float DistSqr = (ScreenPos.x - ScreenCenterX) * (ScreenPos.x - ScreenCenterX) +
+                                            (ScreenPos.y - ScreenCenterY) * (ScreenPos.y - ScreenCenterY);
+
+                            if (DistSqr >= 25.0f) continue;
+
+                            if (Globals::Triggerbot::WallCheck && !wallcheck->is_visible(CameraOrigin, BonePos)) continue;
+
+                            TargetFound = true;
+                            break;
+                        }
                     }
                     else
                     {
-                        if (HitboxIdx > 2) HitboxIdx = 0;
-                        BoneIndices[0] = HitboxIdx;
-                        BoneCount = 1;
-                    }
+                        int BoneIdx = HitboxIdx > 2 ? 0 : HitboxIdx;
 
-                    for (int i = 0; i < BoneCount; i++)
-                    {
-                        SDK::Vector3 BonePos = GetTargetBonePos(Plr, BoneIndices[i]);
-                        if (std::isnan(BonePos.x) || (BonePos.x == 0 && BonePos.y == 0)) continue;
+                        SDK::Vector3 BonePos = GetTargetBonePos(Plr, BoneIdx);
+                        if (!std::isnan(BonePos.x) && !(BonePos.x == 0 && BonePos.y == 0))
+                        {
+                            if (!Globals::Triggerbot::WallCheck || wallcheck->is_visible(CameraOrigin, BonePos))
+                            {
+                                SDK::Vector2 ScreenPos = Ve.World_To_Screen(BonePos);
 
-                        if (Globals::Triggerbot::WallCheck && !wallcheck->is_visible(CameraOrigin, BonePos)) continue;
+                                float DistSqr = (ScreenPos.x - ScreenCenterX) * (ScreenPos.x - ScreenCenterX) +
+                                                (ScreenPos.y - ScreenCenterY) * (ScreenPos.y - ScreenCenterY);
 
-                        SDK::Vector2 ScreenPos = Ve.World_To_Screen(BonePos);
-
-                        float DistSqr = (ScreenPos.x - ScreenCenterX) * (ScreenPos.x - ScreenCenterX) +
-                                        (ScreenPos.y - ScreenCenterY) * (ScreenPos.y - ScreenCenterY);
-
-                        if (DistSqr < 25.0f) {
-                            TargetFound = true;
-                            break;
+                                if (DistSqr < 25.0f) {
+                                    TargetFound = true;
+                                }
+                            }
                         }
                     }
 
@@ -219,6 +235,9 @@ namespace Triggerbot {
                         }
                     }
                 }
+
+                auto iterEnd = std::chrono::steady_clock::now();
+                Perf::TriggerbotTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(iterEnd - iterStart).count());
             }
 
             timeEndPeriod(1);

@@ -304,7 +304,7 @@ void Explorer::Explorer::RenderPartProperties()
 
     if (ImGui::Button(std::string(skCrypt("TELEPORT")).c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0)))
     {
-        for (auto& p : Globals::Player_Cache)
+        for (auto& p : *Globals::Player_Cache)
         {
             if (p.Local_Player && p.HumanoidRootPart.Address)
             {
@@ -381,7 +381,7 @@ void Explorer::Explorer::RenderModelTeleport()
 
     if (ImGui::Button(std::string(skCrypt("TELEPORT")).c_str(), ImVec2(ImGui::GetContentRegionAvail().x, 0)))
     {
-        for (auto& p : Globals::Player_Cache)
+        for (auto& p : *Globals::Player_Cache)
         {
             if (p.Local_Player && p.HumanoidRootPart.Address)
             {

@@ -213,12 +213,13 @@ bool Application::InitSDK()
 
 void Application::SpawnThreads()
 {
-    m_WorkerThreads.emplace_back(Cache::RunService);
-    m_WorkerThreads.emplace_back(World::RunService);
-    m_WorkerThreads.emplace_back(Aimbot::RunService);
-    m_WorkerThreads.emplace_back(Silent::RunService);
-    m_WorkerThreads.emplace_back(Triggerbot::RunService);
-    m_WorkerThreads.emplace_back(Misc::RunService);
+    auto token = m_StopSource.get_token();
+    m_WorkerThreads.emplace_back(Cache::RunService, token);
+    m_WorkerThreads.emplace_back(World::RunService, token);
+    m_WorkerThreads.emplace_back(Aimbot::RunService, token);
+    m_WorkerThreads.emplace_back(Silent::RunService, token);
+    m_WorkerThreads.emplace_back(Triggerbot::RunService, token);
+    m_WorkerThreads.emplace_back(Misc::RunService, token);
 }
 
 bool Application::InitOverlay()
@@ -361,14 +362,12 @@ void Application::Run()
     for (;;)
     {
         static bool panic_triggered = false;
-        OBF_JUNK_DECLARE;
 
         if (!panic_triggered && GetAsyncKeyState(VK_F7) & 0x8000)
         {
             panic_triggered = true;
 
-            // clear sensitive globals before exit
-            Globals::Player_Cache.clear();
+            Globals::Player_Cache.reset();
             Globals::LocalPlayer = SDK::Player{};
             Globals::Datamodel = SDK::Datamodel{};
 
@@ -381,43 +380,44 @@ void Application::Run()
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
-            OBF_JUNK_BLOCK;
             if (msg.message == WM_QUIT)
                 return;
         }
 
         InputHook::PollKeys();
 
+        auto frameStart = std::chrono::steady_clock::now();
+
+        if (GetAsyncKeyState(VK_F6) & 1) {
+            Perf::ShowOverlay = !Perf::ShowOverlay;
+        }
+
         Graphic->NewFrame();
         DrawCursor();
 
-        OBF_JUNK_BLOCK;
-        OBF_OPAQUE_TRUE {
-            OBF_JUNK_BLOCK;
+        {
+            auto visStart = std::chrono::steady_clock::now();
+            Visuals::RunService();
+            auto visEnd = std::chrono::steady_clock::now();
+            Perf::VisualsTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(visEnd - visStart).count());
         }
-
-        Visuals::RunService();
 
         Graphic->Render();
         Graphic->Present();
 
-        OBF_STALL;
+        auto frameEnd = std::chrono::steady_clock::now();
+        Perf::FrameTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(frameEnd - frameStart).count());
     }
 }
 
 void Application::Shutdown()
 {
+    m_StopSource.request_stop();
+
     AntiDump::Disable();
     AntiInjection::Stop();
     InputHook::Remove();
 
-    for (auto& thread : m_WorkerThreads)
-    {
-        if (thread.joinable())
-        {
-            thread.join();
-        }
-    }
     m_WorkerThreads.clear();
 
     timeEndPeriod(1);

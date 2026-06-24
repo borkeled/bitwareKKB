@@ -2,6 +2,6 @@
 
 namespace Aimbot {
 	
-	void RunService();
+	void RunService(std::stop_token st);
 
 }

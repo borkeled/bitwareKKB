@@ -198,30 +198,29 @@ namespace Aimbot {
 
     void AcquireTarget();
 
-    void RunService() {
-        std::thread([]() {
+    void RunService(std::stop_token st) {
+        std::thread([st]() {
             timeBeginPeriod(1);
             bool Toggled = false;
             bool LastPressed = false;
             std::uint64_t StoredGameID = 0;
-            auto LastTick = std::chrono::high_resolution_clock::now();
-            const std::chrono::microseconds TickInterval(1000000 / 144);
+            auto LastTick = std::chrono::steady_clock::now();
+            const std::chrono::microseconds TickInterval(1000000 / 60);
 
-            while (true) {
+            while (!st.stop_requested()) {
                 OBF_PROLOGUE;
                 if (!Globals::Aimbot::Enabled) {
                     SDK::sleep_jitter(50, 15);
                     OBF_JUNK_BLOCK;
                     continue;
                 }
-                auto Now = std::chrono::high_resolution_clock::now();
-                auto Elapsed = std::chrono::duration_cast<std::chrono::microseconds>(Now - LastTick);
-                if (Elapsed < TickInterval) {
-                    std::this_thread::sleep_for(std::chrono::microseconds(1));
-                    OBF_STALL;
-                    continue;
+                auto iterStart = std::chrono::steady_clock::now();
+                auto NextTick = LastTick + TickInterval;
+                auto Now = std::chrono::steady_clock::now();
+                if (Now < NextTick) {
+                    std::this_thread::sleep_until(NextTick);
                 }
-                LastTick = Now;
+                LastTick = std::chrono::steady_clock::now();
                 int Vk = ImGuiKeyToVK(Globals::Aimbot::Aimbot_Key);
                 if (!Vk) { OBF_JUNK_BLOCK; continue; }
                 bool Pressed = InputHook::IsKeyDown(Vk);
@@ -240,6 +239,8 @@ namespace Aimbot {
                     CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0;
                     Globals::Aimbot::AimTarget = SDK::Instance(0);
                 }
+                auto iterEnd = std::chrono::steady_clock::now();
+                Perf::AimbotTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(iterEnd - iterStart).count());
             }
             timeEndPeriod(1);
         }).detach();
@@ -264,10 +265,11 @@ namespace Aimbot {
         SDK::Vector3 CamForward = { -CamRot.data[2], -CamRot.data[5], -CamRot.data[8] };
 
         if (Globals::Aimbot::AimbotSticky && IsPersisting && PersistenceAddress != 0) {
-            std::vector<SDK::Player> Snapshot;
+            std::shared_ptr<const std::vector<SDK::Player>> Snapshot;
             { std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex); Snapshot = Globals::Player_Cache; }
+            if (!Snapshot) return;
             bool StickyFoundThisFrame = false;
-            for (auto& Plr : Snapshot) {
+            for (auto& Plr : *Snapshot) {
                 if (Plr.Character.Address != PersistenceAddress) continue;
                 if (Plr.Local_Player || !Plr.Character.Address || !Plr.Head.Address) break;
                 if (Globals::Aimbot::KnockedCheck && PlayerUtils::IsPlayerKnocked(Plr)) break;
@@ -292,9 +294,10 @@ namespace Aimbot {
             Globals::Aimbot::AimTarget = SDK::Instance(0);
         }
 
-        std::vector<SDK::Player> Snapshot;
+        std::shared_ptr<const std::vector<SDK::Player>> Snapshot;
         { std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex); Snapshot = Globals::Player_Cache; }
-        for (auto& Plr : Snapshot) {
+        if (!Snapshot) return;
+        for (auto& Plr : *Snapshot) {
             if (Plr.Local_Player || !Plr.Character.Address || !Plr.Head.Address) continue;
             if (Plr.Distance > 700.f) continue;
             int HitboxIdx = GetRandomizedHitbox(Plr.Character.Address, Globals::Aimbot::HitPart);

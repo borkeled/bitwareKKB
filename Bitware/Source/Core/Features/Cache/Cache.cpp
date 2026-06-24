@@ -83,94 +83,8 @@ namespace Cache {
             && std::isfinite(Pos.x) && std::isfinite(Pos.y) && std::isfinite(Pos.z);
     }
 
-    void Rescan() {
-        OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
-        static std::uint64_t Stored_GameID = 0;
-
-        while (true) {
-            try {
-                OBF_JUNK_BLOCK;
-                auto Module_Base = Driver->Get_Module();
-                if (Module_Base != 0) {
-                    auto FakeDataModel = Driver->Read<std::uint64_t>(Module_Base + Offsets::FakeDataModel::Pointer);
-                    if (FakeDataModel != 0) {
-                        Globals::Datamodel.Address = Driver->Read<std::uint64_t>(FakeDataModel + Offsets::FakeDataModel::RealDataModel);
-
-                        if (Globals::Datamodel.Address != 0) {
-                            std::uint64_t GameID = Driver->Read<uint64_t>(Globals::Datamodel.Address + Offsets::DataModel::PlaceId);
-
-                            if (ForceReInit.exchange(false)) {
-                                Stored_GameID = 0;
-                            }
-
-                            if (GameID != Stored_GameID) {
-                                Stored_GameID = GameID;
-                                Current_GameID.store(GameID);
-                                Globals::GameID = GameID;
-
-                                Globals::Players.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Players"))).Address;
-                                auto Lightin = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Lighting")));
-                                Globals::Lighting = SDK::Lighting(Lightin.Address);
-                                Globals::Workspace.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Workspace"))).Address;
-
-                                Globals::Camera.Address = 0;
-                                for (int retries = 0; retries < 50; ++retries)
-                                {
-                                    Globals::Camera.Address = Globals::Workspace.Find_First_Child_Of_Class(std::string(skCrypt("Camera"))).Address;
-                                    if (Globals::Camera.Address != 0)
-                                        break;
-                                    SDK::sleep_jitter(100, 25);
-                                }
-
-                                Globals::LocalPlayer = SDK::Player{};
-
-                                References_Updated.store(true);
-                            }
-                        }
-                    }
-                }
-
-                if (Module_Base != 0) {
-                    uint64_t veAddr = Driver->Read<std::uint64_t>(Module_Base + Offsets::VisualEngine::Pointer);
-                    if (veAddr != 0) {
-                        Globals::VisualEngine.Address = veAddr;
-                    }
-                }
-
-                static int window_refresh_counter = 0;
-                if (++window_refresh_counter >= 20) {
-                    window_refresh_counter = 0;
-                    DWORD target_pid = Driver->Get_Process();
-                    EnumWindows([](HWND hwnd, LPARAM lparam) -> BOOL {
-                        DWORD pid = 0;
-                        GetWindowThreadProcessId(hwnd, &pid);
-                        if (pid == static_cast<DWORD>(lparam) && IsWindowVisible(hwnd)) {
-                            Globals::RobloxWindow = hwnd;
-                            return FALSE;
-                        }
-                        return TRUE;
-                    }, static_cast<LPARAM>(target_pid));
-                }
-
-                if (Globals::VisualEngine.Address != 0 && Globals::Datamodel.Address != 0 && Globals::Camera.Address != 0)
-                {
-                    CacheReady.store(true, std::memory_order_release);
-                }
-            }
-            catch (...) {
-                Logger::Log(WRAPPER_MARCO("[Cache] rescan exception"));
-                OBF_JUNK_BLOCK;
-            }
-
-            OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-            SDK::sleep_jitter(100, 25);
-        }
-    }
-
     void Cache_Data(SDK::Player& Player, const SDK::Vector3& Camera_Pos, bool Is_Local) {
         OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
         if (Player.Character.Address == 0) return;
 
         static thread_local std::uint64_t LastCharacterAddress = 0;
@@ -215,7 +129,6 @@ namespace Cache {
 
     void Update_Cache(const SDK::Vector3& Camera_Pos) {
         OBF_PROLOGUE;
-        OBF_JUNK_BLOCK;
         if (Globals::Players.Address == 0) {
             StaleFrames.store(0, std::memory_order_relaxed);
             return;
@@ -236,7 +149,6 @@ namespace Cache {
         Players.reserve(Player_Instances.size());
 
         for (const auto& Instance : Player_Instances) {
-            OBF_JUNK_DECLARE;
             if (Instance.Address == 0) continue;
 
             if (Instance.Address == Local_SDK_Player.Address) {
@@ -266,12 +178,11 @@ namespace Cache {
         }
 
         std::lock_guard<std::mutex> Lock(Cache_Mutex);
-        Globals::Player_Cache = std::move(Players);
+        Globals::Player_Cache = std::make_shared<const std::vector<SDK::Player>>(std::move(Players));
     }
 
     void Runtime() {
         OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
         bool LocalPlayerFound = false;
 
         if (Globals::Players.Address == 0) {
@@ -314,30 +225,110 @@ namespace Cache {
                 ForceReInit.store(true);
             }
         }
-
-        OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
     }
 }
 
-void Cache::RunService() {
+void Cache::RunService(std::stop_token st) {
     OBF_PROLOGUE;
-    std::thread(Rescan).detach();
+    std::jthread rescan_thread;
 
-    while (true) {
+    if (!st.stop_requested()) {
+        rescan_thread = std::jthread([](std::stop_token inner_st) {
+            static std::uint64_t Stored_GameID = 0;
+            while (!inner_st.stop_requested()) {
+                try {
+                    auto Module_Base = Driver->Get_Module();
+                    if (Module_Base != 0) {
+                        auto FakeDataModel = Driver->Read<std::uint64_t>(Module_Base + Offsets::FakeDataModel::Pointer);
+                        if (FakeDataModel != 0) {
+                            Globals::Datamodel.Address = Driver->Read<std::uint64_t>(FakeDataModel + Offsets::FakeDataModel::RealDataModel);
+
+                            if (Globals::Datamodel.Address != 0) {
+                                std::uint64_t GameID = Driver->Read<uint64_t>(Globals::Datamodel.Address + Offsets::DataModel::PlaceId);
+
+                                if (ForceReInit.exchange(false)) {
+                                    Stored_GameID = 0;
+                                }
+
+                                if (GameID != Stored_GameID) {
+                                    Stored_GameID = GameID;
+                                    Current_GameID.store(GameID);
+                                    Globals::GameID = GameID;
+
+                                    Globals::Players.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Players"))).Address;
+                                    auto Lightin = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Lighting")));
+                                    Globals::Lighting = SDK::Lighting(Lightin.Address);
+                                    Globals::Workspace.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Workspace"))).Address;
+
+                                    Globals::Camera.Address = 0;
+                                    for (int retries = 0; retries < 50; ++retries)
+                                    {
+                                        Globals::Camera.Address = Globals::Workspace.Find_First_Child_Of_Class(std::string(skCrypt("Camera"))).Address;
+                                        if (Globals::Camera.Address != 0)
+                                            break;
+                                        SDK::sleep_jitter(100, 25);
+                                    }
+
+                                    Globals::LocalPlayer = SDK::Player{};
+
+                                    References_Updated.store(true);
+                                }
+                            }
+                        }
+                    }
+
+                    if (Module_Base != 0) {
+                        uint64_t veAddr = Driver->Read<std::uint64_t>(Module_Base + Offsets::VisualEngine::Pointer);
+                        if (veAddr != 0) {
+                            Globals::VisualEngine.Address = veAddr;
+                        }
+                    }
+
+                    static int window_refresh_counter = 0;
+                    if (++window_refresh_counter >= 20) {
+                        window_refresh_counter = 0;
+                        DWORD target_pid = Driver->Get_Process();
+                        EnumWindows([](HWND hwnd, LPARAM lparam) -> BOOL {
+                            DWORD pid = 0;
+                            GetWindowThreadProcessId(hwnd, &pid);
+                            if (pid == static_cast<DWORD>(lparam) && IsWindowVisible(hwnd)) {
+                                Globals::RobloxWindow = hwnd;
+                                return FALSE;
+                            }
+                            return TRUE;
+                        }, static_cast<LPARAM>(target_pid));
+                    }
+
+                    if (Globals::VisualEngine.Address != 0 && Globals::Datamodel.Address != 0 && Globals::Camera.Address != 0)
+                    {
+                        CacheReady.store(true, std::memory_order_release);
+                    }
+                }
+                catch (...) {
+                    Logger::Log(WRAPPER_MARCO("[Cache] rescan exception"));
+                }
+
+                SDK::sleep_jitter(100, 25);
+            }
+        }, st);
+    }
+
+    while (!st.stop_requested()) {
         try {
-            OBF_JUNK_BLOCK;
             if (References_Updated.exchange(false)) {
                 std::lock_guard<std::mutex> lock(Cache_Mutex);
                 Globals::LocalPlayer = SDK::Player{};
-                Globals::Player_Cache.clear();
+                Globals::Player_Cache.reset();
                 StaleFrames.store(0, std::memory_order_relaxed);
             }
 
+            auto cacheStart = std::chrono::steady_clock::now();
             Runtime();
+            auto cacheEnd = std::chrono::steady_clock::now();
+            Perf::CacheTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(cacheEnd - cacheStart).count());
         }
         catch (...) {
             Logger::Log(WRAPPER_MARCO("[Cache] runtime exception"));
-            OBF_JUNK_BLOCK;
         }
 
         SDK::sleep_jitter(150, 35);

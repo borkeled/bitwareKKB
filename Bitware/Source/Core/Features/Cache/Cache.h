@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <cmath>
+#include <stop_token>
 
 #include "../../../Engine/Engine.h"
 
@@ -17,7 +18,7 @@ namespace Cache
     extern std::mutex Cache_Mutex;
     extern std::atomic<bool> CacheReady;
     extern std::atomic<bool> Is_Running;
-    void RunService();
+    void RunService(std::stop_token st);
     bool Valid_Position(const SDK::Vector3& Pos);
 }
 

@@ -441,8 +441,8 @@ void LegacyMenuRenderer::Render()
 
             if (Menu::BeginChild(WRAPPER_MARCO("PlayerList"), ImVec2(LeftWidth - SidePad, AvailSize.y - SidePad * 2)))
             {
-                auto Snapshot = Globals::Player_Cache;
-                for (auto& player : Snapshot)
+                if (!Globals::Player_Cache) return;
+                for (auto& player : *Globals::Player_Cache)
                 {
                     if (!player.Character.Address) continue;
 

@@ -365,6 +365,35 @@ void Graphics::NewFrame()
 
 void Graphics::Render()
 {
+    if (Perf::ShowOverlay)
+    {
+        static double lastFpsUpdate = 0.0;
+        static int frameCount = 0;
+        double now = ImGui::GetTime();
+        frameCount++;
+        if (now - lastFpsUpdate >= 1.0)
+        {
+            Perf::LastFPS.store(frameCount);
+            frameCount = 0;
+            lastFpsUpdate = now;
+        }
+
+        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_FirstUseEver);
+        ImGui::SetNextWindowBgAlpha(0.6f);
+        if (ImGui::Begin("Perf", &Perf::ShowOverlay, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("FPS: %d", Perf::LastFPS.load());
+            ImGui::Separator();
+            ImGui::Text("Frame:  %4llu us", (unsigned long long)Perf::FrameTimeUs.load());
+            ImGui::Text("Visuals: %4llu us", (unsigned long long)Perf::VisualsTimeUs.load());
+            ImGui::Text("Present: %4llu us", (unsigned long long)Perf::PresentTimeUs.load());
+            ImGui::Text("Aimbot:  %4llu us", (unsigned long long)Perf::AimbotTimeUs.load());
+            ImGui::Text("Trigger: %4llu us", (unsigned long long)Perf::TriggerbotTimeUs.load());
+            ImGui::Text("Cache:   %4llu us", (unsigned long long)Perf::CacheTimeUs.load());
+        }
+        ImGui::End();
+    }
+
     if (Running && m_MenuRenderer)
     {
         m_MenuRenderer->Render();
@@ -375,6 +404,8 @@ void Graphics::Present()
 {
     Globals::FrameCount.fetch_add(1, std::memory_order_relaxed);
 
+    auto presentStart = std::chrono::steady_clock::now();
+
     ImGui::Render();
 
     float ClearColor[4]{ 0, 0, 0, 0 };
@@ -384,11 +415,20 @@ void Graphics::Present()
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     static auto LastPresentTime = std::chrono::steady_clock::now();
-    int Mode = Globals::Settings::Performance_Mode;
-    if (Mode < 0) Mode = 0;
-    if (Mode > 2) Mode = 2;
 
-    int TargetFPS = SettingsStore::PerfMode_FPS[Mode];
+    int TargetFPS = SettingsStore::PerfMode_FPS[0];
+    if (Detail->Window && IsIconic(Detail->Window))
+    {
+        TargetFPS = 10;
+    }
+    else
+    {
+        int Mode = Globals::Settings::Performance_Mode;
+        if (Mode < 0) Mode = 0;
+        if (Mode > 2) Mode = 2;
+        TargetFPS = SettingsStore::PerfMode_FPS[Mode];
+    }
+
     auto TargetInterval = std::chrono::microseconds(1000000 / TargetFPS);
 
     auto Now = std::chrono::steady_clock::now();
@@ -398,7 +438,11 @@ void Graphics::Present()
     }
     LastPresentTime = std::chrono::steady_clock::now();
 
-    Detail->SwapChain->Present(0, 0);
+    int SyncInterval = Globals::Settings::VSync ? 1 : 0;
+    Detail->SwapChain->Present(SyncInterval, 0);
+
+    auto presentEnd = std::chrono::steady_clock::now();
+    Perf::PresentTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(presentEnd - presentStart).count());
 }
 
 void Graphics::Start_Render()

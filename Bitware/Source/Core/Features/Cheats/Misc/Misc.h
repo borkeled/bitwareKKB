@@ -1,7 +1,7 @@
 #pragma once
 
 namespace Misc {
-	void Speed();
-	void Jump();
-	void RunService();
+	void Speed(std::stop_token st);
+	void Jump(std::stop_token st);
+	void RunService(std::stop_token st);
 }

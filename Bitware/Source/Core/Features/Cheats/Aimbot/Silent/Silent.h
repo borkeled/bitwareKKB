@@ -7,9 +7,9 @@
 
 namespace Silent
 {
-    void SilentFramePos();
-    void SilentMouse();
-    void RunService();
+    void SilentFramePos(std::stop_token st);
+    void SilentMouse(std::stop_token st);
+    void RunService(std::stop_token st);
     float GetEffectiveFov();
 }
 

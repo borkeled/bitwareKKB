@@ -33,9 +33,7 @@ namespace Cache {
 }
 
 static void Outline(const ImVec2& Pos, const char* Text, const float Col[4]) {
-    OBF_PROLOGUE;
     if (!Text || !*Text) {
-        OBF_JUNK_BLOCK;
         return;
     }
 
@@ -56,11 +54,6 @@ static void Outline(const ImVec2& Pos, const char* Text, const float Col[4]) {
         Draw->AddText(nullptr, Font_Size, Position + o, Col2, Text);
     }
     Draw->AddText(nullptr, Font_Size, Position, Col1, Text);
-
-    OBF_OPAQUE_TRUE {
-        volatile int x = 0;
-        if (x) Draw->AddText(nullptr, Font_Size, Position, Col2, Text);
-    }
 }
 
 static const SDK::Vector3 Corners[8] = {
@@ -70,17 +63,11 @@ static const SDK::Vector3 Corners[8] = {
 
 namespace Visuals {
     const std::vector<const SDK::Instance*>& Get_Bones(const SDK::Player& Player) {
-        OBF_PROLOGUE;
         thread_local std::vector<const SDK::Instance*> Parts;
         Parts.clear();
 
         const bool R15 = Player.UpperTorso.Address && Player.LowerTorso.Address;
         const bool R6 = Player.Torso.Address;
-
-        OBF_OPAQUE_FALSE {
-            volatile bool junk = false;
-            if (junk) { Parts.push_back(nullptr); }
-        }
 
         if (R15) {
             if (Player.Head.Address) Parts.push_back(&Player.Head);
@@ -124,19 +111,16 @@ namespace Visuals {
 
     static void VisualsToggleHelper()
     {
-        OBF_PROLOGUE;
         static bool Toggled = false;
         static bool LastPressed = false;
 
         ImGuiKey key = Globals::Visuals::ToggleKey;
         if (key == ImGuiKey_None) {
-            OBF_JUNK_BLOCK;
             return;
         }
 
         int Vk = ImGuiKeyToVK(key);
         if (!Vk) {
-            OBF_JUNK_BLOCK;
             return;
         }
 
@@ -158,19 +142,16 @@ namespace Visuals {
 
     static void AimbotFovToggleHelper()
     {
-        OBF_PROLOGUE;
         static bool Toggled = false;
         static bool LastPressed = false;
 
         ImGuiKey key = Globals::Aimbot::FovToggleKey;
         if (key == ImGuiKey_None) {
-            OBF_JUNK_BLOCK;
             return;
         }
 
         int Vk = ImGuiKeyToVK(key);
         if (!Vk) {
-            OBF_JUNK_BLOCK;
             return;
         }
 
@@ -192,26 +173,11 @@ namespace Visuals {
 
     void RunService()
     {
-        OBF_PROLOGUE;
-
         VisualsToggleHelper();
         AimbotFovToggleHelper();
 
-        OBF_OPAQUE_TRUE {
-            volatile int _j = 0;
-            OBF_JUNK_BLOCK;
-        }
-
         if (!Globals::Visuals::Enabled || Globals::VisualEngine.Address == 0 || Globals::Datamodel.Address == 0)
         {
-            OBF_JUNK_BLOCK;
-            ImGui::PopFont();
-            return;
-        }
-
-        if (Globals::VisualEngine.Address == 0) {
-            OBF_JUNK_BLOCK;
-            ImGui::PopFont();
             return;
         }
 
@@ -219,7 +185,6 @@ namespace Visuals {
         Draw->Flags |= ImDrawListFlags_AntiAliasedLines | ImDrawListFlags_AntiAliasedFill;
 
         auto GetMousePos = [&]() -> ImVec2 {
-            OBF_PROLOGUE;
             POINT p;
             if (Api::GetCursorPos(&p)) {
                 if (Globals::RobloxWindow) {
@@ -230,19 +195,13 @@ namespace Visuals {
             return ImGui::GetIO().MousePos;
         };
 
-        std::vector<SDK::Player> Snapshot;
+        std::shared_ptr<const std::vector<SDK::Player>> Snapshot;
         {
             std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex);
             Snapshot = Globals::Player_Cache;
         }
 
-        OBF_OPAQUE_FALSE {
-            volatile int _c = 0;
-            if (_c) Snapshot.clear();
-        }
-
-        if (Snapshot.empty()) {
-            ImGui::PopFont();
+        if (!Snapshot || Snapshot->empty()) {
             return;
         }
 
@@ -258,10 +217,9 @@ namespace Visuals {
             CamPosValid = true;
         }
 
-        for (auto& Player : Snapshot)
+        for (auto& Player : *Snapshot)
         {
             if (!Player.Character.Address) {
-                OBF_JUNK_BLOCK;
                 continue;
             }
 
@@ -269,7 +227,6 @@ namespace Visuals {
                 ? Globals::Whitelist::Color : nullptr;
 
             if (Globals::Visuals::Render_Distance > 0.f && Player.Distance > Globals::Visuals::Render_Distance) {
-                OBF_JUNK_BLOCK;
                 continue;
             }
 
@@ -336,7 +293,6 @@ namespace Visuals {
 
             if (Globals::Visuals::WallCheck && CamPosValid)
             {
-                OBF_PROLOGUE;
                 bool visible = wallcheck->is_visible(CamPos, HeadPos);
                 if (!visible)
                 {

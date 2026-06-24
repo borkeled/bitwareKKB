@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <thread>
+#include <stop_token>
 #include <Core/Input/InputHook.h>
 
 class IMenuRenderer;
@@ -24,5 +25,6 @@ private:
     void SpawnThreads();
 
     std::unique_ptr<IMenuRenderer> m_MenuRenderer;
-    std::vector<std::thread> m_WorkerThreads;
+    std::vector<std::jthread> m_WorkerThreads;
+    std::stop_source m_StopSource;
 };

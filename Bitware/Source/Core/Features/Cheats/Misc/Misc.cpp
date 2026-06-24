@@ -69,38 +69,41 @@ namespace Misc {
     static bool speedWasActive = false;
     static bool jumpWasActive = false;
 
-    void Speed()
+    void Speed(std::stop_token st)
     {
         OBF_PROLOGUE;
         OBF_JUNK_DECLARE;
 
-        for (;;)
+        for (; !st.stop_requested(); )
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
             if (Globals::Misc::Speed)
             {
                 Speedhack();
                 speedWasActive = true;
+                std::this_thread::sleep_for(std::chrono::milliseconds(30));
             }
-            else if (speedWasActive)
+            else
             {
-                if (Globals::LocalPlayer.Humanoid.Address)
+                if (speedWasActive)
                 {
-                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, 16.0f);
-                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, 16.0f);
+                    if (Globals::LocalPlayer.Humanoid.Address)
+                    {
+                        Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, 16.0f);
+                        Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, 16.0f);
+                    }
+                    speedWasActive = false;
                 }
-                speedWasActive = false;
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
         }
     }
 
-    void Jump()
+    void Jump(std::stop_token st)
     {
         OBF_PROLOGUE;
         OBF_JUNK_DECLARE;
 
-        for (;;)
+        for (; !st.stop_requested(); )
         {
             SDK::sleep_jitter(10, 5);
 
@@ -120,11 +123,11 @@ namespace Misc {
         }
     }
 
-    void RunService()
+    void RunService(std::stop_token st)
     {
         OBF_PROLOGUE;
-        std::thread(Speed).detach();
-        std::thread(Jump).detach();
+        std::thread(Speed, st).detach();
+        std::thread(Jump, st).detach();
         OBF_JUNK_BLOCK;
     }
 }

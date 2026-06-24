@@ -12,13 +12,9 @@ namespace World {
     std::atomic<bool> StopExposure{ false };
     std::atomic<bool> StopFOV{ false };
 
-    void SkyboxChanger() {
-        OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
-
-        while (!StopSkybox)
+    void SkyboxChanger(std::stop_token st) {
+        while (!StopSkybox && !st.stop_requested())
         {
-            OBF_JUNK_BLOCK;
             if (Globals::World::Skybox)
             {
                 auto Sky = Globals::Lighting.Find_First_Child(std::string(skCrypt("Sky")).c_str());
@@ -137,81 +133,62 @@ namespace World {
                     SDK::Renderview::ValidateSkybox();
                 }
             }
-            OBF_JUNK_BLOCK;
             SDK::sleep_jitter(30, 10);
         }
     }
 
-    void AtmosphereChanger() {
-        OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
-
-        while (!StopAtmosphere)
+    void AtmosphereChanger(std::stop_token st) {
+        while (!StopAtmosphere && !st.stop_requested())
         {
             if (Globals::World::Ambience)
             {
                 SDK::Lighting::SetAmbient(Globals::Lighting.Address, {Globals::World::Colors::Ambience[0], Globals::World::Colors::Ambience[1], Globals::World::Colors::Ambience[2]} );
                 SDK::Renderview::InvalidateLighting();
             }
-            OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
             SDK::sleep_jitter(100, 20);
         }
     }
 
-    void FogChanger() {
-        OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
-
-        while (!StopFog)
+    void FogChanger(std::stop_token st) {
+        while (!StopFog && !st.stop_requested())
         {
             if (Globals::World::Fog)
             {
                 SDK::Lighting::SetFog(Globals::Lighting.Address, Globals::World::Fog_Distance, {Globals::World::Colors::Fog[0], Globals::World::Colors::Fog[1], Globals::World::Colors::Fog[2]} );
                 SDK::Renderview::InvalidateLighting();
             }
-            OBF_JUNK_BLOCK;
             SDK::sleep_jitter(100, 20);
         }
     }
 
-    void BrightnessChanger() {
-        OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
-
-        while (!StopBrightness)
+    void BrightnessChanger(std::stop_token st) {
+        while (!StopBrightness && !st.stop_requested())
         {
             if (Globals::World::Brightness)
             {
                 SDK::Lighting::SetBrightness(Globals::Lighting.Address, Globals::World::BrightnessI);
                 SDK::Renderview::InvalidateLighting();
             }
-            OBF_JUNK_BLOCK;
             SDK::sleep_jitter(100, 20);
         }
     }
 
-    void ExposureChanger() {
-        OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
-
-        while (!StopExposure)
+    void ExposureChanger(std::stop_token st) {
+        while (!StopExposure && !st.stop_requested())
         {
             if (Globals::World::Exposure)
             {
                 SDK::Lighting::SetExposure(Globals::Lighting.Address, Globals::World::ExposureI);
                 SDK::Renderview::InvalidateLighting();
             }
-            OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
             SDK::sleep_jitter(100, 20);
         }
     }
 
-    void FOVChanger() {
-        OBF_PROLOGUE;
-        OBF_JUNK_DECLARE;
+    void FOVChanger(std::stop_token st) {
         static float LastFOVValue = -1.0f;
 
-        while (!StopFOV)
+        while (!StopFOV && !st.stop_requested())
         {
             if (Globals::World::FOV)
             {
@@ -222,13 +199,11 @@ namespace World {
                     LastFOVValue = CurrentFOV;
                 }
             }
-            OBF_JUNK_BLOCK;
             SDK::sleep_jitter(30, 10);
         }
     }
 
-    void RunService() {
-        OBF_PROLOGUE;
+    void RunService(std::stop_token st) {
         StopSkybox = true; StopAtmosphere = true; StopFog = true;
         StopBrightness = true; StopExposure = true; StopFOV = true;
 
@@ -237,11 +212,11 @@ namespace World {
         StopSkybox = false; StopAtmosphere = false; StopFog = false;
         StopBrightness = false; StopExposure = false; StopFOV = false;
 
-        std::thread(SkyboxChanger).detach();
-        std::thread(AtmosphereChanger).detach();
-        std::thread(FogChanger).detach();
-        std::thread(BrightnessChanger).detach();
-        std::thread(ExposureChanger).detach();
-        std::thread(FOVChanger).detach();
+        std::thread(SkyboxChanger, st).detach();
+        std::thread(AtmosphereChanger, st).detach();
+        std::thread(FogChanger, st).detach();
+        std::thread(BrightnessChanger, st).detach();
+        std::thread(ExposureChanger, st).detach();
+        std::thread(FOVChanger, st).detach();
     }
 }

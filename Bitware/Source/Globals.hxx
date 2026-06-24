@@ -9,6 +9,20 @@
 #include "ImGui/imgui.h"
 #include "Core/Settings/Settings.h"
 
+namespace Perf {
+    inline std::atomic<std::uint64_t> FrameTimeUs{ 0 };
+    inline std::atomic<std::uint64_t> VisualsTimeUs{ 0 };
+    inline std::atomic<std::uint64_t> AimbotTimeUs{ 0 };
+    inline std::atomic<std::uint64_t> TriggerbotTimeUs{ 0 };
+    inline std::atomic<std::uint64_t> CacheTimeUs{ 0 };
+    inline std::atomic<std::uint64_t> PresentTimeUs{ 0 };
+
+    inline std::atomic<int> FrameCount{ 0 };
+    inline std::atomic<int> LastFPS{ 0 };
+
+    inline bool ShowOverlay = false;
+}
+
 namespace Globals {
 
 	inline HWND RobloxWindow = nullptr;
@@ -24,13 +38,14 @@ namespace Globals {
 	inline SDK::Renderview Renderview;
 	inline SDK::Camera Camera;
 
-	inline std::vector<SDK::Player> Player_Cache;
+	inline std::shared_ptr<const std::vector<SDK::Player>> Player_Cache;
 
 	namespace Settings {
 
         inline bool& Team_Check = SettingsStore::Settings_Team_Check;
         inline bool& Client_Check = SettingsStore::Settings_Client_Check;
         inline bool& Streamproof = SettingsStore::Settings_Streamproof;
+        inline bool& VSync = SettingsStore::Settings_VSync;
         inline int& Performance_Mode = SettingsStore::Settings_Performance_Mode;
         inline int& WallCheck_Method = SettingsStore::WallCheck_Method;
         inline ImGuiKey& Menu_Keybind = SettingsStore::Settings_Menu_Keybind;

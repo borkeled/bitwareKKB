@@ -1,8 +1,11 @@
 #define NOMINMAX
 #include <Windows.h>
 #include <thread>
+#include <stop_token>
 #include <vector>
 #include <algorithm>
+#include <memory>
+#include <mutex>
 #include <immintrin.h>
 #include <cmath>
 #include <limits>
@@ -53,7 +56,7 @@ float Silent::GetEffectiveFov()
     return Globals::Silent::Fov;
 }
 
-static SDK::Instance GetTargetPart(SDK::Player& Player, int AimPart)
+static SDK::Instance GetTargetPart(const SDK::Player& Player, int AimPart)
 {
     OBF_PROLOGUE;
     SDK::Instance TargetPart{};
@@ -73,7 +76,7 @@ static SDK::Instance GetTargetPart(SDK::Player& Player, int AimPart)
     return TargetPart;
 }
 
-static bool IsPlayerKnocked(SDK::Player& Player)
+static bool IsPlayerKnocked(const SDK::Player& Player)
 {
     OBF_PROLOGUE;
     OBF_JUNK_DECLARE;
@@ -164,12 +167,13 @@ static SDK::Player GetClosestPlayerFromCursor()
 
     SDK::Vector2 Cursor = { static_cast<float>(CursorPoint.x), static_cast<float>(CursorPoint.y) };
 
-    std::vector<SDK::Player> PlayersSnapshot;
+    std::shared_ptr<const std::vector<SDK::Player>> PlayersSnapshot;
     {
+        std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex);
         PlayersSnapshot = Globals::Player_Cache;
     }
 
-    if (PlayersSnapshot.empty())
+    if (!PlayersSnapshot || PlayersSnapshot->empty())
     {
         return {};
     }
@@ -177,7 +181,7 @@ static SDK::Player GetClosestPlayerFromCursor()
     SDK::Player ClosestPlayer{};
     float ShortestDistance = std::numeric_limits<float>::max();
 
-    for (SDK::Player& Player : PlayersSnapshot)
+    for (const SDK::Player& Player : *PlayersSnapshot)
     {
         OBF_JUNK_DECLARE;
         if (Player.Character.Address == 0)
@@ -318,17 +322,14 @@ static void UpdateSilentAimKeyState()
     SilentAimKeyWasPressed = Pressed;
 }
 
-void Silent::SilentFramePos() {
-    OBF_PROLOGUE;
-    OBF_JUNK_DECLARE;
+void Silent::SilentFramePos(std::stop_token st) {
     SDK::Player Target{};
     HWND Window = Globals::RobloxWindow;
     static SDK::Instance CachedMouseService{};
     static std::uint64_t Stored_Datamodel_Addr = 0;
 
-    for (;;) {
+    for (; !st.stop_requested(); ) {
         SDK::sleep_jitter(10, 5);
-        OBF_JUNK_BLOCK;
 
         if (Globals::Datamodel.Address != 0 && Globals::Datamodel.Address != Stored_Datamodel_Addr) {
             Stored_Datamodel_Addr = Globals::Datamodel.Address;
@@ -493,15 +494,13 @@ void Silent::SilentFramePos() {
     }
 }
 
-void Silent::SilentMouse()
+void Silent::SilentMouse(std::stop_token st)
 {
-    OBF_PROLOGUE;
     SilentHelper MouseServiceInstance{};
     bool MouseServiceInitialized = false;
 
-    for (;;)
+    for (; !st.stop_requested(); )
     {
-        OBF_JUNK_BLOCK;
         if (!MouseService || !ShouldSilentAimBeActive() || SilentCachedTarget.Character.Address == 0 || !IsSilentReady)
         {
             MouseServiceInitialized = false;
@@ -512,7 +511,7 @@ void Silent::SilentMouse()
         if (SilentPartPos.x < -5000.0f || SilentPartPos.y < -5000.0f ||
             SilentPartPos.x > 15000.0f || SilentPartPos.y > 15000.0f)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
             continue;
         }
 
@@ -532,14 +531,13 @@ void Silent::SilentMouse()
             MouseServiceInitialized = false;
         }
 
-        OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
-        Api::Sleep(1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 }
 
-void Silent::RunService()
+void Silent::RunService(std::stop_token st)
 {
     OBF_PROLOGUE;
-    std::thread(SilentFramePos).detach();
-    std::thread(SilentMouse).detach();
+    std::thread(SilentFramePos, st).detach();
+    std::thread(SilentMouse, st).detach();
 }
