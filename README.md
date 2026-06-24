@@ -432,3 +432,11 @@ Settings are defined as `inline` variables in `Settings.h` (namespace `SettingsS
 - **UAC**: RequireAdministrator (Release)
 - **Configurations**: Debug / Release
 - **Release post-build**: Cleans PDB, iobj, ipdb, and tlog build artifacts
+
+
+
+
+
+.\sign.ps1 -ExePath .\Build\Bitware.exe
+
+To sign the cert

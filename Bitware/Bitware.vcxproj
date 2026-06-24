@@ -135,7 +135,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <UACExecutionLevel>RequireAdministrator</UACExecutionLevel>
-      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;Ole32.lib</AdditionalDependencies>
+      <AdditionalDependencies>d3d11.lib;d3dcompiler.lib;dxgi.lib;Ole32.lib;winhttp.lib;Advapi32.lib</AdditionalDependencies>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
     <PostBuildEvent>
@@ -303,6 +303,10 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Miscellaneous\Protection\External\oxorany.h" />
     <ClInclude Include="Source\Miscellaneous\Protection\External\oxorany_include.h" />
     <ClInclude Include="Source\Miscellaneous\Protection\FakeStrings.h" />
+    <ClInclude Include="Source\Updater\Updater.h" />
+    <ClInclude Include="Source\Updater\Installer.h" />
+    <ClInclude Include="Source\Version.h" />
+    <ClInclude Include="Source\Loader\LoaderConsole.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Dependencies\Clipper2Lib\src\clipper.engine.cpp" />
@@ -343,6 +347,8 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Source\Miscellaneous\Protection\AntiInjection.cpp" />
     <ClCompile Include="Source\Miscellaneous\Protection\External\oxorany.cpp" />
     <ClCompile Include="Source\Miscellaneous\Protection\FakeStrings.cpp" />
+    <ClCompile Include="Source\Updater\Updater.cpp" />
+    <ClCompile Include="Source\Updater\Installer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Bitware.rc" />
