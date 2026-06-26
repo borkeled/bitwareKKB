@@ -89,6 +89,8 @@ public:
     void clear();
 
 private:
+    void ensure_thread_running();
+
     mutable std::mutex mtx;
     std::vector<OBB> obstacles;
     bool cached = false;
@@ -96,6 +98,7 @@ private:
 
     std::thread cache_thread;
     std::atomic<bool> thread_running{false};
+    std::atomic<bool> thread_started{false};
     void cache_loop();
 
     bool is_visible_locked(const SDK::Vector3& origin, const SDK::Vector3& target) const;

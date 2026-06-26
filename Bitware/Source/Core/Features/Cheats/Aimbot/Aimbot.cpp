@@ -228,10 +228,10 @@ namespace Aimbot {
                 if (Globals::Aimbot::Aimbot_Mode == ImKeyBindMode_Toggle) {
                     if (Pressed && !LastPressed) Toggled = !Toggled;
                     if (Toggled) { AcquireTarget(); UpdateAimbot(); }
-                    else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); }
+                    else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); SDK::sleep_jitter(50, 15); }
                 } else {
                     if (Pressed) { AcquireTarget(); UpdateAimbot(); }
-                    else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); }
+                    else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); SDK::sleep_jitter(50, 15); }
                 }
                 LastPressed = Pressed;
                 if (StoredGameID != 0 && Globals::GameID != StoredGameID) {
@@ -264,10 +264,11 @@ namespace Aimbot {
         SDK::Matrix3 CamRot = Cam.Get_CameraRot();
         SDK::Vector3 CamForward = { -CamRot.data[2], -CamRot.data[5], -CamRot.data[8] };
 
+        std::shared_ptr<const std::vector<SDK::Player>> Snapshot;
+        { std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex); Snapshot = Globals::Player_Cache; }
+        if (!Snapshot) return;
+
         if (Globals::Aimbot::AimbotSticky && IsPersisting && PersistenceAddress != 0) {
-            std::shared_ptr<const std::vector<SDK::Player>> Snapshot;
-            { std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex); Snapshot = Globals::Player_Cache; }
-            if (!Snapshot) return;
             bool StickyFoundThisFrame = false;
             for (auto& Plr : *Snapshot) {
                 if (Plr.Character.Address != PersistenceAddress) continue;
@@ -294,9 +295,6 @@ namespace Aimbot {
             Globals::Aimbot::AimTarget = SDK::Instance(0);
         }
 
-        std::shared_ptr<const std::vector<SDK::Player>> Snapshot;
-        { std::lock_guard<std::mutex> Lock(Cache::Cache_Mutex); Snapshot = Globals::Player_Cache; }
-        if (!Snapshot) return;
         for (auto& Plr : *Snapshot) {
             if (Plr.Local_Player || !Plr.Character.Address || !Plr.Head.Address) continue;
             if (Plr.Distance > 700.f) continue;
@@ -304,11 +302,9 @@ namespace Aimbot {
             if (HitboxIdx > 2) HitboxIdx = 0;
             SDK::Vector3 BonePos = GetTargetBonePos(Plr, HitboxIdx);
             if (std::isnan(BonePos.x) || (BonePos.x == 0 && BonePos.y == 0)) continue;
-            SDK::Vector3 DirToBone = (BonePos - CameraOrigin).normalize();
+            SDK::Vector3 DirToBone = BonePos - CameraOrigin;
             float Dot = DirToBone.x * CamForward.x + DirToBone.y * CamForward.y + DirToBone.z * CamForward.z;
             if (Dot <= 0.0f) continue;
-            float Dist3D = (CameraOrigin - BonePos).magnitude();
-            if (Dist3D > 700.f) continue;
             SDK::Vector2 ScreenPos = Globals::VisualEngine.World_To_Screen(BonePos);
             float Dist2DSqr = (ScreenPos.x - CursorPos.x) * (ScreenPos.x - CursorPos.x) + (ScreenPos.y - CursorPos.y) * (ScreenPos.y - CursorPos.y);
             if (Globals::Aimbot::useFov) { float MaxFovSqr = Globals::Aimbot::FovSize * Globals::Aimbot::FovSize; if (Dist2DSqr > MaxFovSqr) continue; }

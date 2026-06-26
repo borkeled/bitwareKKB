@@ -17,7 +17,7 @@ namespace World {
         {
             if (Globals::World::Skybox)
             {
-                auto Sky = Globals::Lighting.Find_First_Child(std::string(skCrypt("Sky")).c_str());
+                auto Sky = Globals::Lighting.Find_First_Child(std::string(skCrypt("Sky")));
                 if (Sky.Address)
                 {
                     OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
@@ -123,7 +123,6 @@ namespace World {
                     }
 
                     if (Globals::World::Rotate) {
-                        auto Sky = Globals::Lighting.Find_First_Child_Of_Class(std::string(skCrypt("Sky")).c_str());
                         static float rotY = 0.0f;
                         rotY = (0.0f > 360.0f) ? 0.0f : rotY + Globals::World::Skybox_Rotate_Speed;
                         Driver->Write<SDK::Vector3>(Sky.Address + Offsets::Sky::SkyboxOrientation, { 0.0f, rotY, 0.0f });
@@ -132,8 +131,12 @@ namespace World {
                     SDK::Renderview::InvalidateLighting();
                     SDK::Renderview::ValidateSkybox();
                 }
+                SDK::sleep_jitter(30, 10);
             }
-            SDK::sleep_jitter(30, 10);
+            else
+            {
+                SDK::sleep_jitter(500, 50);
+            }
         }
     }
 
@@ -144,8 +147,12 @@ namespace World {
             {
                 SDK::Lighting::SetAmbient(Globals::Lighting.Address, {Globals::World::Colors::Ambience[0], Globals::World::Colors::Ambience[1], Globals::World::Colors::Ambience[2]} );
                 SDK::Renderview::InvalidateLighting();
+                SDK::sleep_jitter(100, 20);
             }
-            SDK::sleep_jitter(100, 20);
+            else
+            {
+                SDK::sleep_jitter(500, 50);
+            }
         }
     }
 
@@ -156,8 +163,12 @@ namespace World {
             {
                 SDK::Lighting::SetFog(Globals::Lighting.Address, Globals::World::Fog_Distance, {Globals::World::Colors::Fog[0], Globals::World::Colors::Fog[1], Globals::World::Colors::Fog[2]} );
                 SDK::Renderview::InvalidateLighting();
+                SDK::sleep_jitter(100, 20);
             }
-            SDK::sleep_jitter(100, 20);
+            else
+            {
+                SDK::sleep_jitter(500, 50);
+            }
         }
     }
 
@@ -168,8 +179,12 @@ namespace World {
             {
                 SDK::Lighting::SetBrightness(Globals::Lighting.Address, Globals::World::BrightnessI);
                 SDK::Renderview::InvalidateLighting();
+                SDK::sleep_jitter(100, 20);
             }
-            SDK::sleep_jitter(100, 20);
+            else
+            {
+                SDK::sleep_jitter(500, 50);
+            }
         }
     }
 
@@ -180,8 +195,12 @@ namespace World {
             {
                 SDK::Lighting::SetExposure(Globals::Lighting.Address, Globals::World::ExposureI);
                 SDK::Renderview::InvalidateLighting();
+                SDK::sleep_jitter(100, 20);
             }
-            SDK::sleep_jitter(100, 20);
+            else
+            {
+                SDK::sleep_jitter(500, 50);
+            }
         }
     }
 
@@ -198,8 +217,12 @@ namespace World {
                     SDK::Lighting::SetFOV(Globals::Camera.Address, CurrentFOV);
                     LastFOVValue = CurrentFOV;
                 }
+                SDK::sleep_jitter(30, 10);
             }
-            SDK::sleep_jitter(30, 10);
+            else
+            {
+                SDK::sleep_jitter(500, 50);
+            }
         }
     }
 

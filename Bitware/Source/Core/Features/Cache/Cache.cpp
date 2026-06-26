@@ -51,12 +51,10 @@ namespace Cache {
 
     inline SDK::Instance SDK::Player::* Find_Part_Member(std::string_view Name) {
         OBF_PROLOGUE;
-        auto it = std::lower_bound(std::begin(Part_Mappings), std::end(Part_Mappings), Name,
-            [](const Part_Mapping& Mapping, std::string_view Val) {
-                return Mapping.Name < Val;
-            });
-        if (it != std::end(Part_Mappings) && it->Name == Name) {
-            return it->Member;
+        for (const auto& Mapping : Part_Mappings) {
+            if (Mapping.Name == Name) {
+                return Mapping.Member;
+            }
         }
         return nullptr;
     }
@@ -71,10 +69,7 @@ namespace Cache {
 
     inline float Calculate_Distance(const SDK::Vector3& P1, const SDK::Vector3& P2) {
         OBF_PROLOGUE;
-        float Dx = P1.x - P2.x;
-        float Dy = P1.y - P2.y;
-        float Dz = P1.z - P2.z;
-        return std::sqrt(Dx * Dx + Dy * Dy + Dz * Dz);
+        return P1.distance(P2);
     }
 
     inline bool Valid_Position(const SDK::Vector3& Pos) {
@@ -96,11 +91,15 @@ namespace Cache {
         }
         Player.CharacterVersion = LocalVersionCounter;
 
+        Player.Tool_Name.clear();
         auto Children = Player.Character.Children();
         for (const auto& Part : Children) {
             auto Member = Find_Part_Member(Part.Name());
             if (Member) {
                 Player.*Member = Part;
+            }
+            if (Part.Class() == std::string(skCrypt("Tool"))) {
+                Player.Tool_Name = Part.Name();
             }
         }
 
@@ -109,12 +108,6 @@ namespace Cache {
             Player.Health = Humanoid.Get_Health();
             Player.MaxHealth = Humanoid.Get_MaxHealth();
             Player.Rig_Type = Humanoid.Get_RigType();
-        }
-
-        Player.Tool_Name.clear();
-        SDK::Instance Tool = Player.Character.Find_First_Child_Of_Class(std::string(skCrypt("Tool")).c_str());
-        if (Tool.Address) {
-            Player.Tool_Name = Tool.Name();
         }
 
         if (!Is_Local && Player.Head.Address != 0 && Valid_Position(Camera_Pos)) {

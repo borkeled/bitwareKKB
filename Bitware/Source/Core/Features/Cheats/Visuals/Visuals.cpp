@@ -216,6 +216,19 @@ namespace Visuals {
             CamPosValid = true;
         }
 
+        float BoxFillSinf = 0.f, BoxFillCosf = 1.f;
+        if (Globals::Visuals::Box_Fill_Gradient) {
+            float time = (Globals::Visuals::Box_Fill_Gradient_Rotate) ? (float)ImGui::GetTime() * (float)Globals::Visuals::BoxFillSpeed : 0.0f;
+            BoxFillSinf = sinf(time);
+            BoxFillCosf = cosf(time);
+        }
+
+        float ChamsFadeSinT = 0.f;
+        if (Globals::Visuals::ChamsFade) {
+            float time = (float)ImGui::GetTime() * (float)Globals::Visuals::ChamsFadeSpeed;
+            ChamsFadeSinT = (sinf(time) + 1.0f) * 0.5f;
+        }
+
         for (auto& Player : *Snapshot)
         {
             if (!Player.Character.Address) {
@@ -234,57 +247,94 @@ namespace Visuals {
 
             SDK::Vector3 HeadPos = Head.Get_Primitive().Get_Position();
             auto Head_W2S = Globals::VisualEngine.World_To_Screen(HeadPos);
-            if (Head_W2S.x <= 0.f || Head_W2S.y <= 0.f)
+
+            bool onScreen = (Head_W2S.x >= 0.f && Head_W2S.y >= 0.f);
+
+            if (!onScreen && Player.HumanoidRootPart.Address)
+            {
+                SDK::Part Root(Player.HumanoidRootPart.Address);
+                auto Root_W2S = Globals::VisualEngine.World_To_Screen(Root.Get_Primitive().Get_Position());
+                onScreen = (Root_W2S.x >= 0.f && Root_W2S.y >= 0.f);
+            }
+
+            if (!onScreen)
                 continue;
 
             float Left = FLT_MAX, Top = FLT_MAX, Right = -FLT_MAX, Bottom = -FLT_MAX;
             bool Valid = false;
-
             auto Bones = Visuals::Get_Bones(Player);
-            if (Bones.empty()) continue;
 
-            for (auto* Inst : Bones) {
-                if (!Inst || !Inst->Address) continue;
-                const auto Part = SDK::Part(Inst->Address);
-                if (!Part.Address) continue;
+            bool NeedsFullBones = Globals::Visuals::Box || Globals::Visuals::Healthbar || Globals::Visuals::Chams || Globals::Visuals::Skeleton;
 
-                const auto Primitive = Part.Get_Primitive();
-                if (!Primitive.Address) continue;
+            if (NeedsFullBones)
+            {
+                if (Bones.empty()) continue;
 
-                SDK::Vector3 Size = Primitive.Get_Size();
-                const auto Position = Primitive.Get_Position();
-                const auto Rotation = Primitive.Get_Rotation();
+                for (auto* Inst : Bones) {
+                    if (!Inst || !Inst->Address) continue;
+                    const auto Part = SDK::Part(Inst->Address);
+                    if (!Part.Address) continue;
 
-                if (std::isnan(Position.x) || std::isnan(Position.y) || std::isnan(Position.z))
-                    continue;
-                if (std::isnan(Size.x) || std::isnan(Size.y) || std::isnan(Size.z))
-                    continue;
-                if (Size.x == 0.f && Size.y == 0.f && Size.z == 0.f)
-                    continue;
+                    const auto Primitive = Part.Get_Primitive();
+                    if (!Primitive.Address) continue;
 
-                if (Globals::GameID == 292439477)
-                {
-                    if (Inst == &Player.Head) Size = { 1.f, 1.f, 1.f };
-                    else if (Inst == &Player.Torso || Inst == &Player.UpperTorso || Inst == &Player.LowerTorso) Size = { 2.f, 2.f, 1.f };
-                    else Size = { 1.f, 2.f, 1.f };
+                    SDK::Vector3 Size = Primitive.Get_Size();
+                    const auto Position = Primitive.Get_Position();
+                    const auto Rotation = Primitive.Get_Rotation();
+
+                    if (std::isnan(Position.x) || std::isnan(Position.y) || std::isnan(Position.z))
+                        continue;
+                    if (std::isnan(Size.x) || std::isnan(Size.y) || std::isnan(Size.z))
+                        continue;
+                    if (Size.x == 0.f && Size.y == 0.f && Size.z == 0.f)
+                        continue;
+
+                    if (Globals::GameID == 292439477)
+                    {
+                        if (Inst == &Player.Head) Size = { 1.f, 1.f, 1.f };
+                        else if (Inst == &Player.Torso || Inst == &Player.UpperTorso || Inst == &Player.LowerTorso) Size = { 2.f, 2.f, 1.f };
+                        else Size = { 1.f, 2.f, 1.f };
+                    }
+
+                    if (Size.x == 0.f && Size.y == 0.f && Size.z == 0.f) continue;
+
+                    for (const auto& LocalCorners : Corners) {
+                        SDK::Vector3 Offset{
+                            LocalCorners.x * Size.x * 0.5f,
+                            LocalCorners.y * Size.y * 0.5f,
+                            LocalCorners.z * Size.z * 0.5f
+                        };
+                        SDK::Vector3 World = Position + Rotation * Offset;
+                        auto W2S = Globals::VisualEngine.World_To_Screen(World);
+                        if (W2S.x < 0.f || W2S.y < 0.f) continue;
+                        Valid = true;
+                        Left = std::min(Left, W2S.x);
+                        Top = std::min(Top, W2S.y);
+                        Right = std::max(Right, W2S.x);
+                        Bottom = std::max(Bottom, W2S.y);
+                    }
                 }
+            }
+            else
+            {
+                // Simple bounding box from Head position when only text overlays are active
+                Left = Head_W2S.x - 25.f;
+                Right = Head_W2S.x + 25.f;
+                Top = Head_W2S.y - 25.f;
+                Bottom = Head_W2S.y + 25.f;
+                Valid = true;
 
-                if (Size.x == 0.f && Size.y == 0.f && Size.z == 0.f) continue;
-
-                for (const auto& LocalCorners : Corners) {
-                    SDK::Vector3 Offset{
-                        LocalCorners.x * Size.x * 0.5f,
-                        LocalCorners.y * Size.y * 0.5f,
-                        LocalCorners.z * Size.z * 0.5f
-                    };
-                    SDK::Vector3 World = Position + Rotation * Offset;
-                    auto W2S = Globals::VisualEngine.World_To_Screen(World);
-                    if (W2S.x < 0.f || W2S.y < 0.f) continue;
-                    Valid = true;
-                    Left = std::min(Left, W2S.x);
-                    Top = std::min(Top, W2S.y);
-                    Right = std::max(Right, W2S.x);
-                    Bottom = std::max(Bottom, W2S.y);
+                if (Player.HumanoidRootPart.Address)
+                {
+                    auto RootW2S = Globals::VisualEngine.World_To_Screen(
+                        SDK::Part(Player.HumanoidRootPart.Address).Get_Primitive().Get_Position());
+                    if (RootW2S.x >= 0.f && RootW2S.y >= 0.f)
+                    {
+                        Left = std::min(Left, RootW2S.x - 15.f);
+                        Right = std::max(Right, RootW2S.x + 15.f);
+                        Top = std::min(Top, RootW2S.y);
+                        Bottom = std::max(Bottom, RootW2S.y + 20.f);
+                    }
                 }
             }
 
@@ -329,11 +379,8 @@ namespace Visuals {
 
                     if (Globals::Visuals::Box_Fill) {
                         if (Globals::Visuals::Box_Fill_Gradient) {
-                            float time = (Globals::Visuals::Box_Fill_Gradient_Rotate) ? (float)ImGui::GetTime() * Globals::Visuals::BoxFillSpeed : 0.0f;
                             const float* colA = (wl ? wl : Globals::Visuals::Colors::BoxFill_Top);
                             const float* colB = (wl ? wl : Globals::Visuals::Colors::BoxFill_Bottom);
-                            float s = sinf(time);
-                            float c = cosf(time);
                             auto LerpCol = [&](float t) -> ImU32 {
                                 return IM_COL32(
                                     (int)((colA[0] + (colB[0] - colA[0]) * t) * 255.0f),
@@ -341,10 +388,10 @@ namespace Visuals {
                                     (int)((colA[2] + (colB[2] - colA[2]) * t) * 255.0f),
                                     (int)((colA[3] + (colB[3] - colA[3]) * t) * 255.0f));
                             };
-                            float t_s = (s + 1.0f) * 0.5f;
-                            float t_c = (c + 1.0f) * 0.5f;
-                            float t_ns = (-s + 1.0f) * 0.5f;
-                            float t_nc = (-c + 1.0f) * 0.5f;
+                            float t_s = (BoxFillSinf + 1.0f) * 0.5f;
+                            float t_c = (BoxFillCosf + 1.0f) * 0.5f;
+                            float t_ns = (-BoxFillSinf + 1.0f) * 0.5f;
+                            float t_nc = (-BoxFillCosf + 1.0f) * 0.5f;
                             ImU32 c_tl, c_tr, c_br, c_bl;
                             if (Globals::Visuals::Box_Fill_Type == 0) { c_tl = c_bl = LerpCol(t_s); c_tr = c_br = LerpCol(t_c); }
                             else if (Globals::Visuals::Box_Fill_Type == 1) { c_tl = c_tr = LerpCol(t_s); c_bl = c_br = LerpCol(t_c); }
@@ -368,10 +415,8 @@ namespace Visuals {
 
                     if (Globals::Visuals::Box_Fill) {
                         if (Globals::Visuals::Box_Fill_Gradient) {
-                            float time = (Globals::Visuals::Box_Fill_Gradient_Rotate) ? (float)ImGui::GetTime() * Globals::Visuals::BoxFillSpeed : 0.0f;
                             const float* colA = (wl ? wl : Globals::Visuals::Colors::BoxFill_Top);
                             const float* colB = (wl ? wl : Globals::Visuals::Colors::BoxFill_Bottom);
-                            float s = sinf(time), c = cosf(time);
                             auto LerpCol = [&](float t) -> ImU32 {
                                 return IM_COL32(
                                     (int)((colA[0] + (colB[0] - colA[0]) * t) * 255.0f),
@@ -379,7 +424,7 @@ namespace Visuals {
                                     (int)((colA[2] + (colB[2] - colA[2]) * t) * 255.0f),
                                     (int)((colA[3] + (colB[3] - colA[3]) * t) * 255.0f));
                             };
-                            float t_s = (s + 1.0f) * 0.5f, t_c = (c + 1.0f) * 0.5f, t_ns = (-s + 1.0f) * 0.5f, t_nc = (-c + 1.0f) * 0.5f;
+                            float t_s = (BoxFillSinf + 1.0f) * 0.5f, t_c = (BoxFillCosf + 1.0f) * 0.5f, t_ns = (-BoxFillSinf + 1.0f) * 0.5f, t_nc = (-BoxFillCosf + 1.0f) * 0.5f;
                             ImU32 c_tl, c_tr, c_br, c_bl;
                             if (Globals::Visuals::Box_Fill_Type == 0) { c_tl = c_bl = LerpCol(t_s); c_tr = c_br = LerpCol(t_c); }
                             else if (Globals::Visuals::Box_Fill_Type == 1) { c_tl = c_tr = LerpCol(t_s); c_bl = c_br = LerpCol(t_c); }
@@ -451,7 +496,7 @@ namespace Visuals {
             // text overlays
             if (Globals::Visuals::Health) {
                 char HealthStr[32];
-                snprintf(HealthStr, sizeof(HealthStr), std::string(skCrypt("[%d]")).c_str(), static_cast<int>(Player.Health));
+                snprintf(HealthStr, sizeof(HealthStr), skCrypt("[%d]"), static_cast<int>(Player.Health));
                 float X_Text = Pos.x - 6.0f;
                 if (Globals::Visuals::Healthbar) X_Text -= Globals::Visuals::Thickness + Globals::Visuals::Gap;
                 float Y_text = Pos.y - 3.0f;
@@ -470,31 +515,31 @@ namespace Visuals {
                 }
                 else if (Globals::Visuals::Name_Type == 2) {
                     char FullName[512];
-                    snprintf(FullName, sizeof(FullName), std::string(skCrypt("%s [%s]")).c_str(), Player.Name.c_str(), Player.Display_Name.c_str());
+                    snprintf(FullName, sizeof(FullName), skCrypt("%s [%s]"), Player.Name.c_str(), Player.Display_Name.c_str());
                     ImVec2 Text_Size = ImGui::CalcTextSize(FullName);
-                    float NameW = ImGui::CalcTextSize(Player.Name.c_str()).x + ImGui::CalcTextSize(std::string(skCrypt(" ")).c_str()).x;
-                    float BracketW = ImGui::CalcTextSize(std::string(skCrypt("[")).c_str()).x;
+                    float NameW = ImGui::CalcTextSize(Player.Name.c_str()).x + ImGui::CalcTextSize(skCrypt(" ")).x;
+                    float BracketW = ImGui::CalcTextSize(skCrypt("[")).x;
                     float DisplayW = ImGui::CalcTextSize(Player.Display_Name.c_str()).x;
                     ImVec2 Position(Pos.x + (Size.x * 0.5f) - (Text_Size.x * 0.5f), Pos.y - Text_Size.y - 3.f);
                     Outline(Position, Player.Name.c_str(), (wl ? wl : Globals::Visuals::Colors::Name));
-                    Outline(ImVec2(Position.x + NameW, Position.y - 2.f), std::string(skCrypt("[")).c_str(), (wl ? wl : Globals::Visuals::Colors::Name));
+                    Outline(ImVec2(Position.x + NameW, Position.y - 2.f), skCrypt("["), (wl ? wl : Globals::Visuals::Colors::Name));
                     static float white[4] = { 1.f, 1.f, 1.f, 1.f };
                     Outline(ImVec2(Position.x + NameW + BracketW, Position.y - 1.f), Player.Display_Name.c_str(), white);
-                    Outline(ImVec2(Position.x + NameW + BracketW + DisplayW, Position.y - 2.f), std::string(skCrypt("]")).c_str(), (wl ? wl : Globals::Visuals::Colors::Name));
+                    Outline(ImVec2(Position.x + NameW + BracketW + DisplayW, Position.y - 2.f), skCrypt("]"), (wl ? wl : Globals::Visuals::Colors::Name));
                 }
             }
 
             if (Globals::Visuals::Distance) {
                 char Buffer[16];
-                snprintf(Buffer, sizeof(Buffer), std::string(skCrypt("[%dm]")).c_str(), static_cast<int>(Player.Distance));
+                snprintf(Buffer, sizeof(Buffer), skCrypt("[%dm]"), static_cast<int>(Player.Distance));
                 ImVec2 Text_Size = ImGui::CalcTextSize(Buffer);
                 Outline(ImVec2(Pos.x + (Size.x * 0.5f) - (Text_Size.x * 0.5f), Pos.y + Size.y + 3.0f), Buffer, (wl ? wl : Globals::Visuals::Colors::Distance));
             }
 
             if (Globals::Visuals::Rig_Type) {
                 const char* Rig_Type = nullptr;
-                if (Player.Rig_Type == 1) Rig_Type = std::string(skCrypt("[R15]")).c_str();
-                else if (Player.Rig_Type == 0) Rig_Type = std::string(skCrypt("[R6]")).c_str();
+                if (Player.Rig_Type == 1) Rig_Type = skCrypt("[R15]");
+                else if (Player.Rig_Type == 0) Rig_Type = skCrypt("[R6]");
                 else continue;
                 ImVec2 Text_Size = ImGui::CalcTextSize(Rig_Type);
                 Outline(ImVec2(std::round(Pos.x + Size.x + 5.0f), std::round(Pos.y - Text_Size.y + 10.0f)), Rig_Type, (wl ? wl : Globals::Visuals::Colors::Rig_Type));
@@ -503,7 +548,7 @@ namespace Visuals {
             if (Globals::Visuals::Tool) {
                 char Cl_Name[256];
                 const std::string& Tool_Name = Player.Tool_Name;
-                if (Tool_Name.empty()) strcpy_s(Cl_Name, std::string(skCrypt("[None]")).c_str());
+                if (Tool_Name.empty()) strcpy_s(Cl_Name, skCrypt("[None]"));
                 else {
                     int idx = 0;
                     Cl_Name[idx++] = '[';
@@ -577,13 +622,13 @@ namespace Visuals {
                     const float* co = (wl ? wl : Globals::Visuals::Colors::ChamsOutline);
                     ImU32 OutlineColor = ImGui::ColorConvertFloat4ToU32({ co[0], co[1], co[2], co[3] });
                     if (Globals::Visuals::ChamsFade) {
-                        float time = (float)ImGui::GetTime() * Globals::Visuals::ChamsFadeSpeed;
-                        float t = (sinf(time) + 1.0f) * 0.5f;
                         ImVec4 c = ImGui::ColorConvertU32ToFloat4(FillColor);
-                        c.w *= t; FillColor = ImGui::ColorConvertFloat4ToU32(c);
+                        c.w *= ChamsFadeSinT; FillColor = ImGui::ColorConvertFloat4ToU32(c);
                     }
-                    for (auto& Poly : AllPolys) Draw->AddConcavePolyFilled(Poly.data(), static_cast<int>(Poly.size()), FillColor);
-                    for (auto& Poly : AllPolys) Draw->AddPolyline(Poly.data(), static_cast<int>(Poly.size()), OutlineColor, true, 1.0f);
+                    for (auto& Poly : AllPolys) {
+                        Draw->AddConcavePolyFilled(Poly.data(), static_cast<int>(Poly.size()), FillColor);
+                        Draw->AddPolyline(Poly.data(), static_cast<int>(Poly.size()), OutlineColor, true, 1.0f);
+                    }
                 }
                 Draw->Flags = SavedFlags;
             }

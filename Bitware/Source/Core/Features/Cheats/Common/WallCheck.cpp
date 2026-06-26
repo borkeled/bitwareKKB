@@ -8,8 +8,6 @@
 WallCheck::WallCheck()
 {
     OBF_PROLOGUE;
-    thread_running = true;
-    cache_thread = std::thread(&WallCheck::cache_loop, this);
 }
 
 WallCheck::~WallCheck()
@@ -20,6 +18,18 @@ WallCheck::~WallCheck()
     {
         OBF_JUNK_BLOCK;
         cache_thread.join();
+    }
+}
+
+void WallCheck::ensure_thread_running()
+{
+    OBF_PROLOGUE;
+    bool expected = false;
+    if (thread_started.compare_exchange_strong(expected, true))
+    {
+        OBF_JUNK_DECLARE;
+        thread_running = true;
+        cache_thread = std::thread(&WallCheck::cache_loop, this);
     }
 }
 
@@ -428,6 +438,7 @@ bool WallCheck::cache_workspace()
 bool WallCheck::is_visible(const SDK::Vector3& origin, const SDK::Vector3& target)
 {
     OBF_PROLOGUE;
+    ensure_thread_running();
     if (Globals::Settings::WallCheck_Method == 1)
     {
         OBF_JUNK_BLOCK;
@@ -453,8 +464,9 @@ bool WallCheck::is_visible_locked(const SDK::Vector3& origin, const SDK::Vector3
         return true;
     }
 
-    SDK::Vector3 dir = (target - origin).normalize();
-    float distance = (target - origin).magnitude();
+    SDK::Vector3 delta = target - origin;
+    SDK::Vector3 dir = delta.normalize();
+    float distance = delta.magnitude();
 
     if (distance <= 0.f)
         return true;
@@ -498,8 +510,9 @@ bool WallCheck::is_visible_raycast(const SDK::Vector3& origin, const SDK::Vector
         local_obstacles = obstacles;
     }
 
-    SDK::Vector3 dir = (target - origin).normalize();
-    float distance = (target - origin).magnitude();
+    SDK::Vector3 delta = target - origin;
+    SDK::Vector3 dir = delta.normalize();
+    float distance = delta.magnitude();
 
     if (distance <= 0.f)
         return true;

@@ -89,28 +89,24 @@ namespace SDK
         }
 
         const float magnitude() const {
-            return sqrtf(powf(x, 2) + powf(y, 2) + powf(z, 2));
+            return sqrtf(x * x + y * y + z * z);
         }
 
-        const float distance(Vector3 vector) const {
+        const float distance(const Vector3& vector) const {
             return (*this - vector).magnitude();
         }
 
         const Vector3 normalize() const {
-            Vector3 ret;
             float mag = magnitude();
-            ret.x = x / mag;
-            ret.y = y / mag;
-            ret.z = z / mag;
-            return ret;
+            return { x / mag, y / mag, z / mag };
         }
 
-        auto cross(Vector3 vec) const {
-            Vector3 ret;
-            ret.x = y * vec.z - z * vec.y;
-            ret.y = -(x * vec.z - z * vec.x);
-            ret.z = x * vec.y - y * vec.x;
-            return ret;
+        auto cross(const Vector3& vec) const {
+            return Vector3{
+                y * vec.z - z * vec.y,
+                -(x * vec.z - z * vec.x),
+                x * vec.y - y * vec.x
+            };
         }
     };
 

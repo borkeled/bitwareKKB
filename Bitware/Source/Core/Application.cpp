@@ -109,11 +109,11 @@ bool Application::InitSDK()
     }
 
     Globals::VisualEngine.Address = Driver->Read<std::uint64_t>(ModuleBase + Offsets::VisualEngine::Pointer);
-    Globals::Players.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Players")).c_str()).Address;
-    Globals::Workspace.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Workspace")).c_str()).Address;
-    Globals::Camera.Address = Globals::Workspace.Find_First_Child_Of_Class(std::string(skCrypt("Camera")).c_str()).Address;
+    Globals::Players.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Players"))).Address;
+    Globals::Workspace.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Workspace"))).Address;
+    Globals::Camera.Address = Globals::Workspace.Find_First_Child_Of_Class(std::string(skCrypt("Camera"))).Address;
 
-    auto Lightin = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Lighting")).c_str());
+    auto Lightin = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Lighting")));
     Globals::Lighting = SDK::Lighting(Lightin.Address);
 
     {

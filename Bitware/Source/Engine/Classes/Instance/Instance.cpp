@@ -46,7 +46,7 @@ namespace SDK {
     Instance Instance::Find_First_Child(const std::string& Name) const {
         if (!Address || Name.empty()) return Instance();
 
-        for (Instance Child : Children())
+        for (const auto& Child : Children())
         {
             if (!Child.Address) continue;
             if (Child.Name() == Name) return Child;
@@ -58,7 +58,7 @@ namespace SDK {
     Instance Instance::Find_First_Child_Of_Class(const std::string& Class_Name) const {
         if (!Address || Class_Name.empty()) return Instance();
 
-        for (Instance Child : Children())
+        for (const auto& Child : Children())
         {
             if (!Child.Address) continue;
             if (Child.Class() == Class_Name) return Child;

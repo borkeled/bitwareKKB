@@ -143,7 +143,7 @@ bool Graphics::Create_Device()
 {
     DXGI_SWAP_CHAIN_DESC SwapChainDesc{};
 
-    SwapChainDesc.BufferCount = 2;
+    SwapChainDesc.BufferCount = 3;
     SwapChainDesc.BufferDesc.RefreshRate.Numerator = 60;
     SwapChainDesc.BufferDesc.RefreshRate.Denominator = 1;
 
@@ -167,6 +167,12 @@ bool Graphics::Create_Device()
     D3D_FEATURE_LEVEL FeatureLevelList[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
 
     HRESULT Result = Api::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
+
+    if (FAILED(Result))
+    {
+        SwapChainDesc.BufferCount = 2;
+        Result = Api::D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, FeatureLevelList, 2, D3D11_SDK_VERSION, &SwapChainDesc, &Detail->SwapChain, &Detail->Device, &FeatureLevel, &Detail->DeviceContext);
+    }
 
     if (Result == DXGI_ERROR_UNSUPPORTED)
     {
@@ -270,13 +276,13 @@ void Graphics::Destroy_Imgui()
 
 void Graphics::NewFrame()
 {
-    if (Globals::Settings::Streamproof)
     {
-        Api::SetWindowDisplayAffinity(Detail->Window, WDA_EXCLUDEFROMCAPTURE);
-    }
-    else
-    {
-        Api::SetWindowDisplayAffinity(Detail->Window, WDA_NONE);
+        static DWORD LastAffinity = (DWORD)-1;
+        DWORD NewAffinity = Globals::Settings::Streamproof ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+        if (NewAffinity != LastAffinity) {
+            LastAffinity = NewAffinity;
+            Api::SetWindowDisplayAffinity(Detail->Window, NewAffinity);
+        }
     }
 
     HWND TargetWindow = Globals::RobloxWindow;

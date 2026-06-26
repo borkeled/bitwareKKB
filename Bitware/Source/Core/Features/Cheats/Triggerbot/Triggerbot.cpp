@@ -85,7 +85,7 @@ namespace Triggerbot {
                         Api::SendInput(1, &Up, sizeof(INPUT));
                         Holding = false;
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    SDK::sleep_jitter(50, 10);
                     continue;
                 }
 
