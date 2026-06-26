@@ -350,15 +350,20 @@ void Graphics::NewFrame()
     if (InputHook::ConsumeMenuKeyPress())
     {
         Running = !Running;
+        InputHook::SetMenuOpen(Running);
 
         if (Running)
         {
-            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE);
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
             SetForegroundWindow(Detail->Window);
+            SetFocus(Detail->Window);
         }
         else
         {
             SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT);
+            HWND target = Globals::RobloxWindow;
+            if (target && IsWindow(target))
+                SetForegroundWindow(target);
         }
     }
 }
