@@ -66,12 +66,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Bitware"
             VALUE "FileDescription",  "Bitware - External tool"
-            VALUE "FileVersion",      "1.1.1.1"
+            VALUE "FileVersion",      "1.1.2"
             VALUE "InternalName",     "Bitware"
             VALUE "LegalCopyright",   "Copyright (C) 2026"
             VALUE "OriginalFilename", "Bitware.exe"
             VALUE "ProductName",      "Bitware"
-            VALUE "ProductVersion",   "1.1.1.1"
+            VALUE "ProductVersion",   "1.1.2"
         END
     END
     BLOCK "VarFileInfo"

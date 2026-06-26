@@ -141,7 +141,7 @@ namespace {
         DWORD dwOne = 1;
 
         std::wstring displayName = WS(skCrypt(L"Bitware"));
-        std::wstring displayVersion = WS(skCrypt(L"1.1.1"));
+        std::wstring displayVersion = WS(skCrypt(L"1.1.2"));
         std::wstring publisher = WS(skCrypt(L"Bitware"));
 
         RegSetValueExW(hKey, WS(skCrypt(L"DisplayName")).c_str(), 0, REG_SZ,
