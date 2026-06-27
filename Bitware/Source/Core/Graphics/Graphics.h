@@ -13,6 +13,9 @@
 class IMenuRenderer;
 
 inline ImFont* Tahoma_BoldXP = nullptr;
+inline ImFont* Inter_SemiBold = nullptr;
+inline ImFont* Inter_Medium = nullptr;
+inline ImFont* Icon_Font = nullptr;
 
 
 

@@ -26,7 +26,7 @@
 #include <Miscellaneous/Protection/External/oxorany_include.h>
 #include <Auth/skStr.h>
 #include <Core/UI/IMenuRenderer.h>
-#include <Core/UI/LegacyMenuRenderer.h>
+#include <Core/UI/GoodMenuRenderer.h>
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
 #include <Infrastructure/AntiDump.h>
@@ -153,7 +153,7 @@ bool Application::InitOverlay()
 
     if (!m_MenuRenderer)
     {
-        m_MenuRenderer = std::make_unique<LegacyMenuRenderer>();
+        m_MenuRenderer = std::make_unique<GoodMenuRenderer>();
     }
 
     Graphic->SetMenuRenderer(std::move(m_MenuRenderer));

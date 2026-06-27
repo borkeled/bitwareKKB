@@ -16,6 +16,9 @@
 #include "Fonts/Tahoma_Bold.h"
 #include <ImGui/addons/colors/colors.h>
 #include <ImGui/addons/imgui_addons.h>
+#include <Core/UI/GOOD/settings/variables.h>
+#include <Core/UI/GOOD/headers/fonts.h>
+#include <Core/UI/GOOD/data/fonts.h>
 #include <Core/Input/InputHook.h>
 #include <Core/UI/IMenuRenderer.h>
 #include <Miscellaneous/Protection/External/oxorany_include.h>
@@ -207,34 +210,19 @@ bool Graphics::Create_Imgui()
 
     float MainScale = ImGui_ImplWin32_GetDpiScaleForMonitor(MonitorFromPoint(POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
 
-    ImGuiStyle& Style = ImGui::GetStyle();
     ImGuiIO& IO = ImGui::GetIO(); (void)IO;
 
     IO.IniFilename = nullptr;
 
     ImGui::StyleColorsDark();
 
-    const unsigned int freetype_flags = ImGuiFreeTypeLoaderFlags_MonoHinting | ImGuiFreeTypeLoaderFlags_Monochrome;
-    IO.Fonts->SetFontLoader(ImGuiFreeType::GetFontLoader());
-    IO.Fonts->FontLoaderFlags = freetype_flags;
+    const unsigned int freetype_flags = ImGuiFreeTypeBuilderFlags_MonoHinting | ImGuiFreeTypeBuilderFlags_Monochrome;
+    IO.Fonts->FontBuilderIO = ImGuiFreeType::GetBuilderForFreeType();
+    IO.Fonts->FontBuilderFlags = freetype_flags;
 
-    ImFontConfig font_cfg{};
-    font_cfg.PixelSnapH = true;
-    font_cfg.OversampleH = 2;
-    font_cfg.OversampleV = 1;
-    font_cfg.RasterizerMultiply = 1.05f;
-    font_cfg.FontLoaderFlags = freetype_flags;
-
-    ImFontConfig font_configuration = font_cfg;
-    font_configuration.FontDataOwnedByAtlas = false;
-
-	float Verdana_Size = 13.0f * MainScale;
-    float Tahoma_Size = 13.0f * MainScale;
-    float Tahoma_Bold_Size = 13.0f * MainScale;
-
-    IO.Fonts->AddFontFromMemoryTTF(const_cast<unsigned char*>(Tahoma), sizeof(Tahoma), Verdana_Size, &font_configuration);
-
-    Tahoma_BoldXP = IO.Fonts->AddFontFromMemoryTTF(const_cast<unsigned char*>(Tahoma_Bold), sizeof(Tahoma_Bold), Verdana_Size, &font_configuration, IO.Fonts->GetGlyphRangesCyrillic());
+    var->gui.dpi = MainScale;
+    var->gui.stored_dpi = static_cast<int>(MainScale * 100.0f);
+    var->gui.dpi_changed = true;
 
     if (!ImGui_ImplWin32_Init(Detail->Window))
     {
@@ -249,6 +237,28 @@ bool Graphics::Create_Imgui()
     if (!ImGui_ImplDX11_Init(Detail->Device, Detail->DeviceContext))
     {
         return false;
+    }
+
+    {
+        std::vector<unsigned char> tahoma_vec(Tahoma, Tahoma + sizeof(Tahoma));
+        std::vector<unsigned char> tahoma_bold_vec(Tahoma_Bold, Tahoma_Bold + sizeof(Tahoma_Bold));
+
+        font->get(tahoma_vec, 13.0f);
+        font->get(tahoma_bold_vec, 13.0f);
+        font->get(inter_semibold, 14.0f);
+        font->get(inter_medium, 11.0f);
+        font->get_file(
+            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
+            12.5f, true);
+
+        font->update();
+
+        Tahoma_BoldXP = font->get(tahoma_bold_vec, 13.0f);
+        Inter_SemiBold = font->get(inter_semibold, 14.0f);
+        Inter_Medium = font->get(inter_medium, 11.0f);
+        Icon_Font = font->get_file(
+            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
+            12.5f, true);
     }
 
     return true;

@@ -84,7 +84,7 @@ void LegacyMenuRenderer::Render()
             if (Menu::BeginChild(WRAPPER_MARCO("Silent Aim"), ImVec2(LeftWidth - SidePad, FullHeight)))
             {
                 Menu::CheckBox(WRAPPER_MARCO("Enabled"), &Globals::Silent::Enabled);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x + 12.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x + 12.0f);
                 Menu::KeyBindEx(WRAPPER_MARCO("Silent Key"), &Globals::Silent::Silent_Key, &Globals::Silent::Silent_Mode);
 
                 Menu::CheckBox(WRAPPER_MARCO("Team check"), &Globals::Silent::TeamCheck);
@@ -102,11 +102,11 @@ void LegacyMenuRenderer::Render()
             if (Menu::BeginChild(WRAPPER_MARCO("Silent FOV"), ImVec2(RightWidth - SidePad, HalfHeight)))
             {
                 Menu::CheckBox(WRAPPER_MARCO("Draw FOV"), &Globals::Silent::DrawFov);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Color"), Globals::Silent::FovColor);
 
                 {
-                    float xBtnOffset = ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f;
+                    float xBtnOffset = ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f;
                     float keyWidth = ImGui::GetContentRegionAvail().x * 0.35f;
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x * 0.40f);
                     Menu::KeyBindEx(WRAPPER_MARCO("FOV Toggle"), &Globals::Silent::FovToggleKey, &Globals::Silent::FovToggleMode, ImVec2(keyWidth, 0));
@@ -166,7 +166,7 @@ void LegacyMenuRenderer::Render()
             if (Menu::BeginChild(WRAPPER_MARCO("Aimbot"), ImVec2(LeftWidth - SidePad, HalfHeight)))
             {
                 Menu::CheckBox(WRAPPER_MARCO("Enabled"), &Globals::Aimbot::Enabled);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x + 12.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x + 12.0f);
                 Menu::KeyBindEx(WRAPPER_MARCO("Aimbot Key"), &Globals::Aimbot::Aimbot_Key, &Globals::Aimbot::Aimbot_Mode);
 
                 Menu::CheckBox(WRAPPER_MARCO("Sticky aim"), &Globals::Aimbot::AimbotSticky);
@@ -199,11 +199,11 @@ void LegacyMenuRenderer::Render()
             if (Menu::BeginChild(WRAPPER_MARCO("Aimbot FOV"), ImVec2(LeftWidth - SidePad, Bottom)))
             {
                 Menu::CheckBox(WRAPPER_MARCO("Draw FOV"), &Globals::Aimbot::DrawFov);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Color"), Globals::Aimbot::FovColor);
 
                 {
-                    float xBtnOffset = ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f;
+                    float xBtnOffset = ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f;
                     float keyWidth = ImGui::GetContentRegionAvail().x * 0.35f;
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x * 0.40f);
                     Menu::KeyBindEx(WRAPPER_MARCO("FOV Toggle"), &Globals::Aimbot::FovToggleKey, &Globals::Aimbot::FovToggleMode, ImVec2(keyWidth, 0));
@@ -239,7 +239,7 @@ void LegacyMenuRenderer::Render()
             if (Menu::BeginChild(WRAPPER_MARCO("Triggerbot"), ImVec2(RightWidth - SidePad, HalfHeight)))
             {
                 Menu::CheckBox(WRAPPER_MARCO("Enabled"), &Globals::Triggerbot::Enabled);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x + 12.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x + 12.0f);
                 Menu::KeyBindEx(WRAPPER_MARCO("Trigger Key"), &Globals::Triggerbot::Triggerbot_Key, &Globals::Triggerbot::Triggerbot_Mode);
 
                 Menu::CheckBox(WRAPPER_MARCO("Knocked check"), &Globals::Triggerbot::KnockedCheck);
@@ -275,7 +275,7 @@ void LegacyMenuRenderer::Render()
             {
                 Menu::CheckBox(WRAPPER_MARCO("Enabled"), &Globals::Visuals::Enabled);
                 {
-                    float xBtnOffset = ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f;
+                    float xBtnOffset = ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f;
                     float keyWidth = ImGui::GetContentRegionAvail().x * 0.35f;
                     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x * 0.40f);
                     Menu::KeyBindEx(WRAPPER_MARCO("ESP Toggle"), &Globals::Visuals::ToggleKey, &Globals::Visuals::ToggleMode, ImVec2(keyWidth, 0));
@@ -291,13 +291,13 @@ void LegacyMenuRenderer::Render()
                     if (ImGui::IsItemHovered()) ImGui::SetTooltip(WRAPPER_MARCO("Clear keybind"));
                 }
                 Menu::CheckBox(WRAPPER_MARCO("Box"), &Globals::Visuals::Box);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Box Color"), Globals::Visuals::Colors::Box);
 
                 if (Globals::Visuals::Box)
                 {
                     Menu::CheckBox(WRAPPER_MARCO("Box Fill"), &Globals::Visuals::Box_Fill);
-                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                     Menu::ColorEdit4(WRAPPER_MARCO("Box Fill Top"), Globals::Visuals::Colors::BoxFill_Top);
                     if (Globals::Visuals::Box_Fill_Gradient)
                     {
@@ -309,12 +309,12 @@ void LegacyMenuRenderer::Render()
                 Menu::CheckBox(WRAPPER_MARCO("Healthbar"), &Globals::Visuals::Healthbar);
                 if (Globals::Visuals::Healthbar_Type == 0)
                 {
-                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                     Menu::ColorEdit4(WRAPPER_MARCO("Healthbar Color"), Globals::Visuals::Colors::Healthbar);
                 }
                 else if (Globals::Visuals::Healthbar_Type == 1)
                 {
-                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                     Menu::ColorEdit4(WRAPPER_MARCO("Healthbar Top"), Globals::Visuals::Colors::Healthbar_Top);
                     ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() - 24);
                     Menu::ColorEdit4(WRAPPER_MARCO("Healthbar Middle"), Globals::Visuals::Colors::Healthbar_Middle);
@@ -323,27 +323,27 @@ void LegacyMenuRenderer::Render()
                 }
 
                 Menu::CheckBox(WRAPPER_MARCO("Health"), &Globals::Visuals::Health);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Health Color"), Globals::Visuals::Colors::Health);
 
                 Menu::CheckBox(WRAPPER_MARCO("Name"), &Globals::Visuals::Name);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Name Color"), Globals::Visuals::Colors::Name);
 
                 Menu::CheckBox(WRAPPER_MARCO("Distance"), &Globals::Visuals::Distance);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Distance Color"), Globals::Visuals::Colors::Distance);
 
                 Menu::CheckBox(WRAPPER_MARCO("Rig Type"), &Globals::Visuals::Rig_Type);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Rig Type Color"), Globals::Visuals::Colors::Rig_Type);
 
                 Menu::CheckBox(WRAPPER_MARCO("Tool"), &Globals::Visuals::Tool);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Tool Color"), Globals::Visuals::Colors::Tool);
 
                 Menu::CheckBox(WRAPPER_MARCO("Skeleton"), &Globals::Visuals::Skeleton);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Skeleton Color"), Globals::Visuals::Colors::Skeleton);
 
                 Menu::CheckBox(WRAPPER_MARCO("Chams"), &Globals::Visuals::Chams);
@@ -356,13 +356,13 @@ void LegacyMenuRenderer::Render()
                     if (Globals::Visuals::Chams_Type == 0)
                     {
                         Menu::CheckBox(WRAPPER_MARCO("Fill##chams"), &Globals::Visuals::Chams_Fill_Enabled);
-                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                         Menu::ColorEdit4(WRAPPER_MARCO("Fill Color##chams"), Globals::Visuals::Colors::Chams);
                         if (Globals::Visuals::Chams_Fill_Enabled)
                             Menu::SliderFloat(WRAPPER_MARCO("Fill Alpha##chams"), &Globals::Visuals::Chams_Fill_Transparency, 0.0f, 1.0f, "%.2f");
 
                         Menu::CheckBox(WRAPPER_MARCO("Outline##chams"), &Globals::Visuals::Chams_Outline_Enabled);
-                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                         Menu::ColorEdit4(WRAPPER_MARCO("Outline Color##chams"), Globals::Visuals::Colors::ChamsOutline);
                         if (Globals::Visuals::Chams_Outline_Enabled)
                             Menu::SliderFloat(WRAPPER_MARCO("Outline Thickness##chams"), &Globals::Visuals::Chams_Outline_Thickness, 1.01f, 1.25f, "%.3f");
@@ -440,7 +440,7 @@ void LegacyMenuRenderer::Render()
                     }
                     else
                     {
-                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                         Menu::ColorEdit4(WRAPPER_MARCO("Chams Color"), Globals::Visuals::Colors::Chams);
                         ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() - 24);
                         Menu::ColorEdit4(WRAPPER_MARCO("Chams Outline"), Globals::Visuals::Colors::ChamsOutline);
@@ -455,7 +455,7 @@ void LegacyMenuRenderer::Render()
                 Menu::CheckBox(WRAPPER_MARCO("Wall Check"), &Globals::Visuals::WallCheck);
                 if (Globals::Visuals::WallCheck)
                 {
-                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                    ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                     Menu::ColorEdit4(WRAPPER_MARCO("Occluded Color"), Globals::Visuals::Colors::Occluded);
                 }
 
@@ -484,11 +484,11 @@ void LegacyMenuRenderer::Render()
                 }
 
                 Menu::CheckBox(WRAPPER_MARCO("Atmosphere"), &Globals::World::Ambience);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Atmosphere Color"), Globals::World::Colors::Ambience);
 
                 Menu::CheckBox(WRAPPER_MARCO("Fog"), &Globals::World::Fog);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.FramePadding.x - 1.0f);
                 Menu::ColorEdit4(WRAPPER_MARCO("Fog Color"), Globals::World::Colors::Fog);
                 if (Globals::World::Fog)
                 {
@@ -881,7 +881,7 @@ void LegacyMenuRenderer::Render()
             ImGui::SetCursorScreenPos(window_bb.Min + ImVec2(Style.WindowPadding.x, ImGui::GetFrameHeight() + Style.WindowBorderSize * 3.0f + 3.0f));
 
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Style.WindowPadding);
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildPadding, ImVec2(Style.WindowPadding.x, 4.6f));
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(Style.WindowPadding.x, 4.6f));
             if (ImGui::BeginChild("explorer_body", ImGui::GetContentRegionAvail() - Style.WindowPadding, ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground))
             {
                 float bottom_height = ImGui::GetFontSize() * 12.0f;
@@ -891,7 +891,7 @@ void LegacyMenuRenderer::Render()
 
                 if (explorer_height > 0 && available_height > 0 && bottom_height > 0)
                 {
-                    ImGui::PushStyleVar(ImGuiStyleVar_ChildPadding, ImVec2(Style.WindowPadding.x, 3.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(Style.WindowPadding.x, 3.0f));
                     if (ImGui::BeginChild("Explorer", ImVec2(0, explorer_height), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar))
                     {
                         if (!g_Explorer.is_refreshing.load())
@@ -921,7 +921,7 @@ void LegacyMenuRenderer::Render()
                     ImGui::PopStyleVar();
                 }
 
-                ImGui::PushStyleVar(ImGuiStyleVar_ChildPadding, ImVec2(Style.WindowPadding.x, 3.0f));
+                ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(Style.WindowPadding.x, 3.0f));
                 if (ImGui::BeginChild("Settings", ImVec2(0, bottom_height), ImGuiChildFlags_Borders, ImGuiWindowFlags_AlwaysVerticalScrollbar))
                 {
                     if (!g_Explorer.is_refreshing.load())

@@ -74,7 +74,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>../Build</OutDir>
     <IntDir>../Build/Extra</IntDir>
-                    <IncludePath>Dependencies\FreeType\include;Dependencies\Auth;Source;Dependencies</IncludePath>
+                    <IncludePath>Dependencies\FreeType\include;Dependencies\Auth;Source;Dependencies;Dependencies\ImGui;Source\Core\UI\GOOD\headers;Source\Core\UI\GOOD</IncludePath>
     <LibraryPath>Dependencies\FreeType;Dependencies\Auth;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;$(LibraryPath)</LibraryPath>
     <TargetName>Bitware</TargetName>
   </PropertyGroup>
@@ -289,6 +289,16 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Core\Input\InputHook.h" />
     <ClInclude Include="Source\Core\Settings\Settings.h" />
     <ClInclude Include="Source\Core\Settings\Types.h" />
+    <ClInclude Include="Source\Core\UI\GoodMenuRenderer.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\headers\draw.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\headers\flags.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\headers\fonts.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\headers\functions.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\headers\includes.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\headers\widgets.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\settings\colors.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\settings\elements.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\settings\variables.h" />
     <ClInclude Include="Source\Core\UI\IMenuRenderer.h" />
     <ClInclude Include="Source\Core\UI\LegacyMenuRenderer.h" />
     <ClInclude Include="Source\Core\UI\UIBridge.h" />
@@ -318,7 +328,6 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Dependencies\ImGui\backends\imgui_impl_dx11.cpp" />
     <ClCompile Include="Dependencies\ImGui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui.cpp" />
-    <ClCompile Include="Dependencies\ImGui\imgui_demo.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui_draw.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui_tables.cpp" />
     <ClCompile Include="Dependencies\ImGui\imgui_widgets.cpp" />
@@ -337,6 +346,15 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Source\Core\Graphics\Graphics.cpp" />
     <ClCompile Include="Source\Core\Application.cpp" />
     <ClCompile Include="Source\Core\Input\InputHook.cpp" />
+    <ClCompile Include="Source\Core\UI\GoodMenuRenderer.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\gui.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\helpers\draw.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\helpers\fonts.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\widgets\helpers.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\widgets\notify.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\widgets\text_field.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\widgets\widgets.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\widgets\window.cpp" />
     <ClCompile Include="Source\Core\UI\LegacyMenuRenderer.cpp" />
     <ClCompile Include="Source\Driver\Driver.cpp" />
     <ClCompile Include="Source\Engine\Classes\Camera\Camera.cpp" />

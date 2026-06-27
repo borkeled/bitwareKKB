@@ -168,21 +168,21 @@ bool Menu::CheckBox(const char* label, bool* checked)
     if (txtCol.Value.w == 0.0f) txtCol = targetText;
     txtCol.Value = ImLerp(txtCol.Value, targetText.Value, g.IO.DeltaTime * 10.0f);
 
-    RenderNavCursor(totalBB, id);
+    //RenderNavCursor(totalBB, id); // not in ImGui 1.91.3
 
     if (*checked)
     {
-        window->DrawList->AddRectFilled(checkBB.Min, checkBB.Max, boxCol, style.FrameRounding);
-        window->DrawList->AddRectFilledMultiColorRounded(checkBB.Min, checkBB.Max, ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 140), ImColor(0, 0, 0, 140), style.FrameRounding);
+        window->DrawList->AddRectFilled(checkBB.Min, checkBB.Max, boxCol);
+        window->DrawList->AddRectFilledMultiColor(checkBB.Min, checkBB.Max, ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 140), ImColor(0, 0, 0, 140));
     }
     else
     {
-        window->DrawList->AddRectFilled(checkBB.Min, checkBB.Max, boxCol, style.FrameRounding);
-        window->DrawList->AddRectFilledMultiColorRounded(checkBB.Min, checkBB.Max, IM_COL32(32, 32, 32, 255), IM_COL32(32, 32, 32, 255), IM_COL32(24, 24, 24, 255), IM_COL32(24, 24, 24, 255), style.FrameRounding);
+        window->DrawList->AddRectFilled(checkBB.Min, checkBB.Max, boxCol);
+        window->DrawList->AddRectFilledMultiColor(checkBB.Min, checkBB.Max, IM_COL32(32, 32, 32, 255), IM_COL32(32, 32, 32, 255), IM_COL32(24, 24, 24, 255), IM_COL32(24, 24, 24, 255));
     }
 
-    window->DrawList->AddRect(checkBB.Min, checkBB.Max, Menu::Outline, style.FrameRounding);
-    window->DrawList->AddRect(checkBB.Min + ImVec2(1, 1), checkBB.Max - ImVec2(1, 1), activeBox ? Menu::DarkAccent : IM_COL32(44, 44, 44, 255), style.FrameRounding);
+    window->DrawList->AddRect(checkBB.Min, checkBB.Max, Menu::Outline);
+    window->DrawList->AddRect(checkBB.Min + ImVec2(1, 1), checkBB.Max - ImVec2(1, 1), activeBox ? Menu::DarkAccent : IM_COL32(44, 44, 44, 255));
 
     Menu::DrawLabelShadow(window->DrawList, ImVec2(pos.x + squareSize + style.ItemInnerSpacing.x + 1.0f, pos.y + (squareSize - labelSize.y) * 0.5f), txtCol, label);
 
@@ -241,7 +241,7 @@ bool Menu::SliderAlpha(const char* str_id, ImVec4& col)
 
     window->DrawList->AddRectFilled(pos, pos + ImVec2(half_height, height), col_rgb, style.FrameRounding, ImDrawFlags_RoundCornersLeft);
     RenderColorRectWithAlphaCheckerboard(window->DrawList, pos + ImVec2(half_height, 0), pos + size, 0, half_height, ImVec2(0.0f, 0.0f), style.FrameRounding, ImDrawFlags_RoundCornersRight);
-    window->DrawList->AddRectFilledMultiColorRounded(pos + ImVec2(half_height, 0), pos + ImVec2(width - half_height, height), col_rgb, col_rgb & ~IM_COL32_A_MASK, col_rgb & ~IM_COL32_A_MASK, col_rgb);
+    window->DrawList->AddRectFilledMultiColor(pos + ImVec2(half_height, 0), pos + ImVec2(width - half_height, height), col_rgb, col_rgb & ~IM_COL32_A_MASK, col_rgb & ~IM_COL32_A_MASK, col_rgb);
 
     if (style.FrameBorderSize > 0)
         window->DrawList->AddRect(pos, pos + size, GetColorU32(ImGuiCol_Border), style.FrameRounding, 0, style.FrameBorderSize);
@@ -411,16 +411,14 @@ bool Menu::ColorPalette(const char* str_id, ImVec4& col, const ImVec2& size_arg)
     hue_color.w = 1.0f;
     ImU32 hue_color32 = ImGui::ColorConvertFloat4ToU32(hue_color);
 
-    window->DrawList->AddRectFilledMultiColorRounded(
+    window->DrawList->AddRectFilledMultiColor(
         bb.Min, bb.Max,
-        IM_COL32_WHITE, hue_color32, hue_color32, IM_COL32_WHITE,
-        style.FrameRounding + (style.FrameRounding > 0 ? 1.5f : 0.0f)
+        IM_COL32_WHITE, hue_color32, hue_color32, IM_COL32_WHITE
     );
 
-    window->DrawList->AddRectFilledMultiColorRounded(
+    window->DrawList->AddRectFilledMultiColor(
         bb.Min, bb.Max,
-        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32_BLACK, IM_COL32_BLACK,
-        style.FrameRounding
+        IM_COL32(0, 0, 0, 0), IM_COL32(0, 0, 0, 0), IM_COL32_BLACK, IM_COL32_BLACK
     );
 
     if (style.FrameBorderSize > 0)
@@ -466,9 +464,9 @@ bool Menu::ColorButton(const char* desc_id, const ImVec4& col, bool has_alpha, c
     ImVec4 col_source = has_alpha ? col_rgb : col_rgb_without_alpha;
 
     if (col_source.w < 1.0f && has_alpha)
-        RenderColorRectWithAlphaCheckerboard(window->DrawList, pos, pos + size, GetColorU32(col_source), size.y / 2, ImVec2(0, 0), style.FrameRounding);
+        RenderColorRectWithAlphaCheckerboard(window->DrawList, pos, pos + size, GetColorU32(col_source), size.y / 2, ImVec2(0, 0));
     else
-        window->DrawList->AddRectFilled(pos, pos + size, GetColorU32(col_source), style.FrameRounding);
+        window->DrawList->AddRectFilled(pos, pos + size, GetColorU32(col_source));
 
     if (style.FrameBorderSize > 0)
     {
@@ -476,7 +474,7 @@ bool Menu::ColorButton(const char* desc_id, const ImVec4& col, bool has_alpha, c
         window->DrawList->AddRect(pos + ImVec2(style.FrameBorderSize, style.FrameBorderSize), pos + size - ImVec2(style.FrameBorderSize, style.FrameBorderSize), IM_COL32(44 ,44 ,44 , 255), style.FrameRounding, 0, style.FrameBorderSize);
     }
 
-    RenderNavCursor(bb, id);
+    //RenderNavCursor(bb, id);
 
     return pressed;
 }
@@ -554,7 +552,7 @@ bool Menu::ColorEdit4(const char* name, float col[4])
     ImVec2 bb_max = pos + ImVec2(square_sz, square_sz);
     bb_min.x -= 8.0f;
 
-    window->DrawList->AddRectFilledMultiColorRounded(bb_min, bb_max, ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 140), ImColor(0, 0, 0, 140), style.FrameRounding);
+    window->DrawList->AddRectFilledMultiColor(bb_min, bb_max, ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 140), ImColor(0, 0, 0, 140));
 
     window->DrawList->AddRect(bb_min, bb_max, Menu::Outline, 0.0f, 0, 1.0f);
     window->DrawList->AddRect(bb_min + ImVec2(1.0f, 1.0f), bb_max - ImVec2(1.0f, 1.0f), IM_COL32(44, 44, 44, 255), 0.0f, 0, 1.0f);
@@ -630,7 +628,7 @@ bool Menu::SliderScalar(const char* Label, ImGuiDataType DataType, void* PData, 
 
     if (!Format) Format = DataTypeGetInfo(DataType)->PrintFmt;
 
-    const bool Hovered = ItemHoverable(FrameBB, Id, G.LastItemData.ItemFlags);
+    const bool Hovered = ItemHoverable(FrameBB, Id, G.LastItemData.InFlags);
     const bool Clicked = Hovered && IsMouseClicked(0, ImGuiInputFlags_None, Id);
     const bool Held = G.ActiveId == Id;
     const bool MakeActive = Clicked || G.NavActivateId == Id;
@@ -664,8 +662,8 @@ bool Menu::SliderScalar(const char* Label, ImGuiDataType DataType, void* PData, 
     ImVec2 FillEnd = ImTrunc(ImVec2(FrameBB.Min.x + AnimValue * FrameBB.GetWidth(), FrameBB.Max.y));
     ImRect SliderBB(FrameBB.Min + ImVec2(1.0f, 1.0f), FillEnd - ImVec2(1.0f, 1.0f));
     if (SliderBB.Max.x > SliderBB.Min.x)
-        Window->DrawList->AddRectFilled(SliderBB.Min, SliderBB.Max, Menu::Accent, Style.FrameRounding);
-    Window->DrawList->AddRectFilledMultiColorRounded(SliderBB.Min, SliderBB.Max, ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 140), ImColor(0, 0, 0, 140), Style.FrameRounding);
+        Window->DrawList->AddRectFilled(SliderBB.Min, SliderBB.Max, Menu::Accent);
+    Window->DrawList->AddRectFilledMultiColor(SliderBB.Min, SliderBB.Max, ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 0), ImColor(0, 0, 0, 140), ImColor(0, 0, 0, 140));
 
     Window->DrawList->AddRect(FrameBB.Min, FrameBB.Max, IM_COL32(0, 0, 0, 255), Style.FrameRounding, 0, 1);
     Window->DrawList->AddRect(FrameBB.Min + ImVec2(1.0f, 1.0f), FrameBB.Max - ImVec2(1.0f, 1.0f), IM_COL32(44, 44, 44, 255), Style.FrameRounding, 0, 1);
@@ -741,7 +739,7 @@ bool Menu::SelectableLabel(const char* Label, bool Selected, const ImVec2& SizeA
 
     ItAnim->second.Label.Value = ImLerp(ItAnim->second.Label.Value, ColLabel, 1.0f / IMADD_ANIMATIONS_SPEED * GetIO().DeltaTime);
 
-    RenderNavCursor(TotalBB, Id);
+    //RenderNavCursor(TotalBB, Id);
 
     Window->DrawList->AddText(Pos + ImVec2(1.0f, 0.0f), ItAnim->second.Label, Label);
 
@@ -840,12 +838,12 @@ bool Menu::Combo(const char* Label, int* SelectedIndex, std::vector<const char*>
     }
     PopStyleVar(2);
 
-    RenderNavCursor(FrameBB, Id);
+    //RenderNavCursor(FrameBB, Id);
 
     Menu::DrawLabelShadow(Window->DrawList, Pos + ImVec2(2.0f, 0.0f), Menu::Text, Label);
     Window->DrawList->AddRectFilledMultiColor(FrameBB.Min, FrameBB.Max, IM_COL32(24, 24, 24, 255), IM_COL32(24, 24, 24, 255), IM_COL32(14, 14, 14, 255), IM_COL32(14, 14, 14, 255));
-    Window->DrawList->AddRect(FrameBB.Min - ImVec2(1, 1), FrameBB.Max + ImVec2(1, 1), Menu::Outline, Style.FrameRounding);
-    Window->DrawList->AddRect(FrameBB.Min, FrameBB.Max, IM_COL32(44, 44, 44, 255), Style.FrameRounding);
+    Window->DrawList->AddRect(FrameBB.Min - ImVec2(1, 1), FrameBB.Max + ImVec2(1, 1), Menu::Outline);
+    Window->DrawList->AddRect(FrameBB.Min, FrameBB.Max, IM_COL32(44, 44, 44, 255));
 
     const char* PreviewItem = (*SelectedIndex < (int)Items.size()) ? Items[*SelectedIndex] : "*unknown*";
     Menu::DrawLabelShadow(Window->DrawList, FrameBB.Min + Style.FramePadding + ImVec2(1.0f, 0.0f), State.Text, PreviewItem);
