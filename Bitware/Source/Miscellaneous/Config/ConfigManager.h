@@ -54,6 +54,16 @@ public:
         WriteBool(ss, WRAPPER_MARCO("Aimbot_WallCheck"), SettingsStore::Aimbot_WallCheck);
         WriteBool(ss, WRAPPER_MARCO("Aimbot_ClosestPlayerFound"), SettingsStore::Aimbot_ClosestPlayerFound);
 
+        WriteBool(ss, WRAPPER_MARCO("Silent_Enabled"), SettingsStore::Silent_Enabled);
+        WriteBool(ss, WRAPPER_MARCO("Silent_DrawFov"), SettingsStore::Silent_DrawFov);
+        WriteBool(ss, WRAPPER_MARCO("Silent_FovSpin"), SettingsStore::Silent_FovSpin);
+        WriteBool(ss, WRAPPER_MARCO("Silent_FillFov"), SettingsStore::Silent_FillFov);
+        WriteBool(ss, WRAPPER_MARCO("Silent_useFov"), SettingsStore::Silent_useFov);
+        WriteBool(ss, WRAPPER_MARCO("Silent_TeamCheck"), SettingsStore::Silent_TeamCheck);
+        WriteBool(ss, WRAPPER_MARCO("Silent_KnockedCheck"), SettingsStore::Silent_KnockedCheck);
+        WriteBool(ss, WRAPPER_MARCO("Silent_WallCheck"), SettingsStore::Silent_WallCheck);
+        WriteBool(ss, WRAPPER_MARCO("Silent_Prediction_Enabled"), SettingsStore::Silent_Prediction_Enabled);
+
         WriteBool(ss, WRAPPER_MARCO("Visuals_Enabled"), SettingsStore::Visuals_Enabled);
         WriteBool(ss, WRAPPER_MARCO("Visuals_Box"), SettingsStore::Visuals_Box);
         WriteBool(ss, WRAPPER_MARCO("Visuals_Box_Fill"), SettingsStore::Visuals_Box_Fill);
@@ -97,6 +107,11 @@ public:
         WriteInt(ss, WRAPPER_MARCO("Aimbot_FovSpinDirection"), SettingsStore::Aimbot_FovSpinDirection);
         WriteInt(ss, WRAPPER_MARCO("Aimbot_FovSpinSpeed"), SettingsStore::Aimbot_FovSpinSpeed);
 
+        WriteInt(ss, WRAPPER_MARCO("Silent_type"), SettingsStore::Silent_type);
+        WriteInt(ss, WRAPPER_MARCO("Silent_HitPart"), SettingsStore::Silent_HitPart);
+        WriteInt(ss, WRAPPER_MARCO("Silent_FovSpinDirection"), SettingsStore::Silent_FovSpinDirection);
+        WriteInt(ss, WRAPPER_MARCO("Silent_FovSpinSpeed"), SettingsStore::Silent_FovSpinSpeed);
+
         WriteInt(ss, WRAPPER_MARCO("Visuals_ChamsFadeSpeed"), SettingsStore::Visuals_ChamsFadeSpeed);
         WriteInt(ss, WRAPPER_MARCO("Visuals_BoxFillSpeed"), SettingsStore::Visuals_BoxFillSpeed);
         WriteInt(ss, WRAPPER_MARCO("Visuals_Healthbar_Type"), SettingsStore::Visuals_Healthbar_Type);
@@ -122,6 +137,10 @@ public:
         WriteInt(ss, WRAPPER_MARCO("Aimbot_Mode"), (int)SettingsStore::Aimbot_Mode);
         WriteInt(ss, WRAPPER_MARCO("Aimbot_FovToggleKey"), (int)SettingsStore::Aimbot_FovToggleKey);
         WriteInt(ss, WRAPPER_MARCO("Aimbot_FovToggleMode"), (int)SettingsStore::Aimbot_FovToggleMode);
+        WriteInt(ss, WRAPPER_MARCO("Silent_Key"), (int)SettingsStore::Silent_Key);
+        WriteInt(ss, WRAPPER_MARCO("Silent_Mode"), (int)SettingsStore::Silent_Mode);
+        WriteInt(ss, WRAPPER_MARCO("Silent_FovToggleKey"), (int)SettingsStore::Silent_FovToggleKey);
+        WriteInt(ss, WRAPPER_MARCO("Silent_FovToggleMode"), (int)SettingsStore::Silent_FovToggleMode);
         WriteInt(ss, WRAPPER_MARCO("Visuals_ToggleKey"), (int)SettingsStore::Visuals_ToggleKey);
         WriteInt(ss, WRAPPER_MARCO("Visuals_ToggleMode"), (int)SettingsStore::Visuals_ToggleMode);
         WriteInt(ss, WRAPPER_MARCO("Triggerbot_Key"), (int)SettingsStore::Triggerbot_Key);
@@ -142,6 +161,14 @@ public:
         WriteFloat(ss, WRAPPER_MARCO("Aimbot_Camera_SmoothingX"), SettingsStore::Aimbot_Camera_SmoothingX);
         WriteFloat(ss, WRAPPER_MARCO("Aimbot_Camera_SmoothingY"), SettingsStore::Aimbot_Camera_SmoothingY);
 
+        WriteFloat(ss, WRAPPER_MARCO("Silent_FovSize"), SettingsStore::Silent_FovSize);
+        WriteFloat(ss, WRAPPER_MARCO("Silent_Mouse_SmoothingX"), SettingsStore::Silent_Mouse_SmoothingX);
+        WriteFloat(ss, WRAPPER_MARCO("Silent_Mouse_SmoothingY"), SettingsStore::Silent_Mouse_SmoothingY);
+        WriteFloat(ss, WRAPPER_MARCO("Silent_Mouse_Sensitivity"), SettingsStore::Silent_Mouse_Sensitivity);
+        WriteFloat(ss, WRAPPER_MARCO("Silent_Camera_SmoothingX"), SettingsStore::Silent_Camera_SmoothingX);
+        WriteFloat(ss, WRAPPER_MARCO("Silent_Camera_SmoothingY"), SettingsStore::Silent_Camera_SmoothingY);
+        WriteFloat(ss, WRAPPER_MARCO("Silent_Prediction_Value"), SettingsStore::Silent_Prediction_Value);
+
         WriteFloat(ss, WRAPPER_MARCO("Visuals_Render_Distance"), SettingsStore::Visuals_Render_Distance);
 
         WriteFloat(ss, WRAPPER_MARCO("World_Rotate_Speed"), SettingsStore::World_Rotate_Speed);
@@ -155,6 +182,7 @@ public:
 
         // Float arrays (colors)
         WriteFloatArray(ss, WRAPPER_MARCO("Aimbot_FovColor"), SettingsStore::Aimbot_FovColor);
+        WriteFloatArray(ss, WRAPPER_MARCO("Silent_FovColor"), SettingsStore::Silent_FovColor);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_BoxColor"), SettingsStore::Visuals_BoxColor);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_BoxFillTop"), SettingsStore::Visuals_BoxFillTop);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_BoxFillBottom"), SettingsStore::Visuals_BoxFillBottom);
@@ -362,6 +390,7 @@ private:
     {
         OBF_PROLOGUE;
         if (key == WRAPPER_MARCO("Aimbot_FovColor")) { ParseFloatArray(val, SettingsStore::Aimbot_FovColor); return; }
+        if (key == WRAPPER_MARCO("Silent_FovColor")) { ParseFloatArray(val, SettingsStore::Silent_FovColor); return; }
         if (key == WRAPPER_MARCO("Visuals_BoxColor")) { ParseFloatArray(val, SettingsStore::Visuals_BoxColor); return; }
         if (key == WRAPPER_MARCO("Visuals_BoxFillTop")) { ParseFloatArray(val, SettingsStore::Visuals_BoxFillTop); return; }
         if (key == WRAPPER_MARCO("Visuals_BoxFillBottom")) { ParseFloatArray(val, SettingsStore::Visuals_BoxFillBottom); return; }
@@ -406,6 +435,16 @@ private:
         SET_BOOL(Aimbot_KnockedCheck);
         SET_BOOL(Aimbot_WallCheck);
         SET_BOOL(Aimbot_ClosestPlayerFound);
+
+        SET_BOOL(Silent_Enabled);
+        SET_BOOL(Silent_DrawFov);
+        SET_BOOL(Silent_FovSpin);
+        SET_BOOL(Silent_FillFov);
+        SET_BOOL(Silent_useFov);
+        SET_BOOL(Silent_TeamCheck);
+        SET_BOOL(Silent_KnockedCheck);
+        SET_BOOL(Silent_WallCheck);
+        SET_BOOL(Silent_Prediction_Enabled);
 
         SET_BOOL(Visuals_Enabled);
         SET_BOOL(Visuals_Box);
@@ -459,6 +498,11 @@ private:
             SET_INT(Aimbot_FovSpinDirection);
             SET_INT(Aimbot_FovSpinSpeed);
 
+            SET_INT(Silent_type);
+            SET_INT(Silent_HitPart);
+            SET_INT(Silent_FovSpinDirection);
+            SET_INT(Silent_FovSpinSpeed);
+
             SET_INT(Visuals_ChamsFadeSpeed);
             SET_INT(Visuals_BoxFillSpeed);
             SET_INT(Visuals_Healthbar_Type);
@@ -485,6 +529,10 @@ private:
             if (key == WRAPPER_MARCO("Aimbot_Mode")) { SettingsStore::Aimbot_Mode = (ImKeyBindMode)i; return true; }
             if (key == WRAPPER_MARCO("Aimbot_FovToggleKey")) { SettingsStore::Aimbot_FovToggleKey = (ImGuiKey)i; return true; }
             if (key == WRAPPER_MARCO("Aimbot_FovToggleMode")) { SettingsStore::Aimbot_FovToggleMode = (ImKeyBindMode)i; return true; }
+            if (key == WRAPPER_MARCO("Silent_Key")) { SettingsStore::Silent_Key = (ImGuiKey)i; return true; }
+            if (key == WRAPPER_MARCO("Silent_Mode")) { SettingsStore::Silent_Mode = (ImKeyBindMode)i; return true; }
+            if (key == WRAPPER_MARCO("Silent_FovToggleKey")) { SettingsStore::Silent_FovToggleKey = (ImGuiKey)i; return true; }
+            if (key == WRAPPER_MARCO("Silent_FovToggleMode")) { SettingsStore::Silent_FovToggleMode = (ImKeyBindMode)i; return true; }
             if (key == WRAPPER_MARCO("Visuals_ToggleKey")) { SettingsStore::Visuals_ToggleKey = (ImGuiKey)i; return true; }
             if (key == WRAPPER_MARCO("Visuals_ToggleMode")) { SettingsStore::Visuals_ToggleMode = (ImKeyBindMode)i; return true; }
             if (key == WRAPPER_MARCO("Misc_Speed_Key")) { SettingsStore::Misc_Speed_Key = (ImGuiKey)i; return true; }
@@ -516,6 +564,14 @@ private:
             SET_FLOAT(Aimbot_Mouse_Sensitivity);
             SET_FLOAT(Aimbot_Camera_SmoothingX);
             SET_FLOAT(Aimbot_Camera_SmoothingY);
+
+            SET_FLOAT(Silent_FovSize);
+            SET_FLOAT(Silent_Mouse_SmoothingX);
+            SET_FLOAT(Silent_Mouse_SmoothingY);
+            SET_FLOAT(Silent_Mouse_Sensitivity);
+            SET_FLOAT(Silent_Camera_SmoothingX);
+            SET_FLOAT(Silent_Camera_SmoothingY);
+            SET_FLOAT(Silent_Prediction_Value);
 
             SET_FLOAT(Visuals_Render_Distance);
 

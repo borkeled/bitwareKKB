@@ -19,6 +19,8 @@
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
 #include <Core/Input/InputHook.h>
+#include <Features/Chams/GpuMesh.h>
+#include <Features/Chams/MemoryMeshes.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS
 
@@ -170,10 +172,42 @@ namespace Visuals {
         Globals::Aimbot::DrawFov = Toggled;
     }
 
+    static void SilentFovToggleHelper()
+    {
+        static bool Toggled = false;
+        static bool LastPressed = false;
+
+        ImGuiKey key = Globals::Silent::FovToggleKey;
+        if (key == ImGuiKey_None) {
+            return;
+        }
+
+        int Vk = ImGuiKeyToVK(key);
+        if (!Vk) {
+            return;
+        }
+
+        bool Pressed = InputHook::IsKeyDown(Vk);
+
+        if (Globals::Silent::FovToggleMode == ImKeyBindMode_Toggle)
+        {
+            if (Pressed && !LastPressed)
+                Toggled = !Toggled;
+        }
+        else
+        {
+            Toggled = Pressed;
+        }
+
+        LastPressed = Pressed;
+        Globals::Silent::DrawFov = Toggled;
+    }
+
     void RunService()
     {
         VisualsToggleHelper();
         AimbotFovToggleHelper();
+        SilentFovToggleHelper();
 
         if (!Globals::Visuals::Enabled || Globals::VisualEngine.Address == 0 || Globals::Datamodel.Address == 0)
         {
@@ -560,8 +594,8 @@ namespace Visuals {
                 Outline(ImVec2(std::round(Pos.x + (Size.x * 0.5f) - (Text_Size.x * 0.5f)), std::round(Pos.y + Size.y + Offset)), Cl_Name, (wl ? wl : Globals::Visuals::Colors::Tool));
             }
 
-            // chams
-            if (Globals::Visuals::Chams) {
+            // chams (2D — cube/highlight modes only; GPU mesh handled by RunMeshChams)
+            if (Globals::Visuals::Chams && Globals::Visuals::Chams_Type != 0) {
                 ImDrawList* Draw = ImGui::GetBackgroundDrawList();
                 ImDrawListFlags SavedFlags = Draw->Flags;
                 Draw->Flags |= ImDrawListFlags_AntiAliasedLines | ImDrawListFlags_AntiAliasedFill;
@@ -753,5 +787,172 @@ namespace Visuals {
             DrawFovList->AddPolyline(Points, Sides, Color, true, 2.f);
         }
 
+        // Silent FOV rings
+        if (Globals::Silent::DrawFov) {
+            static float SilentFovRotation = 0.f;
+            if (Globals::Silent::FovSpin) {
+                float dir = (Globals::Silent::FovSpinDirection == 0) ? 1.0f : -1.0f;
+                SilentFovRotation += Globals::Silent::FovSpinSpeed / 1000.f * dir;
+            }
+            ImVec2 MPos = GetMousePos();
+            ImDrawList* DrawFovList = ImGui::GetBackgroundDrawList();
+            const int Sides = 10; ImVec2 Points[Sides];
+            float Step = 2.f * IM_PI / Sides;
+            for (int i = 0; i < Sides; i++) {
+                float Angle = i * Step + SilentFovRotation;
+                Points[i] = ImVec2(MPos.x + cosf(Angle) * Globals::Silent::FovSize, MPos.y + sinf(Angle) * Globals::Silent::FovSize);
+            }
+            ImU32 Color = FlotationDevice(Globals::Silent::FovColor);
+            if (Globals::Silent::FillFov) DrawFovList->AddConvexPolyFilled(Points, Sides, Color);
+            DrawFovList->AddPolyline(Points, Sides, Color, true, 2.f);
+        }
+
+        // GPU mesh chams — submits draw data for post-ImGui rendering
+        Visuals::RunMeshChams();
+
     }
+
+}
+
+// ── GPU Mesh Chams Dispatch ─────────────────────────────────────────────────
+
+namespace chams_gpu_dispatch
+{
+    struct callback_data
+    {
+        std::vector<SDK::Player> snapshot;
+        SDK::Matrix4             view{};
+        SDK::Vector2             dims{};
+        mesh_gpu::render_params  params{};
+    };
+
+    static callback_data* g_pending = nullptr;
+
+    static void submit(callback_data* data)
+    {
+        delete g_pending;
+        g_pending = data;
+    }
+
+    static callback_data* consume()
+    {
+        callback_data* d = g_pending;
+        g_pending = nullptr;
+        return d;
+    }
+}
+
+void Visuals::RunMeshChams()
+{
+    if (!Globals::Visuals::Chams || Globals::Visuals::Chams_Type != 0)
+        return;
+
+    if (!Globals::VisualEngine.Address)
+        return;
+
+    const SDK::Vector2 dims = Globals::VisualEngine.Get_Dimensions();
+    const SDK::Matrix4 view = Globals::VisualEngine.Get_ViewMatrix();
+
+    std::shared_ptr<const std::vector<SDK::Player>> snapshot;
+    {
+        std::lock_guard<std::mutex> lock(Cache::Cache_Mutex);
+        snapshot = Globals::Player_Cache;
+    }
+
+    if (!snapshot || snapshot->empty())
+        return;
+
+    if (!Graphic || !Graphic->Detail || !Graphic->Detail->Device || !Graphic->Detail->DeviceContext)
+        return;
+
+    mesh_gpu::render_params params{};
+    params.fill_enabled       = Globals::Visuals::Chams_Fill_Enabled;
+    params.fill_color[0]      = Globals::Visuals::Colors::Chams[0];
+    params.fill_color[1]      = Globals::Visuals::Colors::Chams[1];
+    params.fill_color[2]      = Globals::Visuals::Colors::Chams[2];
+    params.fill_color[3]      = Globals::Visuals::Colors::Chams[3];
+    params.fill_alpha         = Globals::Visuals::Chams_Fill_Transparency;
+    params.outline            = Globals::Visuals::Chams_Outline_Enabled;
+    params.outline_color[0]   = Globals::Visuals::Colors::ChamsOutline[0];
+    params.outline_color[1]   = Globals::Visuals::Colors::ChamsOutline[1];
+    params.outline_color[2]   = Globals::Visuals::Colors::ChamsOutline[2];
+    params.outline_color[3]   = Globals::Visuals::Colors::ChamsOutline[3];
+    params.outline_scale      = Globals::Visuals::Chams_Outline_Thickness;
+    params.shader_mode        = Globals::Visuals::Chams_Use_Shaders ? Globals::Visuals::Chams_Shader : 0;
+    params.shader_speed       = Globals::Visuals::Chams_Cycle_Speed;
+    params.specular_power     = Globals::Visuals::Chams_Specular_Power;
+    params.specular_intensity = Globals::Visuals::Chams_Specular_Intensity;
+
+    switch (Globals::Visuals::Chams_Shader)
+    {
+    case 1:  params.shader_param_a = Globals::Visuals::Chams_Metallic_Roughness; break;
+    case 2:  params.shader_param_a = Globals::Visuals::Chams_Dissolve_Amount;    params.shader_param_b = Globals::Visuals::Chams_Dissolve_Edge; break;
+    case 5:  params.shader_param_a = Globals::Visuals::Chams_Caustic_Scale;      params.shader_param_b = Globals::Visuals::Chams_Caustic_Speed; break;
+    case 6:  params.shader_param_a = Globals::Visuals::Chams_Chrome_Sharpness; break;
+    case 7:  params.shader_param_a = Globals::Visuals::Chams_Liquid_Wave;        params.shader_param_b = Globals::Visuals::Chams_Liquid_Speed; break;
+    case 8:  params.shader_param_a = Globals::Visuals::Chams_Hologram_Opacity;   params.shader_param_b = Globals::Visuals::Chams_Hologram_Scan_Speed; break;
+    case 9:  params.shader_param_a = Globals::Visuals::Chams_Sliced_Gap;         params.shader_param_b = Globals::Visuals::Chams_Sliced_Speed; break;
+    case 12: params.shader_param_a = Globals::Visuals::Chams_Lava_Speed;         params.shader_param_b = Globals::Visuals::Chams_Lava_Scale; break;
+    case 13: params.shader_param_a = Globals::Visuals::Chams_Glitch_Intensity;   params.shader_param_b = Globals::Visuals::Chams_Glitch_Speed; break;
+    case 14: params.shader_param_a = Globals::Visuals::Chams_Ice_Roughness; break;
+    case 15: params.shader_param_a = Globals::Visuals::Chams_Neon_Pulse_Speed;   params.shader_param_b = Globals::Visuals::Chams_Neon_Pulse_Width; break;
+    case 17: params.shader_param_a = Globals::Visuals::Chams_Depth_Fog_Density; break;
+    case 18: params.shader_param_a = Globals::Visuals::Chams_Splatter_Scale; break;
+    case 19: params.shader_param_a = Globals::Visuals::Chams_Rim_Power; break;
+    case 20: params.shader_param_a = Globals::Visuals::Chams_Wood_Scale; break;
+    case 21: params.shader_param_a = Globals::Visuals::Chams_Plastic_Shininess; break;
+    default: params.shader_param_a = 0.5f; params.shader_param_b = 1.0f; break;
+    }
+
+    switch (Globals::Visuals::Chams_Quality)
+    {
+    case 0: params.max_triangles = 1800; break;
+    case 2: params.max_triangles = 8000; break;
+    default: params.max_triangles = 3500; break;
+    }
+
+    params.occlusion_enabled = Globals::Visuals::Chams_Occlusion;
+    std::memcpy(params.visible_color, Globals::Visuals::Colors::ChamsVisible, sizeof(params.visible_color));
+    std::memcpy(params.occluded_color, Globals::Visuals::Colors::ChamsOccluded, sizeof(params.occluded_color));
+
+    auto* cb = new chams_gpu_dispatch::callback_data{};
+    cb->snapshot = *snapshot;
+    cb->view     = view;
+    cb->dims     = dims;
+    cb->params   = params;
+    chams_gpu_dispatch::submit(cb);
+}
+
+void Visuals::FlushMeshChams(ID3D11Device* device, ID3D11DeviceContext* context, ID3D11RenderTargetView* rtv)
+{
+    auto* data = chams_gpu_dispatch::consume();
+    if (!data) return;
+
+    context->OMSetRenderTargets(1, &rtv, nullptr);
+
+    const float view_flat[16] = {
+        data->view.data[0],  data->view.data[1],  data->view.data[2],  data->view.data[3],
+        data->view.data[4],  data->view.data[5],  data->view.data[6],  data->view.data[7],
+        data->view.data[8],  data->view.data[9],  data->view.data[10], data->view.data[11],
+        data->view.data[12], data->view.data[13], data->view.data[14], data->view.data[15]
+    };
+
+    const std::vector<mesh_gpu::draw_item> draws = mesh_chams::build_draw_list(
+        data->snapshot, Globals::LocalPlayer, view_flat);
+
+    if (!draws.empty())
+    {
+        mesh_gpu::render_draw_list(
+            draws,
+            view_flat,
+            data->dims.x,
+            data->dims.y,
+            0.f,
+            0.f,
+            device,
+            context,
+            data->params);
+    }
+
+    delete data;
 }

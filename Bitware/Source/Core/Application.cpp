@@ -17,8 +17,10 @@
 #include <Core/Features/Cheats/Misc/Misc.h>
 #include <Core/Features/Cheats/World/World.h>
 #include <Core/Features/Cheats/Aimbot/Aimbot.h>
+#include <Core/Features/Cheats/SilentAim/SilentAim.h>
 #include <Core/Features/Cheats/Triggerbot/Triggerbot.h>
 #include <Core/Features/Cheats/Visuals/Visuals.h>
+#include <Features/Chams/MemoryMeshes.h>
 #include <Miscellaneous/Protection/FakeStrings.h>
 #include <Miscellaneous/Protection/AntiInjection.h>
 #include <Miscellaneous/Protection/External/oxorany_include.h>
@@ -138,6 +140,7 @@ void Application::SpawnThreads()
     m_WorkerThreads.emplace_back(Cache::RunService, token);
     m_WorkerThreads.emplace_back(World::RunService, token);
     m_WorkerThreads.emplace_back(Aimbot::RunService, token);
+    m_WorkerThreads.emplace_back(SilentAim::RunService, token);
     m_WorkerThreads.emplace_back(Triggerbot::RunService, token);
     m_WorkerThreads.emplace_back(Misc::RunService, token);
 }
@@ -220,6 +223,10 @@ bool Application::Init()
         Logger::Log(WRAPPER_MARCO("[Init] InitOverlay..."));
         Logger::Flush();
         InitOverlay();
+
+        Logger::Log(WRAPPER_MARCO("[Init] Chams mesh scan..."));
+        Logger::Flush();
+        mesh_chams::start_memory_mesh_scan();
 
         OBF_JUNK_BLOCK;
         Logger::Log(WRAPPER_MARCO("[Init] doneso"));
@@ -337,6 +344,8 @@ void Application::Run()
 void Application::Shutdown()
 {
     m_StopSource.request_stop();
+
+    mesh_chams::shutdown_memory_mesh_scan();
 
     AntiDump::Disable();
     AntiInjection::Stop();

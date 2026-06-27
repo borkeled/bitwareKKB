@@ -467,6 +467,9 @@
     <ClCompile Include="Source\Core\Features\Cheats\Aimbot\Aimbot.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Core\Features\Cheats\SilentAim\SilentAim.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Source\Core\Features\Cheats\Misc\Misc.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
