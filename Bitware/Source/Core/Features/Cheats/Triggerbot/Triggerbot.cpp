@@ -53,6 +53,8 @@ namespace Triggerbot {
             timeBeginPeriod(1);
 
             bool Holding = false;
+            static bool Toggled = false;
+            static bool LastPressed = false;
             auto LastTick = std::chrono::steady_clock::now();
             auto LastFireTime = std::chrono::steady_clock::now();
             const std::chrono::microseconds TickInterval(1000000 / 60);
@@ -79,7 +81,7 @@ namespace Triggerbot {
                 LastTick = std::chrono::steady_clock::now();
 
                 int Vk = ImGuiKeyToVK(Globals::Triggerbot::Triggerbot_Key);
-                if (!Vk || !InputHook::IsKeyDown(Vk)) {
+                if (!Vk) {
                     if (Holding) {
                         INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
                         Api::SendInput(1, &Up, sizeof(INPUT));
@@ -88,6 +90,31 @@ namespace Triggerbot {
                     SDK::sleep_jitter(50, 10);
                     continue;
                 }
+                bool Pressed = InputHook::IsKeyDown(Vk);
+
+                if (Globals::Triggerbot::Triggerbot_Mode == ImKeyBindMode_Toggle) {
+                    if (Pressed && !LastPressed) Toggled = !Toggled;
+                    if (!Toggled) {
+                        if (Holding) {
+                            INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
+                            Api::SendInput(1, &Up, sizeof(INPUT));
+                            Holding = false;
+                        }
+                        SDK::sleep_jitter(50, 10);
+                        continue;
+                    }
+                } else {
+                    if (!Pressed) {
+                        if (Holding) {
+                            INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
+                            Api::SendInput(1, &Up, sizeof(INPUT));
+                            Holding = false;
+                        }
+                        SDK::sleep_jitter(50, 10);
+                        continue;
+                    }
+                }
+                LastPressed = Pressed;
 
                 if (!Globals::VisualEngine.Address || !Globals::Camera.Address) {
                     SDK::sleep_jitter(10, 5);

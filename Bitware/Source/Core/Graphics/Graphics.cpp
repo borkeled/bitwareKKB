@@ -61,6 +61,11 @@ LRESULT CALLBACK WndProc(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LParam)
     return DefWindowProcA(Hwnd, Msg, WParam, LParam);
 }
 
+namespace {
+    std::vector<unsigned char> s_tahoma_vec;
+    std::vector<unsigned char> s_tahoma_bold_vec;
+}
+
 Graphics::Graphics()
 {
     Detail = std::make_unique<detail_t>();
@@ -239,11 +244,11 @@ bool Graphics::Create_Imgui()
     }
 
     {
-        std::vector<unsigned char> tahoma_vec(Tahoma, Tahoma + sizeof(Tahoma));
-        std::vector<unsigned char> tahoma_bold_vec(Tahoma_Bold, Tahoma_Bold + sizeof(Tahoma_Bold));
+        s_tahoma_vec.assign(Tahoma, Tahoma + sizeof(Tahoma));
+        s_tahoma_bold_vec.assign(Tahoma_Bold, Tahoma_Bold + sizeof(Tahoma_Bold));
 
-        font->get(tahoma_vec, 13.0f);
-        font->get(tahoma_bold_vec, 13.0f);
+        font->get(s_tahoma_vec, 13.0f);
+        font->get(s_tahoma_bold_vec, 13.0f);
         font->get(inter_semibold, 14.0f);
         font->get(inter_medium, 11.0f);
         font->get(inter_semibold, 10.0f);
@@ -252,6 +257,10 @@ bool Graphics::Create_Imgui()
         font->get(icon_font, 13.0f);
         font->get(icon_font, 14.0f);
         font->get(icon_font, 15.0f);
+        font->get(inter_semibold, 13.0f);
+        font->get(inter_semibold, 16.0f);
+        font->get(inter_semibold, 18.0f);
+        font->get(inter_medium, 10.0f);
         font->get_file(
             "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
             12.5f, true);
@@ -261,7 +270,7 @@ bool Graphics::Create_Imgui()
 
         font->update();
 
-        Tahoma_BoldXP = font->get(tahoma_bold_vec, 13.0f);
+        Tahoma_BoldXP = font->get(s_tahoma_bold_vec, 13.0f);
         Inter_SemiBold = font->get(inter_semibold, 14.0f);
         Inter_Medium = font->get(inter_medium, 11.0f);
         Icon_Font = font->get_file(
@@ -368,6 +377,17 @@ void Graphics::NewFrame()
         }
     }
 
+    if (var->gui.dpi_changed)
+    {
+        font->update();
+        Tahoma_BoldXP = font->get(s_tahoma_bold_vec, 13.0f);
+        Inter_SemiBold = font->get(inter_semibold, 14.0f);
+        Inter_Medium = font->get(inter_medium, 11.0f);
+        Icon_Font = font->get_file(
+            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
+            12.5f, true);
+    }
+
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
@@ -380,12 +400,18 @@ void Graphics::NewFrame()
         if (Running)
         {
             SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
+            Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
+            MARGINS Margins{ -1, -1, -1, -1 };
+            Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
             SetForegroundWindow(Detail->Window);
             SetFocus(Detail->Window);
         }
         else
         {
             SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT);
+            Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
+            MARGINS Margins{ -1, -1, -1, -1 };
+            Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
             HWND target = Globals::RobloxWindow;
             if (target && IsWindow(target))
                 SetForegroundWindow(target);

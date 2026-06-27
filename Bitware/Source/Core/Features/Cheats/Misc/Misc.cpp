@@ -7,7 +7,41 @@
 #include <thread>
 #include <chrono>
 
+#include <Core/Input/InputHook.h>
+
 namespace Misc {
+
+    static bool IsSpeedActiveByKeybind()
+    {
+        int Vk = ImGuiKeyToVK(Globals::Misc::Speed_Key);
+        if (!Vk) return true;
+        bool Pressed = InputHook::IsKeyDown(Vk);
+        if (Globals::Misc::Speed_Key_Mode == ImKeyBindMode_Toggle)
+        {
+            static bool spdToggled = false;
+            static bool spdLastPressed = false;
+            if (Pressed && !spdLastPressed) spdToggled = !spdToggled;
+            spdLastPressed = Pressed;
+            return spdToggled;
+        }
+        return Pressed;
+    }
+
+    static bool IsJumpActiveByKeybind()
+    {
+        int Vk = ImGuiKeyToVK(Globals::Misc::Jump_Key);
+        if (!Vk) return true;
+        bool Pressed = InputHook::IsKeyDown(Vk);
+        if (Globals::Misc::Jump_Key_Mode == ImKeyBindMode_Toggle)
+        {
+            static bool jmpToggled = false;
+            static bool jmpLastPressed = false;
+            if (Pressed && !jmpLastPressed) jmpToggled = !jmpToggled;
+            jmpLastPressed = Pressed;
+            return jmpToggled;
+        }
+        return Pressed;
+    }
 
     static void Speedhack()
     {
@@ -76,7 +110,7 @@ namespace Misc {
 
         for (; !st.stop_requested(); )
         {
-            if (Globals::Misc::Speed)
+            if (Globals::Misc::Speed && IsSpeedActiveByKeybind())
             {
                 Speedhack();
                 speedWasActive = true;
@@ -107,7 +141,7 @@ namespace Misc {
         {
             SDK::sleep_jitter(10, 5);
 
-            if (Globals::Misc::Jump)
+            if (Globals::Misc::Jump && IsJumpActiveByKeybind())
             {
                 Jumphack();
                 jumpWasActive = true;

@@ -78,6 +78,10 @@ public:
         WriteBool(ss, WRAPPER_MARCO("Visuals_Skeleton"), SettingsStore::Visuals_Skeleton);
         WriteBool(ss, WRAPPER_MARCO("Visuals_Chams"), SettingsStore::Visuals_Chams);
         WriteBool(ss, WRAPPER_MARCO("Visuals_ChamsFade"), SettingsStore::Visuals_ChamsFade);
+        WriteBool(ss, WRAPPER_MARCO("Visuals_Chams_Fill_Enabled"), SettingsStore::Visuals_Chams_Fill_Enabled);
+        WriteBool(ss, WRAPPER_MARCO("Visuals_Chams_Outline_Enabled"), SettingsStore::Visuals_Chams_Outline_Enabled);
+        WriteBool(ss, WRAPPER_MARCO("Visuals_Chams_Occlusion"), SettingsStore::Visuals_Chams_Occlusion);
+        WriteBool(ss, WRAPPER_MARCO("Visuals_Chams_Use_Shaders"), SettingsStore::Visuals_Chams_Use_Shaders);
         WriteBool(ss, WRAPPER_MARCO("Visuals_WallCheck"), SettingsStore::Visuals_WallCheck);
 
         WriteBool(ss, WRAPPER_MARCO("World_Skybox"), SettingsStore::World_Skybox);
@@ -91,6 +95,7 @@ public:
         WriteBool(ss, WRAPPER_MARCO("Settings_Team_Check"), SettingsStore::Settings_Team_Check);
         WriteBool(ss, WRAPPER_MARCO("Settings_Client_Check"), SettingsStore::Settings_Client_Check);
         WriteBool(ss, WRAPPER_MARCO("Settings_Streamproof"), SettingsStore::Settings_Streamproof);
+        WriteBool(ss, WRAPPER_MARCO("Settings_VSync"), SettingsStore::Settings_VSync);
 
         WriteBool(ss, WRAPPER_MARCO("Whitelist_Enabled"), SettingsStore::Whitelist_Enabled);
 
@@ -100,6 +105,7 @@ public:
 
         WriteBool(ss, WRAPPER_MARCO("Misc_Speed"), SettingsStore::Misc_Speed);
         WriteBool(ss, WRAPPER_MARCO("Misc_Jump"), SettingsStore::Misc_Jump);
+        WriteBool(ss, WRAPPER_MARCO("Explorer_Open"), SettingsStore::Explorer_Open);
 
         // Int
         WriteInt(ss, WRAPPER_MARCO("Aimbot_type"), SettingsStore::Aimbot_type);
@@ -113,6 +119,9 @@ public:
         WriteInt(ss, WRAPPER_MARCO("Silent_FovSpinSpeed"), SettingsStore::Silent_FovSpinSpeed);
 
         WriteInt(ss, WRAPPER_MARCO("Visuals_ChamsFadeSpeed"), SettingsStore::Visuals_ChamsFadeSpeed);
+        WriteInt(ss, WRAPPER_MARCO("Visuals_Chams_Type"), SettingsStore::Visuals_Chams_Type);
+        WriteInt(ss, WRAPPER_MARCO("Visuals_Chams_Quality"), SettingsStore::Visuals_Chams_Quality);
+        WriteInt(ss, WRAPPER_MARCO("Visuals_Chams_Shader"), SettingsStore::Visuals_Chams_Shader);
         WriteInt(ss, WRAPPER_MARCO("Visuals_BoxFillSpeed"), SettingsStore::Visuals_BoxFillSpeed);
         WriteInt(ss, WRAPPER_MARCO("Visuals_Healthbar_Type"), SettingsStore::Visuals_Healthbar_Type);
         WriteInt(ss, WRAPPER_MARCO("Visuals_Box_Type"), SettingsStore::Visuals_Box_Type);
@@ -170,6 +179,35 @@ public:
         WriteFloat(ss, WRAPPER_MARCO("Silent_Prediction_Value"), SettingsStore::Silent_Prediction_Value);
 
         WriteFloat(ss, WRAPPER_MARCO("Visuals_Render_Distance"), SettingsStore::Visuals_Render_Distance);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Fill_Transparency"), SettingsStore::Visuals_Chams_Fill_Transparency);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Outline_Thickness"), SettingsStore::Visuals_Chams_Outline_Thickness);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Cycle_Speed"), SettingsStore::Visuals_Chams_Cycle_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Rim_Power"), SettingsStore::Visuals_Chams_Rim_Power);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Dissolve_Amount"), SettingsStore::Visuals_Chams_Dissolve_Amount);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Dissolve_Edge"), SettingsStore::Visuals_Chams_Dissolve_Edge);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Glitch_Intensity"), SettingsStore::Visuals_Chams_Glitch_Intensity);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Glitch_Speed"), SettingsStore::Visuals_Chams_Glitch_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Hologram_Scan_Speed"), SettingsStore::Visuals_Chams_Hologram_Scan_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Hologram_Opacity"), SettingsStore::Visuals_Chams_Hologram_Opacity);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Lava_Speed"), SettingsStore::Visuals_Chams_Lava_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Lava_Scale"), SettingsStore::Visuals_Chams_Lava_Scale);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Ice_Roughness"), SettingsStore::Visuals_Chams_Ice_Roughness);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Neon_Pulse_Speed"), SettingsStore::Visuals_Chams_Neon_Pulse_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Neon_Pulse_Width"), SettingsStore::Visuals_Chams_Neon_Pulse_Width);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Depth_Fog_Density"), SettingsStore::Visuals_Chams_Depth_Fog_Density);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Splatter_Scale"), SettingsStore::Visuals_Chams_Splatter_Scale);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Liquid_Speed"), SettingsStore::Visuals_Chams_Liquid_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Liquid_Wave"), SettingsStore::Visuals_Chams_Liquid_Wave);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Sliced_Gap"), SettingsStore::Visuals_Chams_Sliced_Gap);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Sliced_Speed"), SettingsStore::Visuals_Chams_Sliced_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Caustic_Speed"), SettingsStore::Visuals_Chams_Caustic_Speed);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Caustic_Scale"), SettingsStore::Visuals_Chams_Caustic_Scale);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Metallic_Roughness"), SettingsStore::Visuals_Chams_Metallic_Roughness);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Chrome_Sharpness"), SettingsStore::Visuals_Chams_Chrome_Sharpness);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Wood_Scale"), SettingsStore::Visuals_Chams_Wood_Scale);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Plastic_Shininess"), SettingsStore::Visuals_Chams_Plastic_Shininess);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Specular_Power"), SettingsStore::Visuals_Chams_Specular_Power);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Specular_Intensity"), SettingsStore::Visuals_Chams_Specular_Intensity);
 
         WriteFloat(ss, WRAPPER_MARCO("World_Rotate_Speed"), SettingsStore::World_Rotate_Speed);
         WriteFloat(ss, WRAPPER_MARCO("World_Fog_Distance"), SettingsStore::World_Fog_Distance);
@@ -194,6 +232,8 @@ public:
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_SkeletonColor"), SettingsStore::Visuals_SkeletonColor);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_ChamsColor"), SettingsStore::Visuals_ChamsColor);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_ChamsOutline"), SettingsStore::Visuals_ChamsOutline);
+        WriteFloatArray(ss, WRAPPER_MARCO("Visuals_Chams_Visible_Color"), SettingsStore::Visuals_Chams_Visible_Color);
+        WriteFloatArray(ss, WRAPPER_MARCO("Visuals_Chams_Occluded_Color"), SettingsStore::Visuals_Chams_Occluded_Color);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_HealthbarTop"), SettingsStore::Visuals_HealthbarTop);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_HealthbarMiddle"), SettingsStore::Visuals_HealthbarMiddle);
         WriteFloatArray(ss, WRAPPER_MARCO("Visuals_HealthbarBottom"), SettingsStore::Visuals_HealthbarBottom);
@@ -204,6 +244,19 @@ public:
         WriteFloatArray(ss, WRAPPER_MARCO("World_FogColor"), SettingsStore::World_FogColor);
 
         WriteFloatArray(ss, WRAPPER_MARCO("Whitelist_Color"), SettingsStore::Whitelist_Color);
+
+        // Whitelist_UserIDs
+        {
+            ss << "    \"" << WRAPPER_MARCO("Whitelist_UserIDs") << "\": \"";
+            bool first = true;
+            for (auto id : SettingsStore::Whitelist_UserIDs)
+            {
+                if (!first) ss << ",";
+                ss << id;
+                first = false;
+            }
+            ss << "\",\n";
+        }
 
         ss << "}\n";
 
@@ -402,6 +455,8 @@ private:
         if (key == WRAPPER_MARCO("Visuals_SkeletonColor")) { ParseFloatArray(val, SettingsStore::Visuals_SkeletonColor); return; }
         if (key == WRAPPER_MARCO("Visuals_ChamsColor")) { ParseFloatArray(val, SettingsStore::Visuals_ChamsColor); return; }
         if (key == WRAPPER_MARCO("Visuals_ChamsOutline")) { ParseFloatArray(val, SettingsStore::Visuals_ChamsOutline); return; }
+        if (key == WRAPPER_MARCO("Visuals_Chams_Visible_Color")) { ParseFloatArray(val, SettingsStore::Visuals_Chams_Visible_Color); return; }
+        if (key == WRAPPER_MARCO("Visuals_Chams_Occluded_Color")) { ParseFloatArray(val, SettingsStore::Visuals_Chams_Occluded_Color); return; }
         if (key == WRAPPER_MARCO("Visuals_HealthbarTop")) { ParseFloatArray(val, SettingsStore::Visuals_HealthbarTop); return; }
         if (key == WRAPPER_MARCO("Visuals_HealthbarMiddle")) { ParseFloatArray(val, SettingsStore::Visuals_HealthbarMiddle); return; }
         if (key == WRAPPER_MARCO("Visuals_HealthbarBottom")) { ParseFloatArray(val, SettingsStore::Visuals_HealthbarBottom); return; }
@@ -410,6 +465,22 @@ private:
         if (key == WRAPPER_MARCO("World_AmbienceColor")) { ParseFloatArray(val, SettingsStore::World_AmbienceColor); return; }
         if (key == WRAPPER_MARCO("World_FogColor")) { ParseFloatArray(val, SettingsStore::World_FogColor); return; }
         if (key == WRAPPER_MARCO("Whitelist_Color")) { ParseFloatArray(val, SettingsStore::Whitelist_Color); return; }
+
+        if (key == WRAPPER_MARCO("Whitelist_UserIDs")) {
+            SettingsStore::Whitelist_UserIDs.clear();
+            std::stringstream ss(val);
+            std::string item;
+            while (std::getline(ss, item, ','))
+            {
+                item.erase(0, item.find_first_not_of(" \t\r\n\""));
+                item.erase(item.find_last_not_of(" \t\r\n\"") + 1);
+                if (!item.empty()) {
+                    try { SettingsStore::Whitelist_UserIDs.insert(std::stoull(item)); }
+                    catch (...) { Logger::Log(WRAPPER_MARCO("[Config] whitelist parse exception")); }
+                }
+            }
+            return;
+        }
 
         if (AssignBool(key, val)) return;
         if (AssignInt(key, val)) return;
@@ -460,6 +531,10 @@ private:
         SET_BOOL(Visuals_Skeleton);
         SET_BOOL(Visuals_Chams);
         SET_BOOL(Visuals_ChamsFade);
+        SET_BOOL(Visuals_Chams_Fill_Enabled);
+        SET_BOOL(Visuals_Chams_Outline_Enabled);
+        SET_BOOL(Visuals_Chams_Occlusion);
+        SET_BOOL(Visuals_Chams_Use_Shaders);
         SET_BOOL(Visuals_WallCheck);
 
         SET_BOOL(World_Skybox);
@@ -473,6 +548,7 @@ private:
         SET_BOOL(Settings_Team_Check);
         SET_BOOL(Settings_Client_Check);
         SET_BOOL(Settings_Streamproof);
+        SET_BOOL(Settings_VSync);
 
         SET_BOOL(Whitelist_Enabled);
 
@@ -482,6 +558,7 @@ private:
 
         SET_BOOL(Misc_Speed);
         SET_BOOL(Misc_Jump);
+        SET_BOOL(Explorer_Open);
 #undef SET_BOOL
         return false;
     }
@@ -504,6 +581,9 @@ private:
             SET_INT(Silent_FovSpinSpeed);
 
             SET_INT(Visuals_ChamsFadeSpeed);
+            SET_INT(Visuals_Chams_Type);
+            SET_INT(Visuals_Chams_Quality);
+            SET_INT(Visuals_Chams_Shader);
             SET_INT(Visuals_BoxFillSpeed);
             SET_INT(Visuals_Healthbar_Type);
             SET_INT(Visuals_Box_Type);
@@ -523,24 +603,31 @@ private:
             SET_INT(Settings_Performance_Mode);
             SET_INT(WallCheck_Method);
 
+#define LOAD_KEYMODE(keyname, varname) \
+    if (key == WRAPPER_MARCO(keyname)) { \
+        int mi = (i == 0) ? (int)ImKeyBindMode_Toggle : i; \
+        SettingsStore::varname = (ImKeyBindMode)mi; return true; \
+    }
+
             if (key == WRAPPER_MARCO("Triggerbot_Key")) { SettingsStore::Triggerbot_Key = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Triggerbot_Mode")) { SettingsStore::Triggerbot_Mode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Triggerbot_Mode", Triggerbot_Mode);
             if (key == WRAPPER_MARCO("Aimbot_Key")) { SettingsStore::Aimbot_Key = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Aimbot_Mode")) { SettingsStore::Aimbot_Mode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Aimbot_Mode", Aimbot_Mode);
             if (key == WRAPPER_MARCO("Aimbot_FovToggleKey")) { SettingsStore::Aimbot_FovToggleKey = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Aimbot_FovToggleMode")) { SettingsStore::Aimbot_FovToggleMode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Aimbot_FovToggleMode", Aimbot_FovToggleMode);
             if (key == WRAPPER_MARCO("Silent_Key")) { SettingsStore::Silent_Key = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Silent_Mode")) { SettingsStore::Silent_Mode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Silent_Mode", Silent_Mode);
             if (key == WRAPPER_MARCO("Silent_FovToggleKey")) { SettingsStore::Silent_FovToggleKey = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Silent_FovToggleMode")) { SettingsStore::Silent_FovToggleMode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Silent_FovToggleMode", Silent_FovToggleMode);
             if (key == WRAPPER_MARCO("Visuals_ToggleKey")) { SettingsStore::Visuals_ToggleKey = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Visuals_ToggleMode")) { SettingsStore::Visuals_ToggleMode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Visuals_ToggleMode", Visuals_ToggleMode);
             if (key == WRAPPER_MARCO("Misc_Speed_Key")) { SettingsStore::Misc_Speed_Key = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Misc_Speed_Key_Mode")) { SettingsStore::Misc_Speed_Key_Mode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Misc_Speed_Key_Mode", Misc_Speed_Key_Mode);
             if (key == WRAPPER_MARCO("Misc_Jump_Key")) { SettingsStore::Misc_Jump_Key = (ImGuiKey)i; return true; }
-            if (key == WRAPPER_MARCO("Misc_Jump_Key_Mode")) { SettingsStore::Misc_Jump_Key_Mode = (ImKeyBindMode)i; return true; }
+            LOAD_KEYMODE("Misc_Jump_Key_Mode", Misc_Jump_Key_Mode);
             if (key == WRAPPER_MARCO("Settings_Menu_Keybind")) { SettingsStore::Settings_Menu_Keybind = (ImGuiKey)i; return true; }
 #undef SET_INT
+#undef LOAD_KEYMODE
         }
         catch (...) {
             Logger::Log(WRAPPER_MARCO("[Config] int parse exception"));
@@ -574,6 +661,35 @@ private:
             SET_FLOAT(Silent_Prediction_Value);
 
             SET_FLOAT(Visuals_Render_Distance);
+            SET_FLOAT(Visuals_Chams_Fill_Transparency);
+            SET_FLOAT(Visuals_Chams_Outline_Thickness);
+            SET_FLOAT(Visuals_Chams_Cycle_Speed);
+            SET_FLOAT(Visuals_Chams_Rim_Power);
+            SET_FLOAT(Visuals_Chams_Dissolve_Amount);
+            SET_FLOAT(Visuals_Chams_Dissolve_Edge);
+            SET_FLOAT(Visuals_Chams_Glitch_Intensity);
+            SET_FLOAT(Visuals_Chams_Glitch_Speed);
+            SET_FLOAT(Visuals_Chams_Hologram_Scan_Speed);
+            SET_FLOAT(Visuals_Chams_Hologram_Opacity);
+            SET_FLOAT(Visuals_Chams_Lava_Speed);
+            SET_FLOAT(Visuals_Chams_Lava_Scale);
+            SET_FLOAT(Visuals_Chams_Ice_Roughness);
+            SET_FLOAT(Visuals_Chams_Neon_Pulse_Speed);
+            SET_FLOAT(Visuals_Chams_Neon_Pulse_Width);
+            SET_FLOAT(Visuals_Chams_Depth_Fog_Density);
+            SET_FLOAT(Visuals_Chams_Splatter_Scale);
+            SET_FLOAT(Visuals_Chams_Liquid_Speed);
+            SET_FLOAT(Visuals_Chams_Liquid_Wave);
+            SET_FLOAT(Visuals_Chams_Sliced_Gap);
+            SET_FLOAT(Visuals_Chams_Sliced_Speed);
+            SET_FLOAT(Visuals_Chams_Caustic_Speed);
+            SET_FLOAT(Visuals_Chams_Caustic_Scale);
+            SET_FLOAT(Visuals_Chams_Metallic_Roughness);
+            SET_FLOAT(Visuals_Chams_Chrome_Sharpness);
+            SET_FLOAT(Visuals_Chams_Wood_Scale);
+            SET_FLOAT(Visuals_Chams_Plastic_Shininess);
+            SET_FLOAT(Visuals_Chams_Specular_Power);
+            SET_FLOAT(Visuals_Chams_Specular_Intensity);
 
             SET_FLOAT(World_Rotate_Speed);
             SET_FLOAT(World_Fog_Distance);

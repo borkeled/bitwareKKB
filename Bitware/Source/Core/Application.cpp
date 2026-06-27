@@ -27,6 +27,7 @@
 #include <Auth/skStr.h>
 #include <Core/UI/IMenuRenderer.h>
 #include <Core/UI/GoodMenuRenderer.h>
+#include <Miscellaneous/Config/ConfigManager.h>
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
 #include <Infrastructure/AntiDump.h>
@@ -229,6 +230,7 @@ bool Application::Init()
         mesh_chams::start_memory_mesh_scan();
 
         OBF_JUNK_BLOCK;
+
         Logger::Log(WRAPPER_MARCO("[Init] doneso"));
         Logger::Flush();
         return true;
@@ -252,6 +254,14 @@ void Application::Run()
     {
         Output::Error(WRAPPER_MARCO("Overlay not initialized"));
         return;
+    }
+
+    // Auto-load first available config
+    {
+        auto configs = ConfigManager::Get().ListNames();
+        if (!configs.empty()) {
+            ConfigManager::Get().Load(configs[0].c_str());
+        }
     }
 
     MSG msg;
