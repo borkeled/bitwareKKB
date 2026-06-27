@@ -306,6 +306,7 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Updater\Installer.h" />
     <ClInclude Include="Source\Version.h" />
     <ClInclude Include="Source\Loader\LoaderConsole.h" />
+    <ClInclude Include="Source\Loader\SplashWindow.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Dependencies\Clipper2Lib\src\clipper.engine.cpp" />
@@ -347,6 +348,7 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Source\Miscellaneous\Protection\FakeStrings.cpp" />
     <ClCompile Include="Source\Updater\Updater.cpp" />
     <ClCompile Include="Source\Updater\Installer.cpp" />
+    <ClCompile Include="Source\Loader\SplashWindow.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Bitware.rc" />

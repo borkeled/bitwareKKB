@@ -1,11 +1,14 @@
 #include "Updater.h"
-#include "Installer.h"
 #include <string>
 #include <cstdio>
 #include <cstdint>
+#include <cstdlib>
+#include <vector>
 
 #include <windows.h>
 #include <winhttp.h>
+#include <bcrypt.h>
+#include <Shellapi.h>
 
 #include <Version.h>
 #include <Auth/skStr.h>
@@ -13,10 +16,14 @@
 #include <Miscellaneous/Output/Output.h>
 #include <Infrastructure/Logger.h>
 
+#pragma comment(lib, "bcrypt.lib")
+
 namespace {
 
-    std::string WideToUtf8(const wchar_t* wide)
-    {
+    static std::string S(const char* s) { return s; }
+    static std::wstring WS(const wchar_t* s) { return s; }
+
+    std::string WideToUtf8(const wchar_t* wide) {
         int len = WideCharToMultiByte(CP_UTF8, 0, wide, -1, nullptr, 0, nullptr, nullptr);
         if (len <= 0) return {};
         std::string result(len - 1, 0);
@@ -24,8 +31,7 @@ namespace {
         return result;
     }
 
-    std::wstring Utf8ToWide(const std::string& utf8)
-    {
+    std::wstring Utf8ToWide(const std::string& utf8) {
         int len = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
         if (len <= 0) return {};
         std::wstring result(len - 1, 0);
@@ -33,93 +39,81 @@ namespace {
         return result;
     }
 
-    static std::string S(const char* s) { return s; }
-    static std::wstring WS(const wchar_t* s) { return s; }
+    struct Version {
+        int major = 0, minor = 0, patch = 0;
+        bool valid = false;
+    };
 
-    std::string GetApiResponse(const std::wstring& host, const std::wstring& path)
-    {
-        HINTERNET hSession = WinHttpOpen(
-            WS(skCrypt(L"Bitware/1.0")).c_str(),
-            WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
-            nullptr,
-            nullptr,
-            0
-        );
-        if (!hSession)
-            return {};
+    Version ParseVersion(const std::string& str) {
+        Version v;
+        std::string s = str;
+        if (!s.empty() && s[0] == 'v') s = s.substr(1);
 
-        HINTERNET hConnect = WinHttpConnect(hSession, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
-        if (!hConnect) {
-            WinHttpCloseHandle(hSession);
-            return {};
-        }
+        size_t p1 = s.find('.');
+        if (p1 == std::string::npos) return v;
+        size_t p2 = s.find('.', p1 + 1);
+        if (p2 == std::string::npos) return v;
 
-        HINTERNET hRequest = WinHttpOpenRequest(
-            hConnect,
-            WS(skCrypt(L"GET")).c_str(),
-            path.c_str(),
-            nullptr,
-            nullptr,
-            nullptr,
-            WINHTTP_FLAG_SECURE
-        );
-        if (!hRequest) {
-            WinHttpCloseHandle(hConnect);
-            WinHttpCloseHandle(hSession);
-            return {};
-        }
-
-        WinHttpSendRequest(hRequest, nullptr, 0, nullptr, 0, 0, 0);
-        WinHttpReceiveResponse(hRequest, nullptr);
-
-        std::string result;
-        char buffer[4096];
-        DWORD bytesRead = 0;
-        while (WinHttpReadData(hRequest, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
-            result.append(buffer, bytesRead);
-        }
-
-        WinHttpCloseHandle(hRequest);
-        WinHttpCloseHandle(hConnect);
-        WinHttpCloseHandle(hSession);
-        return result;
+        v.major = std::atoi(s.substr(0, p1).c_str());
+        v.minor = std::atoi(s.substr(p1 + 1, p2 - p1 - 1).c_str());
+        v.patch = std::atoi(s.substr(p2 + 1).c_str());
+        v.valid = true;
+        return v;
     }
 
-    std::string FindJsonString(const std::string& json, const std::string& key)
-    {
+    bool IsNewerVersion(const Version& current, const Version& remote) {
+        if (!current.valid || !remote.valid) return false;
+        if (remote.major > current.major) return true;
+        if (remote.major < current.major) return false;
+        if (remote.minor > current.minor) return true;
+        if (remote.minor < current.minor) return false;
+        return remote.patch > current.patch;
+    }
+
+    std::string FindJsonString(const std::string& json, const std::string& key) {
         std::string search = S(skCrypt("\"")) + key + S(skCrypt("\""));
         auto pos = json.find(search);
-        if (pos == std::string::npos)
-            return {};
+        if (pos == std::string::npos) return {};
 
         auto colon = json.find(':', pos);
-        if (colon == std::string::npos)
-            return {};
+        if (colon == std::string::npos) return {};
 
         auto start = json.find_first_of(S(skCrypt("\"")), colon + 1);
-        if (start == std::string::npos)
-            return {};
+        if (start == std::string::npos) return {};
 
         auto end = json.find_first_of(S(skCrypt("\"")), start + 1);
-        if (end == std::string::npos)
-            return {};
+        if (end == std::string::npos) return {};
 
         return json.substr(start + 1, end - start - 1);
     }
 
-    std::string StripV(const std::string& version)
-    {
-        if (!version.empty() && version[0] == 'v')
-            return version.substr(1);
-        return version;
+    std::string FindAssetUrl(const std::string& json) {
+        std::string searchName = S(skCrypt("\"name\": \"Bitware.exe\""));
+        auto namePos = json.find(searchName);
+        if (namePos == std::string::npos) return {};
+
+        std::string searchUrl = S(skCrypt("\"browser_download_url\""));
+        auto urlPos = json.rfind(searchUrl, namePos);
+        if (urlPos == std::string::npos)
+            urlPos = json.find(searchUrl, namePos);
+        if (urlPos == std::string::npos) return {};
+
+        auto colon = json.find(':', urlPos);
+        if (colon == std::string::npos) return {};
+
+        auto start = json.find_first_of(S(skCrypt("\"")), colon + 1);
+        if (start == std::string::npos) return {};
+
+        auto end = json.find_first_of(S(skCrypt("\"")), start + 1);
+        if (end == std::string::npos) return {};
+
+        return json.substr(start + 1, end - start - 1);
     }
 
-    bool IsPE(const wchar_t* path)
-    {
+    bool IsPE(const wchar_t* path) {
         HANDLE hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
             OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (hFile == INVALID_HANDLE_VALUE)
-            return false;
+        if (hFile == INVALID_HANDLE_VALUE) return false;
 
         uint16_t magic = 0;
         DWORD read = 0;
@@ -128,76 +122,49 @@ namespace {
         return ok && magic == 0x5A4D;
     }
 
-    bool IsZip(const wchar_t* path)
-    {
-        HANDLE hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
-            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (hFile == INVALID_HANDLE_VALUE)
-            return false;
+    std::string GetApiResponse(const std::wstring& host, const std::wstring& path) {
+        HINTERNET hSession = WinHttpOpen(
+            WS(skCrypt(L"Bitware/1.0")).c_str(),
+            WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+            nullptr, nullptr, 0);
+        if (!hSession) return {};
 
-        uint16_t magic = 0;
-        DWORD read = 0;
-        bool ok = ReadFile(hFile, &magic, sizeof(magic), &read, nullptr) && read == sizeof(magic);
-        CloseHandle(hFile);
-        return ok && magic == 0x4B50;
+        WinHttpSetTimeouts(hSession, 10000, 30000, 30000, 30000);
+
+        HINTERNET hConnect = WinHttpConnect(hSession, host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0);
+        if (!hConnect) { WinHttpCloseHandle(hSession); return {}; }
+
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect,
+            WS(skCrypt(L"GET")).c_str(), path.c_str(),
+            nullptr, nullptr, nullptr, WINHTTP_FLAG_SECURE);
+        if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return {}; }
+
+        std::string result;
+        if (WinHttpSendRequest(hRequest, nullptr, 0, nullptr, 0, 0, 0) &&
+            WinHttpReceiveResponse(hRequest, nullptr)) {
+
+            DWORD statusCode = 0;
+            DWORD size = sizeof(statusCode);
+            WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                nullptr, &statusCode, &size, nullptr);
+
+            if (statusCode == 200) {
+                char buffer[4096];
+                DWORD bytesRead = 0;
+                while (WinHttpReadData(hRequest, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
+                    result.append(buffer, bytesRead);
+                }
+            }
+        }
+
+        WinHttpCloseHandle(hRequest);
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+        return result;
     }
 
-    bool ExtractZip(const wchar_t* zipPath, const wchar_t* destDir)
-    {
-        CreateDirectoryW(destDir, nullptr);
-
-        std::wstring psCmd = WS(skCrypt(L"powershell -NoProfile -Command \""))
-            + WS(skCrypt(L"Expand-Archive -Path '")) + zipPath
-            + WS(skCrypt(L"' -DestinationPath '")) + destDir
-            + WS(skCrypt(L"' -Force\""));
-
-        STARTUPINFOW si = { sizeof(si) };
-        PROCESS_INFORMATION pi;
-        if (!CreateProcessW(nullptr, &psCmd[0], nullptr, nullptr, FALSE,
-            CREATE_NO_WINDOW, nullptr, nullptr, &si, &pi))
-            return false;
-
-        WaitForSingleObject(pi.hProcess, 30000);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-
-        wchar_t extractedExe[MAX_PATH];
-        swprintf(extractedExe, MAX_PATH, WS(skCrypt(L"%s\\Bitware.exe")).c_str(), destDir);
-        return GetFileAttributesW(extractedExe) != INVALID_FILE_ATTRIBUTES;
-    }
-
-    std::string FindAssetUrl(const std::string& json)
-    {
-        std::string searchName = S(skCrypt("\"name\": \"Bitware.exe\""));
-        auto namePos = json.find(searchName);
-        if (namePos == std::string::npos)
-            return {};
-
-        std::string searchUrl = S(skCrypt("\"browser_download_url\""));
-        auto urlPos = json.rfind(searchUrl, namePos);
-        if (urlPos == std::string::npos)
-            urlPos = json.find(searchUrl, namePos);
-
-        if (urlPos == std::string::npos)
-            return {};
-
-        auto colon = json.find(':', urlPos);
-        if (colon == std::string::npos)
-            return {};
-
-        auto start = json.find_first_of(S(skCrypt("\"")), colon + 1);
-        if (start == std::string::npos)
-            return {};
-
-        auto end = json.find_first_of(S(skCrypt("\"")), start + 1);
-        if (end == std::string::npos)
-            return {};
-
-        return json.substr(start + 1, end - start - 1);
-    }
-
-    bool DownloadUrlToFile(const std::wstring& url, const std::wstring& outputPath)
-    {
+    bool DownloadUrlToFile(const std::wstring& url, const std::wstring& outputPath,
+        Updater::ProgressCallback progress) {
         URL_COMPONENTSW urlComp = {};
         urlComp.dwStructSize = sizeof(urlComp);
         wchar_t hostName[256] = {}, urlPath[2048] = {};
@@ -215,31 +182,58 @@ namespace {
             nullptr, nullptr, 0);
         if (!hSession) return false;
 
+        WinHttpSetTimeouts(hSession, 10000, 60000, 60000, 120000);
+
         HINTERNET hConnect = WinHttpConnect(hSession, hostName, urlComp.nPort, 0);
         if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
 
         DWORD flags = WINHTTP_FLAG_SECURE;
         if (urlComp.nPort == INTERNET_DEFAULT_HTTP_PORT) flags = 0;
 
-        HINTERNET hRequest = WinHttpOpenRequest(hConnect, WS(skCrypt(L"GET")).c_str(),
-            urlPath, nullptr, nullptr, nullptr, flags);
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect,
+            WS(skCrypt(L"GET")).c_str(), urlPath,
+            nullptr, nullptr, nullptr, flags);
         if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
 
         bool ok = false;
         if (WinHttpSendRequest(hRequest, nullptr, 0, nullptr, 0, 0, 0) &&
             WinHttpReceiveResponse(hRequest, nullptr)) {
 
-            HANDLE hFile = CreateFileW(outputPath.c_str(), GENERIC_WRITE, 0, nullptr,
-                CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-            if (hFile != INVALID_HANDLE_VALUE) {
-                char buffer[65536];
-                DWORD bytesRead = 0;
-                while (WinHttpReadData(hRequest, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
-                    DWORD written;
-                    WriteFile(hFile, buffer, bytesRead, &written, nullptr);
+            DWORD statusCode = 0;
+            DWORD size = sizeof(statusCode);
+            WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                nullptr, &statusCode, &size, nullptr);
+
+            if (statusCode == 200 || statusCode == 206) {
+                int64_t totalSize = 0;
+                {
+                    wchar_t contentLen[32] = {};
+                    DWORD lenSize = sizeof(contentLen);
+                    if (WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_CONTENT_LENGTH,
+                        nullptr, contentLen, &lenSize, nullptr)) {
+                        totalSize = _wtoi64(contentLen);
+                    }
                 }
-                CloseHandle(hFile);
-                ok = true;
+
+                HANDLE hFile = CreateFileW(outputPath.c_str(), GENERIC_WRITE, 0, nullptr,
+                    CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (hFile != INVALID_HANDLE_VALUE) {
+                    char buffer[65536];
+                    DWORD bytesRead = 0;
+                    int64_t totalRead = 0;
+
+                    while (WinHttpReadData(hRequest, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
+                        DWORD written;
+                        WriteFile(hFile, buffer, bytesRead, &written, nullptr);
+                        totalRead += bytesRead;
+
+                        if (progress && totalSize > 0) {
+                            progress(totalRead, totalSize);
+                        }
+                    }
+                    CloseHandle(hFile);
+                    ok = (totalRead > 0);
+                }
             }
         }
 
@@ -249,62 +243,344 @@ namespace {
         return ok;
     }
 
-    bool StageUpdate(const wchar_t* updateExe)
-    {
+    bool ComputeSha256(const wchar_t* path, std::string& hashHex) {
+        HANDLE hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, nullptr,
+            OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hFile == INVALID_HANDLE_VALUE) return false;
+
+        BCRYPT_ALG_HANDLE hAlg = nullptr;
+        bool result = false;
+        hashHex.clear();
+
+        if (BCryptOpenAlgorithmProvider(&hAlg, BCRYPT_SHA256_ALGORITHM, nullptr, 0) != 0) {
+            CloseHandle(hFile);
+            return false;
+        }
+
+        DWORD hashObjSize = 0;
+        DWORD cbData = 0;
+        BCryptGetProperty(hAlg, BCRYPT_OBJECT_LENGTH, (PUCHAR)&hashObjSize, sizeof(hashObjSize), &cbData, 0);
+
+        DWORD hashLen = 0;
+        BCryptGetProperty(hAlg, BCRYPT_HASH_LENGTH, (PUCHAR)&hashLen, sizeof(hashLen), &cbData, 0);
+
+        std::vector<UCHAR> hashObj(hashObjSize);
+        std::vector<UCHAR> hash(hashLen);
+
+        BCRYPT_HASH_HANDLE hHash = nullptr;
+        if (BCryptCreateHash(hAlg, &hHash, hashObj.data(), (ULONG)hashObjSize, nullptr, 0, 0) == 0) {
+            char buffer[65536];
+            DWORD read = 0;
+            while (ReadFile(hFile, buffer, sizeof(buffer), &read, nullptr) && read > 0) {
+                BCryptHashData(hHash, (PUCHAR)buffer, (ULONG)read, 0);
+            }
+
+            if (BCryptFinishHash(hHash, hash.data(), (ULONG)hashLen, 0) == 0) {
+                char hex[65];
+                for (DWORD i = 0; i < hashLen; i++) {
+                    sprintf_s(hex + i * 2, 3, "%02x", hash[i]);
+                }
+                hex[64] = 0;
+                hashHex = hex;
+                result = true;
+            }
+            BCryptDestroyHash(hHash);
+        }
+
+        BCryptCloseAlgorithmProvider(hAlg, 0);
+        CloseHandle(hFile);
+        return result;
+    }
+
+    bool VerifySha256(const wchar_t* downloadPath, const std::string& expectedHash) {
+        std::string actualHash;
+        if (!ComputeSha256(downloadPath, actualHash)) return false;
+
+        Logger::Log((S(skCrypt("[Updater] SHA256: expected=")) + expectedHash +
+            S(skCrypt(" actual=")) + actualHash).c_str());
+
+        auto toLower = [](std::string s) {
+            for (auto& c : s) c = (char)tolower(c);
+            return s;
+        };
+
+        return toLower(actualHash) == toLower(expectedHash);
+    }
+
+    bool FetchSha256(const std::string& sha256Url, std::string& hash) {
+        std::wstring wideUrl = Utf8ToWide(sha256Url);
+        URL_COMPONENTSW urlComp = {};
+        urlComp.dwStructSize = sizeof(urlComp);
+        wchar_t hostName[256] = {}, urlPath[2048] = {};
+        urlComp.lpszHostName = hostName;
+        urlComp.dwHostNameLength = 256;
+        urlComp.lpszUrlPath = urlPath;
+        urlComp.dwUrlPathLength = 2048;
+
+        if (!WinHttpCrackUrl(wideUrl.c_str(), 0, 0, &urlComp))
+            return false;
+
+        HINTERNET hSession = WinHttpOpen(
+            WS(skCrypt(L"Bitware/1.0")).c_str(),
+            WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+            nullptr, nullptr, 0);
+        if (!hSession) return false;
+
+        WinHttpSetTimeouts(hSession, 5000, 10000, 10000, 10000);
+
+        HINTERNET hConnect = WinHttpConnect(hSession, hostName, urlComp.nPort, 0);
+        if (!hConnect) { WinHttpCloseHandle(hSession); return false; }
+
+        DWORD flags = WINHTTP_FLAG_SECURE;
+        if (urlComp.nPort == INTERNET_DEFAULT_HTTP_PORT) flags = 0;
+
+        HINTERNET hRequest = WinHttpOpenRequest(hConnect,
+            WS(skCrypt(L"GET")).c_str(), urlPath,
+            nullptr, nullptr, nullptr, flags);
+        if (!hRequest) { WinHttpCloseHandle(hConnect); WinHttpCloseHandle(hSession); return false; }
+
+        std::string response;
+        if (WinHttpSendRequest(hRequest, nullptr, 0, nullptr, 0, 0, 0) &&
+            WinHttpReceiveResponse(hRequest, nullptr)) {
+
+            DWORD statusCode = 0;
+            DWORD size = sizeof(statusCode);
+            WinHttpQueryHeaders(hRequest, WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+                nullptr, &statusCode, &size, nullptr);
+
+            if (statusCode == 200) {
+                char buffer[4096];
+                DWORD bytesRead = 0;
+                while (WinHttpReadData(hRequest, buffer, sizeof(buffer), &bytesRead) && bytesRead > 0) {
+                    response.append(buffer, bytesRead);
+                }
+            }
+        }
+
+        WinHttpCloseHandle(hRequest);
+        WinHttpCloseHandle(hConnect);
+        WinHttpCloseHandle(hSession);
+
+        if (response.empty()) return false;
+
+        auto space = response.find(' ');
+        if (space != std::string::npos) {
+            hash = response.substr(0, space);
+        } else {
+            auto newline = response.find('\n');
+            if (newline != std::string::npos) {
+                hash = response.substr(0, newline);
+            } else {
+                hash = response;
+            }
+        }
+
+        return !hash.empty();
+    }
+
+    bool StageUpdate(const wchar_t* updateExe) {
         wchar_t selfPath[MAX_PATH];
         GetModuleFileNameW(nullptr, selfPath, MAX_PATH);
 
-        wchar_t tempPath[MAX_PATH];
-        GetTempPathW(MAX_PATH, tempPath);
+        wchar_t oldPath[MAX_PATH];
+        wcscpy_s(oldPath, selfPath);
+        wcscat_s(oldPath, WS(skCrypt(L".old")).c_str());
 
-        wchar_t batchPath[MAX_PATH];
-        swprintf(batchPath, MAX_PATH, WS(skCrypt(L"%sBitware_updater.bat")).c_str(), tempPath);
+        wchar_t markerPath[MAX_PATH];
+        wcscpy_s(markerPath, selfPath);
+        wcscat_s(markerPath, WS(skCrypt(L".updated")).c_str());
 
-        std::string updateExeUtf8 = WideToUtf8(updateExe);
-        std::string selfPathUtf8 = WideToUtf8(selfPath);
+        Logger::Log(S(skCrypt("[Updater] stage: rename-swap update")).c_str());
 
-        std::string batch;
-        batch += S(skCrypt("@echo off\r\n"));
-        batch += S(skCrypt(":loop\r\n"));
-        batch += S(skCrypt("tasklist /fi \"IMAGENAME eq Bitware.exe\" 2>nul | find /i \"Bitware.exe\" >nul\r\n"));
-        batch += S(skCrypt("if not errorlevel 1 (\r\n"));
-        batch += S(skCrypt("    timeout /t 1 /nobreak >nul\r\n"));
-        batch += S(skCrypt("    goto loop\r\n"));
-        batch += S(skCrypt(")\r\n"));
-        batch += S(skCrypt("move /y \"")) + updateExeUtf8 + S(skCrypt("\" \"")) + selfPathUtf8 + S(skCrypt("\"\r\n"));
-        batch += S(skCrypt("if errorlevel 1 (\r\n"));
-        batch += S(skCrypt("    del /f /q \"")) + updateExeUtf8 + S(skCrypt("\"\r\n"));
-        batch += S(skCrypt("    exit /b 1\r\n"));
-        batch += S(skCrypt(")\r\n"));
-        batch += S(skCrypt("start \"\" \"")) + selfPathUtf8 + S(skCrypt("\"\r\n"));
-        batch += S(skCrypt("del \"%~f0\"\r\n"));
+        if (!DeleteFileW(oldPath)) {
+            if (GetLastError() != ERROR_FILE_NOT_FOUND) {
+                Logger::Log(S(skCrypt("[Updater] stage: could not remove old backup")).c_str());
+            }
+        }
 
-        HANDLE hFile = CreateFileW(batchPath, GENERIC_WRITE, 0, nullptr,
-            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (hFile == INVALID_HANDLE_VALUE)
+        if (!MoveFileExW(selfPath, oldPath, MOVEFILE_REPLACE_EXISTING)) {
+            Logger::Log(S(skCrypt("[Updater] stage: rename self -> .old failed")).c_str());
             return false;
+        }
 
-        DWORD written;
-        WriteFile(hFile, batch.c_str(), (DWORD)batch.size(), &written, nullptr);
-        CloseHandle(hFile);
+        if (!MoveFileExW(updateExe, selfPath, MOVEFILE_REPLACE_EXISTING)) {
+            Logger::Log(S(skCrypt("[Updater] stage: move update -> self failed, rolling back")).c_str());
+            MoveFileExW(oldPath, selfPath, MOVEFILE_REPLACE_EXISTING);
+            return false;
+        }
 
-        Logger::Log(S(skCrypt("[Updater] launching updater batch")).c_str());
+        HANDLE hMarker = CreateFileW(markerPath, GENERIC_WRITE, 0, nullptr,
+            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (hMarker != INVALID_HANDLE_VALUE) {
+            const char* version = BITWARE_VERSION_STRING;
+            DWORD written;
+            WriteFile(hMarker, version, (DWORD)strlen(version), &written, nullptr);
+            CloseHandle(hMarker);
+        }
+
+        {
+            HKEY hKey;
+            wchar_t installedPath[MAX_PATH];
+            DWORD size = sizeof(installedPath);
+            if (RegOpenKeyExW(HKEY_CURRENT_USER, WS(skCrypt(L"Software\\Bitware")).c_str(),
+                0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+                if (RegQueryValueExW(hKey, WS(skCrypt(L"InstallPath")).c_str(),
+                    nullptr, nullptr, reinterpret_cast<LPBYTE>(installedPath), &size) == ERROR_SUCCESS) {
+                    if (_wcsicmp(installedPath, selfPath) != 0) {
+                        Logger::Log(S(skCrypt("[Updater] stage: updating installed copy")).c_str());
+                        CopyFileW(selfPath, installedPath, FALSE);
+                    }
+                }
+                RegCloseKey(hKey);
+            }
+        }
+
+        Logger::Log(S(skCrypt("[Updater] stage: swap complete, launching update")).c_str());
         Logger::Flush();
 
-        ShellExecuteA(nullptr, S(skCrypt("open")).c_str(), WideToUtf8(batchPath).c_str(),
-            nullptr, nullptr, SW_HIDE);
+        ShellExecuteW(nullptr, WS(skCrypt(L"open")).c_str(), selfPath,
+            nullptr, nullptr, SW_SHOWNORMAL);
 
         return true;
+    }
+
+    bool HttpGetWithRetries(const std::wstring& host, const std::wstring& path,
+        std::string& result, int maxRetries = 3) {
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            result = GetApiResponse(host, path);
+            if (!result.empty()) return true;
+
+            Logger::Log((S(skCrypt("[Updater] HTTP attempt ")) +
+                std::to_string(attempt) + S(skCrypt(" failed"))).c_str());
+
+            if (attempt < maxRetries) {
+                Sleep(1000 * attempt);
+            }
+        }
+        return false;
+    }
+
+    bool DownloadWithRetries(const std::wstring& url, const std::wstring& outputPath,
+        Updater::ProgressCallback progress, int maxRetries = 3) {
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            if (DownloadUrlToFile(url, outputPath, progress))
+                return true;
+
+            Logger::Log((S(skCrypt("[Updater] download attempt ")) +
+                std::to_string(attempt) + S(skCrypt(" failed"))).c_str());
+            DeleteFileW(outputPath.c_str());
+
+            if (attempt < maxRetries) {
+                Sleep(2000 * attempt);
+            }
+        }
+        return false;
     }
 
 }
 
 namespace Updater {
 
-    void CheckForUpdates()
-    {
+    void CleanupAfterUpdate(const wchar_t* installDir) {
+        wchar_t exePath[MAX_PATH];
+        wcscpy_s(exePath, installDir);
+        wcscat_s(exePath, WS(skCrypt(L"\\Bitware.exe")).c_str());
+
+        wchar_t oldPath[MAX_PATH];
+        wcscpy_s(oldPath, exePath);
+        wcscat_s(oldPath, WS(skCrypt(L".old")).c_str());
+
+        wchar_t markerPath[MAX_PATH];
+        wcscpy_s(markerPath, exePath);
+        wcscat_s(markerPath, WS(skCrypt(L".updated")).c_str());
+
+        bool hasOld = GetFileAttributesW(oldPath) != INVALID_FILE_ATTRIBUTES;
+        bool hasMarker = GetFileAttributesW(markerPath) != INVALID_FILE_ATTRIBUTES;
+
+        if (hasOld && hasMarker) {
+            Logger::Log(S(skCrypt("[Updater] cleanup: update confirmed, removing .old + .updated")).c_str());
+            DeleteFileW(oldPath);
+            DeleteFileW(markerPath);
+        } else if (hasOld && !hasMarker) {
+            Logger::Log(S(skCrypt("[Updater] cleanup: orphaned .old found, restoring")).c_str());
+            MoveFileExW(oldPath, exePath, MOVEFILE_REPLACE_EXISTING);
+        } else if (!hasOld && hasMarker) {
+            Logger::Log(S(skCrypt("[Updater] cleanup: orphaned marker, removing")).c_str());
+            DeleteFileW(markerPath);
+        }
+
+        wchar_t tempPath[MAX_PATH];
+        GetTempPathW(MAX_PATH, tempPath);
+
+        wchar_t tempUpdate[MAX_PATH];
+        swprintf(tempUpdate, MAX_PATH, WS(skCrypt(L"%sBitware_update.exe")).c_str(), tempPath);
+        DeleteFileW(tempUpdate);
+
+        wchar_t tempBat[MAX_PATH];
+        swprintf(tempBat, MAX_PATH, WS(skCrypt(L"%sBitware_updater.bat")).c_str(), tempPath);
+        DeleteFileW(tempBat);
+
+        wchar_t tempExtract[MAX_PATH + 2];
+        swprintf(tempExtract, MAX_PATH, WS(skCrypt(L"%sBitware_extract\\")).c_str(), tempPath);
+        tempExtract[wcslen(tempExtract) + 1] = 0;
+        SHFILEOPSTRUCTW fo = {};
+        fo.wFunc = FO_DELETE;
+        fo.pFrom = tempExtract;
+        fo.fFlags = FOF_NO_UI | FOF_SILENT;
+        SHFileOperationW(&fo);
+    }
+
+    UpdateInfo CheckForUpdate() {
+        UpdateInfo info;
         Logger::Log(S(skCrypt("[Updater] checking for updates...")).c_str());
-        Logger::Flush();
+
+        std::string json;
+        if (!HttpGetWithRetries(
+            WS(skCrypt(L"api.github.com")),
+            WS(skCrypt(L"/repos/borkeled/Bitware-Releases/releases/latest")),
+            json)) {
+            Logger::Log(S(skCrypt("[Updater] no response from server after retries")).c_str());
+            return info;
+        }
+
+        std::string remoteVersion = FindJsonString(json, S(skCrypt("tag_name")));
+        if (remoteVersion.empty()) {
+            Logger::Log(S(skCrypt("[Updater] could not parse version from response")).c_str());
+            return info;
+        }
+
+        Logger::Log((S(skCrypt("[Updater] remote version: ")) + remoteVersion).c_str());
+
+        Version currentVer = ParseVersion(BITWARE_VERSION_STRING);
+        Version remoteVer = ParseVersion(remoteVersion);
+
+        if (!currentVer.valid || !remoteVer.valid) {
+            Logger::Log(S(skCrypt("[Updater] version parse failed")).c_str());
+            return info;
+        }
+
+        if (!IsNewerVersion(currentVer, remoteVer)) {
+            Logger::Log(S(skCrypt("[Updater] already up to date")).c_str());
+            Output::Success(S(skCrypt("Already up to date (v%s)")).c_str(), BITWARE_VERSION_STRING);
+            return info;
+        }
+
+        Logger::Log(S(skCrypt("[Updater] update available!")).c_str());
+
+        std::string downloadUrl = FindAssetUrl(json);
+        if (downloadUrl.empty()) {
+            Logger::Log(S(skCrypt("[Updater] could not find Bitware.exe asset URL")).c_str());
+            return info;
+        }
+
+        info.updateAvailable = true;
+        info.latestVersion = remoteVersion;
+        info.downloadUrl = downloadUrl;
+        return info;
+    }
+
+    bool DownloadAndApply(const UpdateInfo& info, ProgressCallback progress) {
+        Logger::Log(S(skCrypt("[Updater] download starting...")).c_str());
 
         wchar_t tempPath[MAX_PATH];
         GetTempPathW(MAX_PATH, tempPath);
@@ -312,118 +588,50 @@ namespace Updater {
         wchar_t updateExe[MAX_PATH];
         swprintf(updateExe, MAX_PATH, WS(skCrypt(L"%sBitware_update.exe")).c_str(), tempPath);
 
-        if (IsPE(updateExe)) {
-            Logger::Log(S(skCrypt("[Updater] staged update found, applying")).c_str());
-            Logger::Flush();
-            StageUpdate(updateExe);
-            Api::ExitProcess(0);
-            return;
-        }
+        DeleteFileW(updateExe);
 
-        std::string json = GetApiResponse(
-            WS(skCrypt(L"api.github.com")),
-            WS(skCrypt(L"/repos/borkeled/Bitware-Releases/releases/latest"))
-        );
-
-        if (json.empty()) {
-            Logger::Log(S(skCrypt("[Updater] no response from server")).c_str());
-            Logger::Flush();
-            return;
-        }
-
-        std::string remoteVersion = FindJsonString(json, S(skCrypt("tag_name")));
-        if (remoteVersion.empty()) {
-            Logger::Log(S(skCrypt("[Updater] could not parse version")).c_str());
-            Logger::Flush();
-            return;
-        }
-
-        Logger::Log((S(skCrypt("[Updater] remote version: ")) + remoteVersion).c_str());
-        Logger::Flush();
-
-        std::string currentVersion = StripV(BITWARE_VERSION_STRING);
-        std::string remoteStripped = StripV(remoteVersion);
-
-        if (remoteStripped == currentVersion) {
-            Logger::Log(S(skCrypt("[Updater] already up to date")).c_str());
-            Logger::Flush();
-            Output::Success(S(skCrypt("Already up to date (v%s)")).c_str(), currentVersion.c_str());
-
-            DeleteFileW(updateExe);
-            return;
-        }
-
-        Logger::Log(S(skCrypt("[Updater] update available!")).c_str());
-        Logger::Flush();
-
-        Output::Info(S(skCrypt("Downloading v%s...")).c_str(), remoteStripped.c_str());
-
-        std::string downloadUrl = FindAssetUrl(json);
-        if (downloadUrl.empty()) {
-            Logger::Log(S(skCrypt("[Updater] could not find Bitware.exe asset URL")).c_str());
-            Logger::Flush();
-            return;
-        }
-
-        std::wstring wideUrl = Utf8ToWide(downloadUrl);
+        std::wstring wideUrl = Utf8ToWide(info.downloadUrl);
         if (wideUrl.empty()) {
             Logger::Log(S(skCrypt("[Updater] failed to convert download URL")).c_str());
-            Logger::Flush();
-            return;
+            return false;
         }
 
-        if (!DownloadUrlToFile(wideUrl, updateExe)) {
-            Logger::Log(S(skCrypt("[Updater] download failed")).c_str());
-            Logger::Flush();
-            return;
-        }
-
-        if (IsZip(updateExe)) {
-            Logger::Log(S(skCrypt("[Updater] downloaded file is a zip, extracting...")).c_str());
-            Logger::Flush();
-
-            wchar_t extractDir[MAX_PATH];
-            swprintf(extractDir, MAX_PATH, WS(skCrypt(L"%sBitware_extract\\")).c_str(), tempPath);
-
-            if (!ExtractZip(updateExe, extractDir)) {
-                Logger::Log(S(skCrypt("[Updater] failed to extract zip")).c_str());
-                Logger::Flush();
-                DeleteFileW(updateExe);
-                return;
-            }
-
-            wchar_t extractedExe[MAX_PATH];
-            swprintf(extractedExe, MAX_PATH, WS(skCrypt(L"%sBitware.exe")).c_str(), extractDir);
-
-            if (!IsPE(extractedExe)) {
-                Logger::Log(S(skCrypt("[Updater] extracted file is not a valid executable")).c_str());
-                Logger::Flush();
-                DeleteFileW(updateExe);
-                return;
-            }
-
-            if (!MoveFileExW(extractedExe, updateExe, MOVEFILE_REPLACE_EXISTING)) {
-                Logger::Log(S(skCrypt("[Updater] failed to move extracted exe")).c_str());
-                Logger::Flush();
-                DeleteFileW(updateExe);
-                return;
-            }
+        if (!DownloadWithRetries(wideUrl, updateExe, progress)) {
+            Logger::Log(S(skCrypt("[Updater] download failed after retries")).c_str());
+            return false;
         }
 
         if (!IsPE(updateExe)) {
-            Logger::Log(S(skCrypt("[Updater] downloaded file is not a valid executable")).c_str());
-            Logger::Flush();
+            Logger::Log(S(skCrypt("[Updater] downloaded file is not a valid PE")).c_str());
             DeleteFileW(updateExe);
-            return;
+            return false;
         }
 
-        Logger::Log(S(skCrypt("[Updater] download complete, applying update")).c_str());
+        std::string sha256Url = info.downloadUrl + S(skCrypt(".sha256"));
+        std::string expectedHash;
+        if (FetchSha256(sha256Url, expectedHash)) {
+            Logger::Log((S(skCrypt("[Updater] verifying SHA256..."))).c_str());
+            if (!VerifySha256(updateExe, expectedHash)) {
+                Logger::Log(S(skCrypt("[Updater] SHA256 mismatch, rejecting update")).c_str());
+                DeleteFileW(updateExe);
+                return false;
+            }
+            Logger::Log(S(skCrypt("[Updater] SHA256 verified")).c_str());
+        } else {
+            Logger::Log(S(skCrypt("[Updater] no SHA256 file, skipping verification")).c_str());
+        }
+
+        Logger::Log(S(skCrypt("[Updater] download complete, staging update")).c_str());
         Logger::Flush();
 
         Output::Success(S(skCrypt("Update downloaded, restarting...")).c_str());
 
-        StageUpdate(updateExe);
-        Api::ExitProcess(0);
+        if (!StageUpdate(updateExe)) {
+            Logger::Log(S(skCrypt("[Updater] stage update failed")).c_str());
+            return false;
+        }
+
+        return true;
     }
 
 }

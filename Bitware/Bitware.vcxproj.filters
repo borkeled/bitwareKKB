@@ -450,6 +450,9 @@
     <ClInclude Include="Dependencies\Auth\skStr.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Source\Loader\SplashWindow.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Source\Bitware.cxx">
@@ -552,6 +555,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Source\Miscellaneous\Protection\External\oxorany.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Loader\SplashWindow.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
