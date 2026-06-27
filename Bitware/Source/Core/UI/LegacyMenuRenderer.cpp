@@ -57,7 +57,7 @@ void LegacyMenuRenderer::Render()
         TextPos.x += ImGui::CalcTextSize(WRAPPER_MARCO("Bitware")).x;
 
         static int Section = 0;
-        const char* TabLabels[] = { WRAPPER_MARCO("Aimbot"), WRAPPER_MARCO("Visuals"), WRAPPER_MARCO("Players"), WRAPPER_MARCO("Settings"), WRAPPER_MARCO("Configs") };
+        const char* TabLabels[] = { WRAPPER_MARCO("Silent"), WRAPPER_MARCO("Aimbot"), WRAPPER_MARCO("Visuals"), WRAPPER_MARCO("Players"), WRAPPER_MARCO("Settings"), WRAPPER_MARCO("Configs") };
         const int TabCount = IM_ARRAYSIZE(TabLabels);
 
         Menu::Tabs(DrawList, WinPos, TextY, Section, TabLabels, TabCount, 10.0f, 8.0f);
@@ -67,6 +67,89 @@ void LegacyMenuRenderer::Render()
         ImGui::BeginGroup();
 
         if (Section == 0)
+        {
+            ImVec2 AvailSize(ContentMax.x - ContentMin.x, ContentMax.y - ContentMin.y);
+            float Spacing = Style.ItemSpacing.x;
+
+            float LeftWidth = (AvailSize.x - Spacing) * 0.5f;
+            float RightWidth = AvailSize.x - Spacing - LeftWidth;
+
+            float SidePad = 4.0f;
+            float FullHeight = AvailSize.y - SidePad * 2.0f;
+            float HalfHeight = (AvailSize.y - SidePad * 2.0f) * 0.5f;
+
+            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + SidePad);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + SidePad);
+
+            if (Menu::BeginChild(WRAPPER_MARCO("Silent Aim"), ImVec2(LeftWidth - SidePad, FullHeight)))
+            {
+                Menu::CheckBox(WRAPPER_MARCO("Enabled"), &Globals::Silent::Enabled);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x + 12.0f);
+                Menu::KeyBindEx(WRAPPER_MARCO("Silent Key"), &Globals::Silent::Silent_Key, &Globals::Silent::Silent_Mode);
+
+                Menu::CheckBox(WRAPPER_MARCO("Team check"), &Globals::Silent::TeamCheck);
+                Menu::CheckBox(WRAPPER_MARCO("Knocked check"), &Globals::Silent::KnockedCheck);
+                Menu::CheckBox(WRAPPER_MARCO("Wall check"), &Globals::Silent::WallCheck);
+
+                Menu::Combo(WRAPPER_MARCO("Silent type"), &Globals::Silent::Silent_type, { WRAPPER_MARCO("Viewport") });
+
+                Menu::Combo(WRAPPER_MARCO("HitPart"), &Globals::Silent::HitPart, { WRAPPER_MARCO("Head"), WRAPPER_MARCO("Torso"), WRAPPER_MARCO("LowerTorso") });
+
+                Menu::EndChild();
+            }
+
+            ImGui::SameLine(0.0f, Spacing);
+            if (Menu::BeginChild(WRAPPER_MARCO("Silent FOV"), ImVec2(RightWidth - SidePad, HalfHeight)))
+            {
+                Menu::CheckBox(WRAPPER_MARCO("Draw FOV"), &Globals::Silent::DrawFov);
+                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                Menu::ColorEdit4(WRAPPER_MARCO("Color"), Globals::Silent::FovColor);
+
+                {
+                    float xBtnOffset = ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f;
+                    float keyWidth = ImGui::GetContentRegionAvail().x * 0.35f;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x * 0.40f);
+                    Menu::KeyBindEx(WRAPPER_MARCO("FOV Toggle"), &Globals::Silent::FovToggleKey, &Globals::Silent::FovToggleMode, ImVec2(keyWidth, 0));
+                    ImGui::SameLine(xBtnOffset);
+                    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.42f, 0.0f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.0f, 0.6f, 0.0f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.0f, 0.3f, 0.0f, 1.0f));
+                    if (ImGui::SmallButton(WRAPPER_MARCO("X##sfov")))
+                    {
+                        Globals::Silent::FovToggleKey = ImGuiKey_None;
+                    }
+                    ImGui::PopStyleColor(3);
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip(WRAPPER_MARCO("Clear keybind"));
+                }
+
+                Menu::CheckBox(WRAPPER_MARCO("Fill FOV"), &Globals::Silent::FillFov);
+                Menu::CheckBox(WRAPPER_MARCO("Use FOV"), &Globals::Silent::useFov);
+
+                Menu::SliderFloat(WRAPPER_MARCO("Size"), &Globals::Silent::FovSize, 1.0f, 500.0f);
+
+                Menu::CheckBox(WRAPPER_MARCO("Spin"), &Globals::Silent::FovSpin);
+                if (Globals::Silent::FovSpin)
+                {
+                    Menu::Combo(WRAPPER_MARCO("Direction"), &Globals::Silent::FovSpinDirection, { WRAPPER_MARCO("Clockwise"), WRAPPER_MARCO("Counter-Clockwise") });
+                    Menu::SliderInt(WRAPPER_MARCO("Speed"), &Globals::Silent::FovSpinSpeed, 1, 5);
+                }
+
+                Menu::EndChild();
+            }
+
+            ImGui::SetCursorPos(ImVec2(LeftWidth + Spacing, SidePad + HalfHeight + SidePad));
+            float Bottom = HalfHeight - 8;
+            if (Menu::BeginChild(WRAPPER_MARCO("Prediction"), ImVec2(RightWidth - SidePad, Bottom)))
+            {
+                Menu::CheckBox(WRAPPER_MARCO("Enabled"), &Globals::Silent::Prediction::Enabled);
+                Menu::SliderFloat(WRAPPER_MARCO("Value"), &Globals::Silent::Prediction::Value, 0.0f, 1.0f);
+
+                Menu::EndChild();
+            }
+
+        }
+
+        if (Section == 1)
         {
             ImVec2 AvailSize(ContentMax.x - ContentMin.x, ContentMax.y - ContentMin.y);
             float Spacing = Style.ItemSpacing.x;
@@ -174,7 +257,7 @@ void LegacyMenuRenderer::Render()
 
         }
 
-        if (Section == 1)
+        if (Section == 2)
         {
             ImVec2 AvailSize(ContentMax.x - ContentMin.x, ContentMax.y - ContentMin.y);
             float Spacing = Style.ItemSpacing.x;
@@ -264,10 +347,110 @@ void LegacyMenuRenderer::Render()
                 Menu::ColorEdit4(WRAPPER_MARCO("Skeleton Color"), Globals::Visuals::Colors::Skeleton);
 
                 Menu::CheckBox(WRAPPER_MARCO("Chams"), &Globals::Visuals::Chams);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
-                Menu::ColorEdit4(WRAPPER_MARCO("Chams Color"), Globals::Visuals::Colors::Chams);
-                ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() - 24);
-                Menu::ColorEdit4(WRAPPER_MARCO("Chams Outline"), Globals::Visuals::Colors::ChamsOutline);
+                if (Globals::Visuals::Chams)
+                {
+                    Menu::Combo(WRAPPER_MARCO("Type##chams"), &Globals::Visuals::Chams_Type, {
+                        WRAPPER_MARCO("GPU Mesh"), WRAPPER_MARCO("Cube"), WRAPPER_MARCO("Highlight") }
+                    );
+
+                    if (Globals::Visuals::Chams_Type == 0)
+                    {
+                        Menu::CheckBox(WRAPPER_MARCO("Fill##chams"), &Globals::Visuals::Chams_Fill_Enabled);
+                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                        Menu::ColorEdit4(WRAPPER_MARCO("Fill Color##chams"), Globals::Visuals::Colors::Chams);
+                        if (Globals::Visuals::Chams_Fill_Enabled)
+                            Menu::SliderFloat(WRAPPER_MARCO("Fill Alpha##chams"), &Globals::Visuals::Chams_Fill_Transparency, 0.0f, 1.0f, "%.2f");
+
+                        Menu::CheckBox(WRAPPER_MARCO("Outline##chams"), &Globals::Visuals::Chams_Outline_Enabled);
+                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                        Menu::ColorEdit4(WRAPPER_MARCO("Outline Color##chams"), Globals::Visuals::Colors::ChamsOutline);
+                        if (Globals::Visuals::Chams_Outline_Enabled)
+                            Menu::SliderFloat(WRAPPER_MARCO("Outline Thickness##chams"), &Globals::Visuals::Chams_Outline_Thickness, 1.01f, 1.25f, "%.3f");
+
+                        Menu::CheckBox(WRAPPER_MARCO("Occlusion##chams"), &Globals::Visuals::Chams_Occlusion);
+                        if (Globals::Visuals::Chams_Occlusion)
+                        {
+                            Menu::ColorEdit4(WRAPPER_MARCO("Visible Color##chams"), Globals::Visuals::Colors::ChamsVisible);
+                            Menu::ColorEdit4(WRAPPER_MARCO("Occluded Color##chams"), Globals::Visuals::Colors::ChamsOccluded);
+                        }
+
+                        Menu::Combo(WRAPPER_MARCO("Quality##chams"), &Globals::Visuals::Chams_Quality, {
+                            WRAPPER_MARCO("Low"), WRAPPER_MARCO("Medium"), WRAPPER_MARCO("High") }
+                        );
+
+                        Menu::CheckBox(WRAPPER_MARCO("Use Shaders##chams"), &Globals::Visuals::Chams_Use_Shaders);
+                        if (Globals::Visuals::Chams_Use_Shaders)
+                        {
+                            const char* shader_names[] = {
+                                "Default", "Metallic", "Dissolve", "Wireframe", "Grayscale",
+                                "Caustic", "Chrome", "Liquid", "Hologram", "Sliced",
+                                "Rainbow", "Glass", "Lava", "Glitch", "Ice",
+                                "Neon Pulse", "Gold", "Depth Fog", "Splatter", "Rim Light",
+                                "Wood", "Plastic"
+                            };
+                            Menu::Combo(WRAPPER_MARCO("Shader##chams"), &Globals::Visuals::Chams_Shader, std::vector<const char*>(std::begin(shader_names), std::end(shader_names)));
+
+                            switch (Globals::Visuals::Chams_Shader)
+                            {
+                            case 1:  Menu::SliderFloat(WRAPPER_MARCO("Roughness##chams"), &Globals::Visuals::Chams_Metallic_Roughness, 0.0f, 1.0f, "%.2f"); break;
+                            case 2:
+                                Menu::SliderFloat(WRAPPER_MARCO("Dissolve Amount##chams"), &Globals::Visuals::Chams_Dissolve_Amount, 0.0f, 1.0f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Edge Width##chams"), &Globals::Visuals::Chams_Dissolve_Edge, 0.001f, 0.3f, "%.3f");
+                                break;
+                            case 5:
+                                Menu::SliderFloat(WRAPPER_MARCO("Caustic Scale##chams"), &Globals::Visuals::Chams_Caustic_Scale, 0.1f, 5.0f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Caustic Speed##chams"), &Globals::Visuals::Chams_Caustic_Speed, 0.1f, 5.0f, "%.2f");
+                                break;
+                            case 6:  Menu::SliderFloat(WRAPPER_MARCO("Sharpness##chams"), &Globals::Visuals::Chams_Chrome_Sharpness, 0.5f, 8.0f, "%.2f"); break;
+                            case 7:
+                                Menu::SliderFloat(WRAPPER_MARCO("Wave Amplitude##chams"), &Globals::Visuals::Chams_Liquid_Wave, 0.0f, 1.0f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Flow Speed##chams"), &Globals::Visuals::Chams_Liquid_Speed, 0.1f, 5.0f, "%.2f");
+                                break;
+                            case 8:
+                                Menu::SliderFloat(WRAPPER_MARCO("Opacity##chams"), &Globals::Visuals::Chams_Hologram_Opacity, 0.1f, 1.0f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Scan Speed##chams"), &Globals::Visuals::Chams_Hologram_Scan_Speed, 0.1f, 8.0f, "%.2f");
+                                break;
+                            case 9:
+                                Menu::SliderFloat(WRAPPER_MARCO("Gap Size##chams"), &Globals::Visuals::Chams_Sliced_Gap, 0.01f, 0.5f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Slice Speed##chams"), &Globals::Visuals::Chams_Sliced_Speed, 0.1f, 5.0f, "%.2f");
+                                break;
+                            case 12:
+                                Menu::SliderFloat(WRAPPER_MARCO("Lava Speed##chams"), &Globals::Visuals::Chams_Lava_Speed, 0.1f, 5.0f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Lava Scale##chams"), &Globals::Visuals::Chams_Lava_Scale, 0.1f, 5.0f, "%.2f");
+                                break;
+                            case 13:
+                                Menu::SliderFloat(WRAPPER_MARCO("Glitch Intensity##chams"), &Globals::Visuals::Chams_Glitch_Intensity, 0.0f, 1.0f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Glitch Speed##chams"), &Globals::Visuals::Chams_Glitch_Speed, 0.1f, 8.0f, "%.2f");
+                                break;
+                            case 14: Menu::SliderFloat(WRAPPER_MARCO("Ice Roughness##chams"), &Globals::Visuals::Chams_Ice_Roughness, 0.0f, 1.0f, "%.2f"); break;
+                            case 15:
+                                Menu::SliderFloat(WRAPPER_MARCO("Pulse Speed##chams"), &Globals::Visuals::Chams_Neon_Pulse_Speed, 0.1f, 8.0f, "%.2f");
+                                Menu::SliderFloat(WRAPPER_MARCO("Pulse Width##chams"), &Globals::Visuals::Chams_Neon_Pulse_Width, 0.1f, 1.0f, "%.2f");
+                                break;
+                            case 17: Menu::SliderFloat(WRAPPER_MARCO("Fog Density##chams"), &Globals::Visuals::Chams_Depth_Fog_Density, 0.1f, 5.0f, "%.2f"); break;
+                            case 18: Menu::SliderFloat(WRAPPER_MARCO("Splatter Scale##chams"), &Globals::Visuals::Chams_Splatter_Scale, 0.1f, 5.0f, "%.2f"); break;
+                            case 19: Menu::SliderFloat(WRAPPER_MARCO("Rim Power##chams"), &Globals::Visuals::Chams_Rim_Power, 0.1f, 8.0f, "%.2f"); break;
+                            case 20: Menu::SliderFloat(WRAPPER_MARCO("Wood Scale##chams"), &Globals::Visuals::Chams_Wood_Scale, 0.1f, 5.0f, "%.2f"); break;
+                            case 21: Menu::SliderFloat(WRAPPER_MARCO("Shininess##chams"), &Globals::Visuals::Chams_Plastic_Shininess, 1.0f, 16.0f, "%.1f"); break;
+                            default:
+                                Menu::SliderFloat(WRAPPER_MARCO("Cycle Speed##chams"), &Globals::Visuals::Chams_Cycle_Speed, 0.1f, 5.0f, "%.2f");
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() + Style.ChildPadding.x - 1.0f);
+                        Menu::ColorEdit4(WRAPPER_MARCO("Chams Color"), Globals::Visuals::Colors::Chams);
+                        ImGui::SameLine(ImGui::GetContentRegionAvail().x - Menu::GetColorPickerWidth() - 24);
+                        Menu::ColorEdit4(WRAPPER_MARCO("Chams Outline"), Globals::Visuals::Colors::ChamsOutline);
+
+                        Menu::CheckBox(WRAPPER_MARCO("Chams Fade"), &Globals::Visuals::ChamsFade);
+                        if (Globals::Visuals::ChamsFade)
+                            Menu::SliderInt(WRAPPER_MARCO("Fade Speed"), &Globals::Visuals::ChamsFadeSpeed, 1, 5);
+                    }
+
+                }
 
                 Menu::CheckBox(WRAPPER_MARCO("Wall Check"), &Globals::Visuals::WallCheck);
                 if (Globals::Visuals::WallCheck)
@@ -375,20 +558,10 @@ void LegacyMenuRenderer::Render()
                     Menu::Combo(WRAPPER_MARCO("Name Display"), &Globals::Visuals::Name_Type, { WRAPPER_MARCO("Name"), WRAPPER_MARCO("Display Name"), WRAPPER_MARCO("Name & Display Name") });
                 }
 
-                if (Globals::Visuals::Chams)
-                {
-                    Menu::CheckBox(WRAPPER_MARCO("Chams Fade"), &Globals::Visuals::ChamsFade);
-
-                    if (Globals::Visuals::ChamsFade)
-                    {
-                        Menu::SliderInt(WRAPPER_MARCO("Fade Speed"), &Globals::Visuals::ChamsFadeSpeed, 1, 5);
-                    }
-                }
-
                 Menu::EndChild();
             }
         }
-        if (Section == 2)
+        if (Section == 3)
         {
             ImVec2 AvailSize(ContentMax.x - ContentMin.x, ContentMax.y - ContentMin.y);
             float Spacing = Style.ItemSpacing.x;
@@ -479,7 +652,7 @@ void LegacyMenuRenderer::Render()
                 Menu::EndChild();
             }
         }
-        if (Section == 3)
+        if (Section == 4)
         {
             ImVec2 AvailSize(ContentMax.x - ContentMin.x, ContentMax.y - ContentMin.y);
             float Spacing = Style.ItemSpacing.x;
@@ -488,10 +661,11 @@ void LegacyMenuRenderer::Render()
             float RightWidth = AvailSize.x - Spacing - LeftWidth;
 
             float SidePad = 4.0f;
-            float HalfHeight = (AvailSize.y - SidePad * 2.0f) * 0.5f;
+            float TopPad = 14.0f;
+            float HalfHeight = (AvailSize.y - SidePad - TopPad) * 0.5f;
 
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + SidePad);
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + SidePad);
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY() + TopPad);
 
             if (Menu::BeginChild(WRAPPER_MARCO("Misc"), ImVec2(LeftWidth - SidePad, HalfHeight)))
             {
@@ -512,8 +686,7 @@ void LegacyMenuRenderer::Render()
                 Menu::EndChild();
             }
 
-            ImGui::SetCursorPosX(ImGui::GetCursorPosX() + SidePad + LeftWidth + Spacing);
-            ImGui::SetCursorPosY(ImGui::GetCursorPosY() - HalfHeight);
+            ImGui::SetCursorPos(ImVec2(LeftWidth + Spacing + 8, TopPad));
 
             if (Menu::BeginChild(WRAPPER_MARCO("Settings"), ImVec2(RightWidth - SidePad, HalfHeight)))
             {
@@ -526,7 +699,7 @@ void LegacyMenuRenderer::Render()
                 Menu::EndChild();
             }
         }
-        if (Section == 4)
+        if (Section == 5)
         {
             ImVec2 AvailSize(ContentMax.x - ContentMin.x, ContentMax.y - ContentMin.y);
             float Spacing = Style.ItemSpacing.x;

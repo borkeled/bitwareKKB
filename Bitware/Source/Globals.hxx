@@ -124,6 +124,52 @@ namespace Globals {
 		}
 	}
 
+	namespace Silent {
+
+		inline bool& useFov = SettingsStore::Silent_useFov;
+
+		inline bool& Enabled = SettingsStore::Silent_Enabled;
+		inline bool& DrawFov = SettingsStore::Silent_DrawFov;
+		inline bool& FovSpin = SettingsStore::Silent_FovSpin;
+		inline bool& ClosestPlayerFound = SettingsStore::Silent_ClosestPlayerFound;
+		inline bool& FillFov = SettingsStore::Silent_FillFov;
+		inline bool& TeamCheck = SettingsStore::Silent_TeamCheck;
+		inline bool& KnockedCheck = SettingsStore::Silent_KnockedCheck;
+		inline bool& WallCheck = SettingsStore::Silent_WallCheck;
+
+		inline float& FovSize = SettingsStore::Silent_FovSize;
+
+		inline ImGuiKey& FovToggleKey = SettingsStore::Silent_FovToggleKey;
+		inline ImKeyBindMode& FovToggleMode = SettingsStore::Silent_FovToggleMode;
+
+		inline int& HitPart = SettingsStore::Silent_HitPart;
+		inline int& Silent_type = SettingsStore::Silent_type;
+		inline int& FovSpinDirection = SettingsStore::Silent_FovSpinDirection;
+		inline int& FovSpinSpeed = SettingsStore::Silent_FovSpinSpeed;
+
+		inline float (&FovColor)[4] = SettingsStore::Silent_FovColor;
+
+		inline ImGuiKey& Silent_Key = SettingsStore::Silent_Key;
+		inline ImKeyBindMode& Silent_Mode = SettingsStore::Silent_Mode;
+
+		namespace Prediction {
+			inline bool& Enabled = SettingsStore::Silent_Prediction_Enabled;
+			inline float& Value = SettingsStore::Silent_Prediction_Value;
+		}
+
+		namespace Camera {
+			inline float& Smoothing_X = SettingsStore::Silent_Camera_SmoothingX;
+			inline float& Smoothing_Y = SettingsStore::Silent_Camera_SmoothingY;
+		}
+
+		namespace Mouse {
+			inline float& Smoothing_X = SettingsStore::Silent_Mouse_SmoothingX;
+			inline float& Smoothing_Y = SettingsStore::Silent_Mouse_SmoothingY;
+
+			inline float& Mouse_Sensitivty = SettingsStore::Silent_Mouse_Sensitivity;
+		}
+	}
+
 	namespace Visuals {
 
 		inline bool& Enabled = SettingsStore::Visuals_Enabled;
@@ -147,8 +193,46 @@ namespace Globals {
 		inline ImGuiKey& ToggleKey = SettingsStore::Visuals_ToggleKey;
 		inline ImKeyBindMode& ToggleMode = SettingsStore::Visuals_ToggleMode;
 
-		inline int& ChamsFadeSpeed = SettingsStore::Visuals_ChamsFadeSpeed;
-		inline int& BoxFillSpeed = SettingsStore::Visuals_BoxFillSpeed;
+        inline int& ChamsFadeSpeed = SettingsStore::Visuals_ChamsFadeSpeed;
+        inline int& Chams_Type = SettingsStore::Visuals_Chams_Type;
+        inline bool& Chams_Fill_Enabled = SettingsStore::Visuals_Chams_Fill_Enabled;
+        inline float& Chams_Fill_Transparency = SettingsStore::Visuals_Chams_Fill_Transparency;
+        inline bool& Chams_Outline_Enabled = SettingsStore::Visuals_Chams_Outline_Enabled;
+        inline float& Chams_Outline_Thickness = SettingsStore::Visuals_Chams_Outline_Thickness;
+        inline float& Chams_Outline_Width = SettingsStore::Visuals_Chams_Outline_Width;
+        inline int& Chams_Quality = SettingsStore::Visuals_Chams_Quality;
+        inline bool& Chams_Occlusion = SettingsStore::Visuals_Chams_Occlusion;
+        inline bool& Chams_Use_Shaders = SettingsStore::Visuals_Chams_Use_Shaders;
+        inline int& Chams_Shader = SettingsStore::Visuals_Chams_Shader;
+        inline float& Chams_Cycle_Speed = SettingsStore::Visuals_Chams_Cycle_Speed;
+        inline float& Chams_Rim_Power = SettingsStore::Visuals_Chams_Rim_Power;
+        inline float& Chams_Dissolve_Amount = SettingsStore::Visuals_Chams_Dissolve_Amount;
+        inline float& Chams_Dissolve_Edge = SettingsStore::Visuals_Chams_Dissolve_Edge;
+        inline float& Chams_Glitch_Intensity = SettingsStore::Visuals_Chams_Glitch_Intensity;
+        inline float& Chams_Glitch_Speed = SettingsStore::Visuals_Chams_Glitch_Speed;
+        inline float& Chams_Hologram_Scan_Speed = SettingsStore::Visuals_Chams_Hologram_Scan_Speed;
+        inline float& Chams_Hologram_Opacity = SettingsStore::Visuals_Chams_Hologram_Opacity;
+        inline float& Chams_Lava_Speed = SettingsStore::Visuals_Chams_Lava_Speed;
+        inline float& Chams_Lava_Scale = SettingsStore::Visuals_Chams_Lava_Scale;
+        inline float& Chams_Ice_Roughness = SettingsStore::Visuals_Chams_Ice_Roughness;
+        inline float& Chams_Neon_Pulse_Speed = SettingsStore::Visuals_Chams_Neon_Pulse_Speed;
+        inline float& Chams_Neon_Pulse_Width = SettingsStore::Visuals_Chams_Neon_Pulse_Width;
+        inline float& Chams_Depth_Fog_Density = SettingsStore::Visuals_Chams_Depth_Fog_Density;
+        inline float& Chams_Splatter_Scale = SettingsStore::Visuals_Chams_Splatter_Scale;
+        inline float& Chams_Liquid_Speed = SettingsStore::Visuals_Chams_Liquid_Speed;
+        inline float& Chams_Liquid_Wave = SettingsStore::Visuals_Chams_Liquid_Wave;
+        inline float& Chams_Sliced_Gap = SettingsStore::Visuals_Chams_Sliced_Gap;
+        inline float& Chams_Sliced_Speed = SettingsStore::Visuals_Chams_Sliced_Speed;
+        inline float& Chams_Caustic_Speed = SettingsStore::Visuals_Chams_Caustic_Speed;
+        inline float& Chams_Caustic_Scale = SettingsStore::Visuals_Chams_Caustic_Scale;
+        inline float& Chams_Metallic_Roughness = SettingsStore::Visuals_Chams_Metallic_Roughness;
+        inline float& Chams_Chrome_Sharpness = SettingsStore::Visuals_Chams_Chrome_Sharpness;
+        inline float& Chams_Wood_Scale = SettingsStore::Visuals_Chams_Wood_Scale;
+        inline float& Chams_Plastic_Shininess = SettingsStore::Visuals_Chams_Plastic_Shininess;
+        inline float& Chams_Specular_Power = SettingsStore::Visuals_Chams_Specular_Power;
+        inline float& Chams_Specular_Intensity = SettingsStore::Visuals_Chams_Specular_Intensity;
+
+        inline int& BoxFillSpeed = SettingsStore::Visuals_BoxFillSpeed;
 		inline int& Healthbar_Type = SettingsStore::Visuals_Healthbar_Type;
 		inline int& Box_Type = SettingsStore::Visuals_Box_Type;
 		inline int& Box_Fill_Type = SettingsStore::Visuals_Box_Fill_Type;
@@ -167,9 +251,11 @@ namespace Globals {
 			inline float (&Rig_Type)[4] = SettingsStore::Visuals_RigTypeColor;
 			inline float (&Tool)[4] = SettingsStore::Visuals_ToolColor;
 			inline float (&Skeleton)[4] = SettingsStore::Visuals_SkeletonColor;
-			inline float (&Chams)[4] = SettingsStore::Visuals_ChamsColor;
-			inline float (&ChamsOutline)[4] = SettingsStore::Visuals_ChamsOutline;
-			inline float (&Healthbar_Top)[4] = SettingsStore::Visuals_HealthbarTop;
+            inline float (&Chams)[4] = SettingsStore::Visuals_ChamsColor;
+            inline float (&ChamsOutline)[4] = SettingsStore::Visuals_ChamsOutline;
+            inline float (&ChamsVisible)[4] = SettingsStore::Visuals_Chams_Visible_Color;
+            inline float (&ChamsOccluded)[4] = SettingsStore::Visuals_Chams_Occluded_Color;
+            inline float (&Healthbar_Top)[4] = SettingsStore::Visuals_HealthbarTop;
 			inline float (&Healthbar_Middle)[4] = SettingsStore::Visuals_HealthbarMiddle;
 			inline float (&Healthbar_Bottom)[4] = SettingsStore::Visuals_HealthbarBottom;
 			inline float (&Health)[4] = SettingsStore::Visuals_HealthColor;

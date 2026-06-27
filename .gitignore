@@ -75,7 +75,8 @@ cmake-build-*/
 /logs/
 *.log
 errors.txt
-methods/
+## lol ts a joke btw
+methods_to_paste 
 
 ## OS generated files
 .DS_Store

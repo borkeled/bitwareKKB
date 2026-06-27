@@ -1,0 +1,71 @@
+struct MaterialCache {
+    uint32_t original_color;
+    int16_t original_material;
+    float original_transparency;
+    bool is_cached;
+};
+
+uint32_t ConvertColorToBGR(Vector3 rgb) {
+    auto clamp_value = [](float value) -> uint32_t {
+        return static_cast<uint32_t>(fminf(fmaxf(value * 255.0f, 0.0f), 255.0f));
+    };
+    return (clamp_value(rgb.z) << 16) | (clamp_value(rgb.y) << 8) | clamp_value(rgb.x);
+}
+
+auto threadunit::misc::localplayerchams() -> void {
+    static std::unordered_map<std::uintptr_t, MaterialCache> material_registry;
+    
+    while (true) {
+        if (!localplayerchams::enabled) {
+            if (!material_registry.empty()) {
+                for (const auto& [part_address, cached_state] : material_registry) {
+                    std::uint64_t primitive_address = mem::read<std::uint64_t>(part_address + offsets::Primitive);
+                    if (primitive_address) {
+                        mem::write<int16_t>(primitive_address + offsets::MaterialType, cached_state.original_material);
+                    }
+                    mem::write<uint32_t>(part_address + offsets::MeshPartColor3, cached_state.original_color);
+                }
+                material_registry.clear();
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            continue;
+        }
+
+        uint32_t chams_color = ConvertColorToBGR(Vector3(
+            localplayerchams::color[0],
+            localplayerchams::color[1],
+            localplayerchams::color[2]
+        ));
+
+        std::function<void(RBX::Instance)> process_children = [&](RBX::Instance parent_instance) {
+            auto children = parent_instance.fetchChildren();
+            for (auto& child : children) {
+                if (!child.address) continue;
+                std::string class_descriptor = child.fetchInstanceClassDescriptor();
+                if (class_descriptor == "MeshPart" || class_descriptor == "Part" || class_descriptor == "BasePart") {
+                    std::uint64_t primitive_address = child.fetchInstancePrimitive();
+                    if (primitive_address) {
+                        if (material_registry.find(child.address) == material_registry.end()) {
+                            MaterialCache cache_entry;
+                            cache_entry.original_material = mem::read<int16_t>(primitive_address + offsets::MaterialType);
+                            cache_entry.original_color = mem::read<uint32_t>(child.address + offsets::MeshPartColor3);
+                            cache_entry.is_cached = true;
+                            material_registry[child.address] = cache_entry;
+                        }
+                        mem::write<int16_t>(primitive_address + offsets::MaterialType, 1584);
+                        mem::write<uint32_t>(child.address + offsets::MeshPartColor3, chams_color);
+                    }
+                }
+                process_children(child);
+            }
+        };
+
+        for (auto player : globals::playerlist) {
+            auto character = player.fetchCharacter();
+            if (character.address) {
+                process_children(character);
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    }
+}

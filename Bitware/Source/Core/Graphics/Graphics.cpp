@@ -21,6 +21,7 @@
 #include <Miscellaneous/Protection/External/oxorany_include.h>
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
+#include <Core/Features/Cheats/Visuals/Visuals.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LParam);
 
@@ -424,6 +425,8 @@ void Graphics::Present()
     Detail->DeviceContext->ClearRenderTargetView(Detail->GraphicsTargetView, ClearColor);
 
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+    Visuals::FlushMeshChams(Detail->Device, Detail->DeviceContext, Detail->GraphicsTargetView);
 
     static auto LastPresentTime = std::chrono::steady_clock::now();
 

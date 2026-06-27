@@ -74,7 +74,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>../Build</OutDir>
     <IntDir>../Build/Extra</IntDir>
-    <IncludePath>Dependencies\FreeType\include;Dependencies\Auth;Source;Dependencies</IncludePath>
+                    <IncludePath>Dependencies\FreeType\include;Dependencies\Auth;Source;Dependencies</IncludePath>
     <LibraryPath>Dependencies\FreeType;Dependencies\Auth;C:\Program Files %28x86%29\Microsoft DirectX SDK %28June 2010%29\Lib\x64;$(LibraryPath)</LibraryPath>
     <TargetName>Bitware</TargetName>
   </PropertyGroup>
@@ -279,6 +279,8 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Core\Features\Cheats\Triggerbot\Triggerbot.h" />
     <ClInclude Include="Source\Core\Features\Cheats\Misc\Misc.h" />
     <ClInclude Include="Source\Core\Features\Cheats\Visuals\Visuals.h" />
+    <ClInclude Include="Source\Features\Chams\GpuMesh.h" />
+    <ClInclude Include="Source\Features\Chams\MemoryMeshes.h" />
     <ClInclude Include="Source\Core\Features\Cheats\World\World.h" />
     <ClInclude Include="Source\Core\Features\Explorer\Explorer.h" />
     <ClInclude Include="Source\Core\Graphics\Fonts\Tahoma_Bold.h" />
@@ -323,10 +325,13 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Dependencies\ImGui\misc\imgui_freetype.cpp" />
     <ClCompile Include="Source\Core\Features\Cache\Cache.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Aimbot\Aimbot.cpp" />
+    <ClCompile Include="Source\Core\Features\Cheats\SilentAim\SilentAim.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Common\WallCheck.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Triggerbot\Triggerbot.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Misc\Misc.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\Visuals\Visuals.cpp" />
+    <ClCompile Include="Source\Features\Chams\GpuMesh.cpp" />
+    <ClCompile Include="Source\Features\Chams\MemoryMeshes.cpp" />
     <ClCompile Include="Source\Core\Features\Cheats\World\World.cpp" />
     <ClCompile Include="Source\Core\Features\Explorer\Explorer.cpp" />
     <ClCompile Include="Source\Core\Graphics\Graphics.cpp" />
