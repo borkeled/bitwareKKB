@@ -216,9 +216,8 @@ bool Graphics::Create_Imgui()
 
     ImGui::StyleColorsDark();
 
-    const unsigned int freetype_flags = ImGuiFreeTypeBuilderFlags_MonoHinting | ImGuiFreeTypeBuilderFlags_Monochrome;
     IO.Fonts->FontBuilderIO = ImGuiFreeType::GetBuilderForFreeType();
-    IO.Fonts->FontBuilderFlags = freetype_flags;
+    IO.Fonts->FontBuilderFlags = ImGuiFreeTypeBuilderFlags_LightHinting;
 
     var->gui.dpi = MainScale;
     var->gui.stored_dpi = static_cast<int>(MainScale * 100.0f);
@@ -247,9 +246,18 @@ bool Graphics::Create_Imgui()
         font->get(tahoma_bold_vec, 13.0f);
         font->get(inter_semibold, 14.0f);
         font->get(inter_medium, 11.0f);
+        font->get(inter_semibold, 10.0f);
+        font->get(inter_semibold, 11.0f);
+        font->get(inter_semibold, 12.0f);
+        font->get(icon_font, 13.0f);
+        font->get(icon_font, 14.0f);
+        font->get(icon_font, 15.0f);
         font->get_file(
             "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
             12.5f, true);
+        font->get_file(
+            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
+            12.0f, true);
 
         font->update();
 
