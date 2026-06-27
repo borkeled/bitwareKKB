@@ -293,6 +293,7 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClInclude Include="Source\Core\UI\GOOD\headers\draw.h" />
     <ClInclude Include="Source\Core\UI\GOOD\headers\flags.h" />
     <ClInclude Include="Source\Core\UI\GOOD\headers\fonts.h" />
+    <ClInclude Include="Source\Core\UI\GOOD\data\uicons.h" />
     <ClInclude Include="Source\Core\UI\GOOD\headers\functions.h" />
     <ClInclude Include="Source\Core\UI\GOOD\headers\includes.h" />
     <ClInclude Include="Source\Core\UI\GOOD\headers\widgets.h" />
@@ -350,6 +351,7 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
     <ClCompile Include="Source\Core\UI\GOOD\gui.cpp" />
     <ClCompile Include="Source\Core\UI\GOOD\helpers\draw.cpp" />
     <ClCompile Include="Source\Core\UI\GOOD\helpers\fonts.cpp" />
+    <ClCompile Include="Source\Core\UI\GOOD\data\uicons.cpp" />
     <ClCompile Include="Source\Core\UI\GOOD\widgets\helpers.cpp" />
     <ClCompile Include="Source\Core\UI\GOOD\widgets\notify.cpp" />
     <ClCompile Include="Source\Core\UI\GOOD\widgets\text_field.cpp" />

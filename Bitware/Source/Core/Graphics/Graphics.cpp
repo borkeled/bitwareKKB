@@ -19,6 +19,7 @@
 #include <Core/UI/GOOD/settings/variables.h>
 #include <Core/UI/GOOD/headers/fonts.h>
 #include <Core/UI/GOOD/data/fonts.h>
+#include <Core/UI/GOOD/data/uicons.h>
 #include <Core/Input/InputHook.h>
 #include <Core/UI/IMenuRenderer.h>
 #include <Miscellaneous/Protection/External/oxorany_include.h>
@@ -261,21 +262,14 @@ bool Graphics::Create_Imgui()
         font->get(inter_semibold, 16.0f);
         font->get(inter_semibold, 18.0f);
         font->get(inter_medium, 10.0f);
-        font->get_file(
-            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
-            12.5f, true);
-        font->get_file(
-            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
-            12.0f, true);
+        font->get(uicons_regular_rounded, 12.5f, true);
+        font->get(uicons_regular_rounded, 12.0f, true);
 
         font->update();
 
         Tahoma_BoldXP = font->get(s_tahoma_bold_vec, 13.0f);
         Inter_SemiBold = font->get(inter_semibold, 14.0f);
         Inter_Medium = font->get(inter_medium, 11.0f);
-        Icon_Font = font->get_file(
-            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
-            12.5f, true);
     }
 
     return true;
@@ -383,9 +377,6 @@ void Graphics::NewFrame()
         Tahoma_BoldXP = font->get(s_tahoma_bold_vec, 13.0f);
         Inter_SemiBold = font->get(inter_semibold, 14.0f);
         Inter_Medium = font->get(inter_medium, 11.0f);
-        Icon_Font = font->get_file(
-            "..\\Bitware\\Source\\Core\\UI\\GOOD\\data\\uicons\\uicons-regular-rounded.ttf",
-            12.5f, true);
     }
 
     ImGui_ImplDX11_NewFrame();
