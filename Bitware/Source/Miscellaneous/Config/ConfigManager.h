@@ -270,9 +270,7 @@ public:
         std::ofstream file(path, std::ios::binary);
         if (!file.is_open()) return false;
 
-        std::uint8_t version = 2;
         std::uint32_t size = static_cast<std::uint32_t>(buf.size());
-        file.write(reinterpret_cast<const char*>(&version), sizeof(version));
         file.write(reinterpret_cast<const char*>(&size), sizeof(size));
         file.write(reinterpret_cast<const char*>(buf.data()), buf.size());
         file.close();
@@ -298,7 +296,7 @@ public:
         file.read(raw.data(), fileSize);
         file.close();
 
-        // Detect format: configs starting with '{' are plain JSON
+        // Detect format: old configs are plain JSON (starts with '{')
         if (raw[0] == '{') {
             std::stringstream ss(std::string(raw.data(), raw.size()));
             std::string line;
@@ -321,36 +319,14 @@ public:
             return true;
         }
 
-        // Binary format: [version:1byte][size:4bytes][encrypted data...]
-        if (fileSize < 6) return false;
-        std::uint8_t version = static_cast<std::uint8_t>(raw[0]);
-        std::uint32_t size = *reinterpret_cast<const std::uint32_t*>(raw.data() + 1);
-        if (size == 0 || static_cast<std::streamsize>(size) + 5 > fileSize) return false;
-        std::vector<std::uint8_t> encrypted(raw.begin() + 5, raw.begin() + 5 + size);
+        // New encrypted binary format
+        if (fileSize < 5) return false;
+        std::uint32_t size = *reinterpret_cast<const std::uint32_t*>(raw.data());
+        if (size == 0 || static_cast<std::streamsize>(size) + 4 > fileSize) return false;
+        std::vector<std::uint8_t> encrypted(raw.begin() + 4, raw.begin() + 4 + size);
 
-        if (version == 2) {
-            auto key = ResourceEnc::GenerateKey(WRAPPER_MARCO("BitwareConfig"));
-            ResourceEnc::DecryptBuffer(encrypted.data(), encrypted.size(), key);
-        } else if (version == 1) {
-            // Legacy cipher: FNV-1a seed → 48 bytes Key[32]+Iv[16]; then rotation + XOR
-            std::uint64_t h = 0xCBF29CE484222325ULL;
-            auto seed = WRAPPER_MARCO("BitwareConfig");
-            for (const char* p = seed; *p; ++p) { h ^= *p; h *= 0x100000001B3ULL; }
-            std::uint8_t oldKey[32], oldIv[16];
-            for (int i = 0; i < 32; ++i) oldKey[i] = static_cast<std::uint8_t>((h >> ((i * 8) % 64)) ^ (h >> ((i * 3) % 64)));
-            for (int i = 0; i < 16; ++i) oldIv[i] = static_cast<std::uint8_t>((h >> ((i * 5) % 64)) ^ (h >> ((i * 7) % 64)));
-            // Reverse: rotation then XOR
-            for (size_t i = 0; i < encrypted.size(); ++i) {
-                encrypted[i] = (encrypted[i] ^ oldKey[(i + 7) % 32]);
-                encrypted[i] = ((encrypted[i] >> 3) | (encrypted[i] << 5));
-            }
-            // Reverse: XOR with Key xor Iv
-            for (size_t i = 0; i < encrypted.size(); ++i) {
-                encrypted[i] ^= oldKey[i % 32] ^ oldIv[i % 16];
-            }
-        } else {
-            return false;
-        }
+        auto key = ResourceEnc::GenerateKey(WRAPPER_MARCO("BitwareConfig"));
+        ResourceEnc::DecryptBuffer(encrypted.data(), encrypted.size(), key);
 
         std::string content(reinterpret_cast<const char*>(encrypted.data()), encrypted.size());
         std::string line;

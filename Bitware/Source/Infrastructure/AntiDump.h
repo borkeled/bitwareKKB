@@ -13,31 +13,20 @@ namespace AntiDump {
     static std::atomic<bool> ProtectionActive{ false };
     static PVOID VexHandle = nullptr;
     static DWORD OriginalProtect = PAGE_EXECUTE_READ;
-    static std::atomic<std::uint64_t> SectionBase{ 0 };
-    static std::atomic<SIZE_T> SectionSize{ 0 };
+    static std::uint64_t SectionBase = 0;
+    static SIZE_T SectionSize = 0;
 
     #pragma section(".vcdata", read, execute)
     __declspec(code_seg(".vcdata"))
-    __declspec(noinline)
     static LONG WINAPI OnException(PEXCEPTION_POINTERS ExceptionInfo) {
-        auto code = ExceptionInfo->ExceptionRecord->ExceptionCode;
-        auto addr = static_cast<std::uint64_t>(ExceptionInfo->ExceptionRecord->ExceptionInformation[1]);
-        auto base = SectionBase.load();
-        auto size = SectionSize.load();
-
-        if (code == STATUS_ACCESS_VIOLATION && addr >= base && addr < base + size) {
-            DWORD old;
-            Api::VirtualProtect(reinterpret_cast<LPVOID>(base), size, OriginalProtect, &old);
-            ExceptionInfo->ContextRecord->EFlags |= 0x100;
-            return EXCEPTION_CONTINUE_EXECUTION;
+        if (ExceptionInfo->ExceptionRecord->ExceptionCode == STATUS_ACCESS_VIOLATION) {
+            auto Address = static_cast<std::uint64_t>(ExceptionInfo->ExceptionRecord->ExceptionInformation[1]);
+            if (Address >= SectionBase && Address < SectionBase + SectionSize) {
+                DWORD old;
+                ::VirtualProtect(reinterpret_cast<LPVOID>(SectionBase), SectionSize, OriginalProtect, &old);
+                return EXCEPTION_CONTINUE_EXECUTION;
+            }
         }
-
-        if (code == STATUS_SINGLE_STEP) {
-            DWORD old;
-            Api::VirtualProtect(reinterpret_cast<LPVOID>(base), size, PAGE_NOACCESS, &old);
-            return EXCEPTION_CONTINUE_EXECUTION;
-        }
-
         return EXCEPTION_CONTINUE_SEARCH;
     }
 
@@ -86,12 +75,8 @@ namespace AntiDump {
     inline bool Enable() {
         if (ProtectionActive.load()) return true;
 
-        std::uint64_t sb = 0;
-        SIZE_T sz = 0;
-        GetTextSection(sb, sz, OriginalProtect);
-        if (!sb || !sz) return false;
-        SectionBase.store(sb);
-        SectionSize.store(sz);
+        GetTextSection(SectionBase, SectionSize, OriginalProtect);
+        if (!SectionBase || !SectionSize) return false;
 
         VexHandle = AddVectoredExceptionHandler(1, OnException);
         if (!VexHandle) return false;
@@ -99,7 +84,7 @@ namespace AntiDump {
         ProtectionActive.store(true);
 
         DWORD old;
-        BOOL vpResult = Api::VirtualProtect(reinterpret_cast<LPVOID>(sb), sz, PAGE_NOACCESS, &old);
+        BOOL vpResult = Api::VirtualProtect(reinterpret_cast<LPVOID>(SectionBase), SectionSize, PAGE_NOACCESS, &old);
         if (!vpResult) {
             RemoveVectoredExceptionHandler(VexHandle);
             VexHandle = nullptr;
@@ -118,11 +103,9 @@ namespace AntiDump {
             VexHandle = nullptr;
         }
 
-        auto base = SectionBase.load();
-        auto size = SectionSize.load();
-        if (base && size) {
+        if (SectionBase && SectionSize) {
             DWORD old;
-            Api::VirtualProtect(reinterpret_cast<LPVOID>(base), size, OriginalProtect, &old);
+            Api::VirtualProtect(reinterpret_cast<LPVOID>(SectionBase), SectionSize, OriginalProtect, &old);
         }
 
         ProtectionActive.store(false);
