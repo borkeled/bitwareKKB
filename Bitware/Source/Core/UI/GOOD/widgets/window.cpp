@@ -1401,15 +1401,11 @@ bool c_gui::begin(std::string_view name, bool* p_open, window_flags flags)
         // Apply programmatic ScrollVal BEFORE we compute wheel-based scrolling
         window->ScrollTarget = ImVec2(window->ScrollTarget.x, window->ScrollTarget.y + g.NextWindowData.ScrollVal.y);
 
-        // Handle mouse wheel using io.MouseWheel delta (walk up from hovered to find scrollable ancestor)
+        // Handle mouse wheel using io.MouseWheel delta (only for the window directly hovered, not children)
         ImGuiIO& io = ImGui::GetIO();
         if (io.MouseWheel != 0.f && (flags & window_flags_child_window) && !(flags & ImGuiWindowFlags_NoScrollWithMouse) && !io.KeyCtrl)
         {
-            ImGuiWindow* hovered = g.HoveredWindow;
-            while (hovered && hovered != window)
-                hovered = hovered->ParentWindow;
-
-            if (hovered == window)
+            if (g.HoveredWindow == window)
             {
                 const float scroll_step = ImMax(30.f, window->ScrollMax.y / 20.f);
                 const float target_y = ImClamp(window->Scroll.y - io.MouseWheel * scroll_step, 0.0f, window->ScrollMax.y);

@@ -1240,6 +1240,8 @@ void c_gui::draw_decorations()
     c_draw_list* draw_list = gui->background_drawlist();
 
     draw->rect_filled(draw_list, rect.Min, rect.Max, draw->get_clr(clr->layout), s_(elements->window.rounding));
+    draw->shadow_rect(draw_list, rect.Min, rect.Max,
+        draw->get_clr(clr->accent, 0.18f), s_(10), c_vec2(0, 0), 0, s_(elements->window.rounding));
 }
 
 void c_gui::initialize()

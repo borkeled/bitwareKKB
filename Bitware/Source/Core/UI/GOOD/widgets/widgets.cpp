@@ -747,19 +747,14 @@ void c_widgets::brand_header(std::string name, std::string subtitle)
 		draw->rect(window->DrawList, rect.Min + s_(0.5f, 0.5f), rect.Max - s_(0.5f, 0.5f), draw->get_clr(clr->border, 0.36f), s_(12));
 	draw->shadow_rect(window->DrawList, mark.Min + s_(2, 2), mark.Max - s_(2, 2), draw->get_clr(clr->accent, glass ? 0.14f : 0.2f), s_(14), c_vec2(0, 0), 0, s_(10));
 	draw->rect_filled(window->DrawList, mark.Min, mark.Max, draw->get_clr(clr->widget, glass ? 0.48f : 1.f), s_(10));
-	draw->rect_filled(window->DrawList, mark.Min + s_(3, 3), mark.Max - s_(3, 3), draw->get_clr(clr->accent, 0.12f), s_(8));
-
-	const c_vec2 center = mark.GetCenter();
-	draw->circle_filled(window->DrawList, center, s_(12), draw->get_clr(clr->accent, 0.08f), s_(999));
-	draw->line(window->DrawList, center + s_(0, -13), center + s_(0, 12), draw->get_clr(clr->accent), s_(2));
-	draw->circle_filled(window->DrawList, center + s_(0, -3), s_(5), draw->get_clr(clr->accent), s_(999));
-	draw->circle_filled(window->DrawList, center + s_(0, -3), s_(2), draw->get_clr(clr->black, 0.38f), s_(999));
-	draw->line(window->DrawList, center + s_(0, 3), center + s_(-8, 13), draw->get_clr(clr->accent, 0.85f), s_(1.5f));
-	draw->line(window->DrawList, center + s_(0, 3), center + s_(8, 13), draw->get_clr(clr->accent, 0.85f), s_(1.5f));
-	draw->rect_filled(window->DrawList, mark.Min + s_(6, 23), mark.Min + s_(9, 29), draw->get_clr(clr->white, 0.18f), s_(1));
-	draw->rect_filled(window->DrawList, mark.Min + s_(11, 20), mark.Min + s_(14, 29), draw->get_clr(clr->white, 0.18f), s_(1));
-	draw->rect_filled(window->DrawList, mark.Min + s_(20, 21), mark.Min + s_(23, 29), draw->get_clr(clr->white, 0.18f), s_(1));
-	draw->rect_filled(window->DrawList, mark.Min + s_(25, 24), mark.Min + s_(28, 29), draw->get_clr(clr->white, 0.18f), s_(1));
+	if (logo_texture)
+	{
+		const float ip = s_(3);
+		const c_vec2 img_pad = c_vec2(ip, ip);
+		draw->image_rounded(window->DrawList, logo_texture,
+			mark.Min + img_pad, mark.Max - img_pad,
+			ImVec2(0, 0), ImVec2(1, 1), IM_COL32_WHITE, s_(6));
+	}
 	draw->text_clipped(window->DrawList, font->get(inter_semibold, 13), inner.Min + s_(44, 2), inner.Max,
 		draw->get_clr(clr->white), name.data(), 0, 0, { 0, 0 });
 	draw->text_clipped(window->DrawList, font->get(inter_medium, 11), inner.Min + s_(44, 18), inner.Max,

@@ -25,6 +25,7 @@ struct detail_t {
 	ID3D11DeviceContext* DeviceContext = nullptr;
 	ID3D11RenderTargetView* GraphicsTargetView = nullptr;
 	IDXGISwapChain* SwapChain = nullptr;
+	ID3D11ShaderResourceView* LogoTexture = nullptr;
 };
 
 class Graphics {

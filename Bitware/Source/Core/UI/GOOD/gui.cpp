@@ -60,17 +60,22 @@ static bool slider_int(const std::string& name, const std::string& desc, int* va
 
 static void draw_visual_sidebar_glass(const c_rect& bounds)
 {
-	draw->rect_filled(gui->background_drawlist(), bounds.Min, bounds.Max, draw->get_clr(clr->child), s_(12));
+	c_draw_list* dl = gui->background_drawlist();
+	draw->rect_filled(dl, bounds.Min, bounds.Max, draw->get_clr(clr->child), s_(12));
+	draw->shadow_rect(dl, bounds.Min, bounds.Max,
+		draw->get_clr(clr->accent, 0.06f), s_(6), c_vec2(0, 0), 0, s_(12));
 }
 
 static void begin_visual_section(const std::string& name, float height)
 {
-	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_no_scroll_with_mouse | window_flags_always_vertical_scrollbar);
+	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_always_vertical_scrollbar);
 	c_window* window = gui->get_window();
 	if (window->SkipItems)
 		return;
 
 	draw->rect_filled(window->DrawList, window->Pos, window->Pos + window->Size, draw->get_clr(clr->child), s_(12));
+	draw->shadow_rect(window->DrawList, window->Pos, window->Pos + window->Size,
+		draw->get_clr(clr->accent, 0.06f), s_(6), c_vec2(0, 0), 0, s_(12));
 	const float edge_inset = s_(12);
 	const float edge_y = s_(1);
 	draw->line(window->DrawList,
@@ -251,7 +256,10 @@ void c_gui::render()
 			{
 				c_window* tabs_inner_bg = gui->get_window();
 				static c_vec4 sidebar_overlay = c_vec4(0, 0, 0, 0);
-				gui->easing(sidebar_overlay, g_sidebar_selected_rect, 18.f, dynamic_easing);
+				sidebar_overlay.x = g_sidebar_selected_rect.x;
+				sidebar_overlay.z = g_sidebar_selected_rect.z;
+				gui->easing(sidebar_overlay.y, g_sidebar_selected_rect.y, 18.f, dynamic_easing);
+				gui->easing(sidebar_overlay.w, g_sidebar_selected_rect.w, 18.f, dynamic_easing);
 				if (sidebar_overlay.z > sidebar_overlay.x + 1.f)
 				{
 					draw->rect_filled(tabs_inner_bg->DrawList,
@@ -269,7 +277,10 @@ void c_gui::render()
 
 			{
 				static c_vec4 sidebar_indicator = c_vec4(0, 0, 0, 0);
-				gui->easing(sidebar_indicator, g_sidebar_selected_rect, 18.f, dynamic_easing);
+				sidebar_indicator.x = g_sidebar_selected_rect.x;
+				sidebar_indicator.z = g_sidebar_selected_rect.z;
+				gui->easing(sidebar_indicator.y, g_sidebar_selected_rect.y, 18.f, dynamic_easing);
+				gui->easing(sidebar_indicator.w, g_sidebar_selected_rect.w, 18.f, dynamic_easing);
 				if (sidebar_indicator.w > sidebar_indicator.y + 1.f)
 				{
 					c_window* tabs_inner = gui->get_window();
@@ -313,7 +324,10 @@ void c_gui::render()
 
 				if (has_subtabs)
 				{
-					gui->easing(pill_overlay, g_pill_selected_rect, 18.f, dynamic_easing);
+					pill_overlay.y = g_pill_selected_rect.y;
+					pill_overlay.w = g_pill_selected_rect.w;
+					gui->easing(pill_overlay.x, g_pill_selected_rect.x, 18.f, dynamic_easing);
+					gui->easing(pill_overlay.z, g_pill_selected_rect.z, 18.f, dynamic_easing);
 					if (pill_overlay.z > pill_overlay.x + 1.f)
 					{
 						draw->rect_filled(hdr_win->DrawList,

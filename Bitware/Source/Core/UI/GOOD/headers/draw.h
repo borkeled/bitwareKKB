@@ -1,6 +1,8 @@
 #pragma once
 #include "includes.h"
 
+inline ImTextureID logo_texture = nullptr;
+
 enum fade_direction : int
 {
     vertically,
