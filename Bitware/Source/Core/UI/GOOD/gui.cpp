@@ -65,7 +65,7 @@ static void draw_visual_sidebar_glass(const c_rect& bounds)
 
 static void begin_visual_section(const std::string& name, float height)
 {
-	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_no_scroll_with_mouse | window_flags_always_vertical_scrollbar);
+	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_always_vertical_scrollbar);
 	c_window* window = gui->get_window();
 	if (window->SkipItems)
 		return;
@@ -315,39 +315,73 @@ void c_gui::render()
 					pill_overlay = c_vec4(0, 0, 0, 0);
 				}
 
-				const c_vec2 row_pos = hdr_win->DC.CursorPos;
 				ImFont* tab_font = font->get(inter_semibold, 11);
 				const float tab_gap = s_(8.f);
+				const float search_height = s_(28);
+				const float avail_width = gui->content_avail().x;
 
-				if (var->gui.tab == 1) // Aimbot sub-tabs
+				float subtabs_total_width = 0.f;
+				if (has_subtabs)
 				{
-					const float a_width = s_(42.f) + gui->text_size(tab_font, "Aimbot").x;
-					const float s_width = s_(42.f) + gui->text_size(tab_font, "Silent").x;
-					const float t_width = s_(42.f) + gui->text_size(tab_font, "Trigger").x;
-					widgets->sub_tab_button("Aimbot", "aim", 1, a_width);
-					gui->sameline(0.f, tab_gap);
-					widgets->sub_tab_button("Silent", "target", 2, s_width);
-					gui->sameline(0.f, tab_gap);
-					widgets->sub_tab_button("Trigger", "match", 3, t_width);
+					if (var->gui.tab == 1)
+					{
+						const float a_width = s_(42.f) + gui->text_size(tab_font, "Aimbot").x;
+						const float s_width = s_(42.f) + gui->text_size(tab_font, "Silent").x;
+						const float t_width = s_(42.f) + gui->text_size(tab_font, "Trigger").x;
+						subtabs_total_width = a_width + tab_gap + s_width + tab_gap + t_width;
+					}
+					else if (var->gui.tab == 2)
+					{
+						const float e_width = s_(42.f) + gui->text_size(tab_font, "ESP").x;
+						const float c_width = s_(42.f) + gui->text_size(tab_font, "Chams").x;
+						const float w_width = s_(42.f) + gui->text_size(tab_font, "World").x;
+						subtabs_total_width = e_width + tab_gap + c_width + tab_gap + w_width;
+					}
+					else if (var->gui.tab == 4)
+					{
+						const float l_width = s_(42.f) + gui->text_size(tab_font, "List").x;
+						const float w_width = s_(42.f) + gui->text_size(tab_font, "Whitelist").x;
+						subtabs_total_width = l_width + tab_gap + w_width;
+					}
 				}
-				else if (var->gui.tab == 2) // Visuals sub-tabs
+
+				const float search_width = avail_width - subtabs_total_width - (has_subtabs ? tab_gap : 0.f);
+				widgets->search_field("Search...", var->gui.feature_search, sizeof(var->gui.feature_search), c_vec2(search_width, search_height));
+
+				if (has_subtabs)
 				{
-					const float e_width = s_(42.f) + gui->text_size(tab_font, "ESP").x;
-					const float c_width = s_(42.f) + gui->text_size(tab_font, "Chams").x;
-					const float w_width = s_(42.f) + gui->text_size(tab_font, "World").x;
-					widgets->sub_tab_button("ESP", "visuals", 1, e_width);
-					gui->sameline(0.f, tab_gap);
-					widgets->sub_tab_button("Chams", "shapes", 2, c_width);
-					gui->sameline(0.f, tab_gap);
-					widgets->sub_tab_button("World", "world", 3, w_width);
-				}
-				else if (var->gui.tab == 4) // Players sub-tabs
-				{
-					const float l_width = s_(42.f) + gui->text_size(tab_font, "List").x;
-					const float w_width = s_(42.f) + gui->text_size(tab_font, "Whitelist").x;
-					widgets->sub_tab_button("List", "squad", 1, l_width);
-					gui->sameline(0.f, tab_gap);
-					widgets->sub_tab_button("Whitelist", "profile", 2, w_width);
+					gui->sameline();
+
+					if (var->gui.tab == 1) // Aimbot sub-tabs
+					{
+						const float a_width = s_(42.f) + gui->text_size(tab_font, "Aimbot").x;
+						const float s_width = s_(42.f) + gui->text_size(tab_font, "Silent").x;
+						const float t_width = s_(42.f) + gui->text_size(tab_font, "Trigger").x;
+						widgets->sub_tab_button("Aimbot", "aim", 1, a_width);
+						gui->sameline(0.f, tab_gap);
+						widgets->sub_tab_button("Silent", "target", 2, s_width);
+						gui->sameline(0.f, tab_gap);
+						widgets->sub_tab_button("Trigger", "match", 3, t_width);
+					}
+					else if (var->gui.tab == 2) // Visuals sub-tabs
+					{
+						const float e_width = s_(42.f) + gui->text_size(tab_font, "ESP").x;
+						const float c_width = s_(42.f) + gui->text_size(tab_font, "Chams").x;
+						const float w_width = s_(42.f) + gui->text_size(tab_font, "World").x;
+						widgets->sub_tab_button("ESP", "visuals", 1, e_width);
+						gui->sameline(0.f, tab_gap);
+						widgets->sub_tab_button("Chams", "shapes", 2, c_width);
+						gui->sameline(0.f, tab_gap);
+						widgets->sub_tab_button("World", "world", 3, w_width);
+					}
+					else if (var->gui.tab == 4) // Players sub-tabs
+					{
+						const float l_width = s_(42.f) + gui->text_size(tab_font, "List").x;
+						const float w_width = s_(42.f) + gui->text_size(tab_font, "Whitelist").x;
+						widgets->sub_tab_button("List", "squad", 1, l_width);
+						gui->sameline(0.f, tab_gap);
+						widgets->sub_tab_button("Whitelist", "profile", 2, w_width);
+					}
 				}
 				}
 				gui->end_content();
@@ -830,7 +864,7 @@ void c_gui::render()
 								for (const auto& name : configs)
 								{
 									c_vec2 card_pos = w->DC.CursorPos;
-									float card_w = gui->content_avail().x;
+									float card_w = gui->content_avail().x - s_(22);
 
 									// Card background
 									c_rect card_rect(card_pos, card_pos + c_vec2(card_w, card_h));
@@ -908,8 +942,10 @@ draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
 							c_window* aw = gui->get_window();
 							draw->text(aw->DrawList, font->get(inter_semibold, 11), 11.f,
 								aw->DC.CursorPos + s_(4, 4), draw->get_clr(clr->text), "Save current settings:");
-								aw->DC.CursorPos += c_vec2(s_(4), s_(20));
-							ImGui::SetNextItemWidth(elements->child_width - s_(24));
+								aw->DC.CursorPos += c_vec2(0, s_(20));
+							const float input_width = elements->child_width - s_(44);
+							aw->DC.CursorPos.x = aw->Pos.x + (elements->child_width - input_width) * 0.5f;
+							ImGui::SetNextItemWidth(input_width);
 							ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, s_(8));
 							ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.16f, 1.f));
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.8f, 1.f));
@@ -917,7 +953,9 @@ draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
 							ImGui::PopStyleColor(2);
 							ImGui::PopStyleVar();
 							aw->DC.CursorPos += c_vec2(0, ImGui::GetItemRectSize().y + s_(8));
-							if (widgets->primary_button("Save Config"))
+							const float btn_w = elements->child_width - s_(88);
+							aw->DC.CursorPos.x = aw->Pos.x + (elements->child_width - btn_w) * 0.5f;
+							if (ImGui::Button("Save Config", ImVec2(btn_w, s_(34))))
 							{
 								if (config_name[0] != '\0')
 								{

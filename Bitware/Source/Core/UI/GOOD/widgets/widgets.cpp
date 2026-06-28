@@ -4,6 +4,25 @@
 #include <Windows.h>
 #include <array>
 
+static bool passes_filter(const std::string& text, const std::string& query)
+{
+	if (query.empty()) return true;
+	for (size_t i = 0; i + query.size() <= text.size(); ++i)
+	{
+		bool match = true;
+		for (size_t j = 0; j < query.size(); ++j)
+		{
+			if (std::tolower(text[i + j]) != std::tolower(query[j]))
+			{
+				match = false;
+				break;
+			}
+		}
+		if (match) return true;
+	}
+	return false;
+}
+
 // https://www.unknowncheats.me/forum/members/3936684.html
 struct color_picker_state
 {
@@ -136,6 +155,9 @@ bool c_widgets::color_picker(std::string name, c_vec4* color)
 
 	c_window* window = gui->get_window();
 	if (window->SkipItems)
+		return false;
+
+	if (var->gui.feature_search[0] && !passes_filter(name, var->gui.feature_search))
 		return false;
 
 	c_id id = window->GetID(name.data());
@@ -335,7 +357,7 @@ bool c_widgets::color_picker(std::string name, c_vec4* color)
 			const float alpha_x = alpha_rect.Min.x + alpha_rect.GetWidth() * state->display_a;
 			draw_color_bar_handle(popup->DrawList, c_rect(c_vec2(alpha_x - s_(4), alpha_rect.Min.y - s_(3)), c_vec2(alpha_x + s_(4), alpha_rect.Max.y + s_(3))));
 
-			if (state->open && !popup_rect.Contains(gui->mouse_pos()) && !rect.Contains(gui->mouse_pos()) && gui->mouse_clicked(0))
+			if (state->open && !popup_rect.Contains(gui->mouse_pos()) && gui->mouse_clicked(0))
 				state->open = false;
 		}
 		gui->end();
@@ -405,6 +427,9 @@ bool c_widgets::slider(std::string name, std::string description, float* callbac
 {
 	c_window* window = gui->get_window();
 	if (window->SkipItems)
+		return false;
+
+	if (var->gui.feature_search[0] && !passes_filter(name, var->gui.feature_search) && !passes_filter(description, var->gui.feature_search))
 		return false;
 
 	c_id id = window->GetID(name.data());
@@ -536,6 +561,9 @@ bool dropdown_ex(std::string name, std::string description, std::string preview)
 	if (window->SkipItems)
 		return false;
 
+	if (var->gui.feature_search[0] && !passes_filter(name, var->gui.feature_search) && !passes_filter(description, var->gui.feature_search))
+		return false;
+
 	c_id id = window->GetID(name.data());
 	dropdown_state* state = gui->anim_container<dropdown_state>(id);
 
@@ -543,8 +571,7 @@ bool dropdown_ex(std::string name, std::string description, std::string preview)
 	c_vec2 size = c_vec2(gui->content_avail().x, s_(84));
 	c_rect rect = c_rect(pos, pos + size);
 	c_rect inner = c_rect(rect.Min + s_(0, 10), rect.Max - s_(0, 10));
-	const float drop_width = ImClamp(inner.GetWidth() * 0.40f, s_(140), s_(200));
-	c_rect button = c_rect(c_vec2(inner.Max.x - s_(12) - drop_width, inner.GetBL().y - s_(29)), c_vec2(inner.Max.x - s_(12), inner.GetBR().y));
+	c_rect button = c_rect(c_vec2(inner.Min.x + s_(12), inner.GetBL().y - s_(29)), c_vec2(inner.Max.x - s_(12), inner.GetBR().y));
 
 	gui->item_size(rect);
 	if (!gui->item_add(rect, id))
@@ -1439,6 +1466,9 @@ bool c_widgets::keybind(std::string name, std::string description, keybind_t* bi
 	if (window->SkipItems)
 		return false;
 
+	if (var->gui.feature_search[0] && !passes_filter(name, var->gui.feature_search) && !passes_filter(description, var->gui.feature_search))
+		return false;
+
 	bind->mode = ImClamp(bind->mode, static_cast<int>(keybind_mode_hold), static_cast<int>(keybind_mode_always));
 
 	c_id id = window->GetID(name.data());
@@ -1563,6 +1593,9 @@ bool c_widgets::checkbox(std::string name, std::string description, bool* callba
 {
 	c_window* window = gui->get_window();
 	if (window->SkipItems)
+		return false;
+
+	if (var->gui.feature_search[0] && !passes_filter(name, var->gui.feature_search) && !passes_filter(description, var->gui.feature_search))
 		return false;
 
 	c_id id = window->GetID(name.data());
