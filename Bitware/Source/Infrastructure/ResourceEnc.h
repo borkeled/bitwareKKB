@@ -8,47 +8,88 @@
 
 namespace ResourceEnc {
 
-    struct AESKey {
-        std::uint8_t Key[32];
-        std::uint8_t Iv[16];
+    struct XTEAKey {
+        std::uint32_t Key[4];
     };
 
-    inline AESKey GenerateKey(const char* seed) {
-        AESKey k;
+    inline void XteaEncrypt(std::uint32_t rounds, std::uint32_t v[2], const std::uint32_t key[4]) {
+        std::uint32_t v0 = v[0], v1 = v[1], sum = 0, delta = 0x9E3779B9;
+        for (std::uint32_t r = 0; r < rounds; ++r) {
+            v0 += (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + key[sum & 3]);
+            sum += delta;
+            v1 += (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + key[(sum >> 11) & 3]);
+        }
+        v[0] = v0;
+        v[1] = v1;
+    }
+
+    inline void XteaDecrypt(std::uint32_t rounds, std::uint32_t v[2], const std::uint32_t key[4]) {
+        std::uint32_t v0 = v[0], v1 = v[1], delta = 0x9E3779B9, sum = delta * rounds;
+        for (std::uint32_t r = 0; r < rounds; ++r) {
+            v1 -= (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + key[(sum >> 11) & 3]);
+            sum -= delta;
+            v0 -= (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + key[sum & 3]);
+        }
+        v[0] = v0;
+        v[1] = v1;
+    }
+
+    static inline void XteaKdf(const char* seed, std::uint32_t key[4]) {
         std::uint64_t h = 0xCBF29CE484222325ULL;
         size_t len = strlen(seed);
         for (size_t i = 0; i < len; ++i) {
             h ^= seed[i];
             h *= 0x100000001B3ULL;
         }
-        for (int i = 0; i < 32; ++i) {
-            k.Key[i] = static_cast<std::uint8_t>((h >> ((i * 8) % 64)) ^ (h >> ((i * 3) % 64)));
-        }
-        for (int i = 0; i < 16; ++i) {
-            k.Iv[i] = static_cast<std::uint8_t>((h >> ((i * 5) % 64)) ^ (h >> ((i * 7) % 64)));
-        }
+        key[0] = static_cast<std::uint32_t>(h);
+        key[1] = static_cast<std::uint32_t>(h >> 32);
+        key[2] = key[0] ^ 0x9E3779B9;
+        key[3] = key[1] ^ 0xC6EF3720;
+
+        std::uint32_t zero[2] = { 0, 0 };
+        XteaEncrypt(32, zero, key);
+        key[0] ^= zero[0];
+        key[1] ^= zero[1];
+
+        XteaEncrypt(32, zero, key);
+        key[2] ^= zero[0];
+        key[3] ^= zero[1];
+    }
+
+    inline XTEAKey GenerateKey(const char* seed) {
+        XTEAKey k;
+        XteaKdf(seed, k.Key);
         return k;
     }
 
-    inline void XorBlock(std::uint8_t* data, size_t len, const AESKey& key) {
-        for (size_t i = 0; i < len; ++i) {
-            data[i] ^= key.Key[i % 32] ^ key.Iv[i % 16];
+    inline void EncryptBuffer(std::uint8_t* data, size_t len, const XTEAKey& key) {
+        size_t blocks = len / 8;
+        for (size_t i = 0; i < blocks; ++i) {
+            auto block = reinterpret_cast<std::uint32_t*>(data + i * 8);
+            XteaEncrypt(32, block, key.Key);
+        }
+        size_t rem = len % 8;
+        if (rem > 0) {
+            std::uint32_t last[2] = {};
+            memcpy(last, data + blocks * 8, rem);
+            XteaEncrypt(32, last, key.Key);
+            memcpy(data + blocks * 8, last, rem);
         }
     }
 
-    inline void EncryptBuffer(std::uint8_t* data, size_t len, const AESKey& key) {
-        XorBlock(data, len, key);
-        for (size_t i = 0; i < len; ++i) {
-            data[i] = ((data[i] << 3) | (data[i] >> 5)) ^ key.Key[(i + 7) % 32];
+    inline void DecryptBuffer(std::uint8_t* data, size_t len, const XTEAKey& key) {
+        size_t blocks = len / 8;
+        for (size_t i = 0; i < blocks; ++i) {
+            auto block = reinterpret_cast<std::uint32_t*>(data + i * 8);
+            XteaDecrypt(32, block, key.Key);
         }
-    }
-
-    inline void DecryptBuffer(std::uint8_t* data, size_t len, const AESKey& key) {
-        for (size_t i = 0; i < len; ++i) {
-            data[i] = (data[i] ^ key.Key[(i + 7) % 32]);
-            data[i] = ((data[i] >> 3) | (data[i] << 5));
+        size_t rem = len % 8;
+        if (rem > 0) {
+            std::uint32_t last[2] = {};
+            memcpy(last, data + blocks * 8, rem);
+            XteaDecrypt(32, last, key.Key);
+            memcpy(data + blocks * 8, last, rem);
         }
-        XorBlock(data, len, key);
     }
 
     template <size_t N>
@@ -60,11 +101,11 @@ namespace ResourceEnc {
             memset(Data, 0, N);
         }
 
-        void Encrypt(const AESKey& key) {
+        void Encrypt(const XTEAKey& key) {
             EncryptBuffer(Data, N, key);
         }
 
-        void Decrypt(const AESKey& key) {
+        void Decrypt(const XTEAKey& key) {
             DecryptBuffer(Data, N, key);
         }
     };

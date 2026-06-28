@@ -2,38 +2,117 @@
 #include <TlHelp32.h>
 #include <Psapi.h>
 #include <winternl.h>
+#include <wintrust.h>
+#include <SoftPub.h>
 #include <Auth/skStr.h>
 #include <Infrastructure/ApiHiding.h>
+#include <Infrastructure/Logger.h>
 
+#pragma comment(lib, "wintrust.lib")
 
-std::vector<HMODULE> AntiInjection::baselineModules;
+static LONG DynamicWinVerifyTrust(HWND hwnd, GUID* pgActionID, void* pWVTData) {
+    static auto fn = (LONG(WINAPI*)(HWND, GUID*, void*))::GetProcAddress(
+        ::LoadLibraryW(L"wintrust.dll"), "WinVerifyTrust");
+    if (fn) return fn(hwnd, pgActionID, pWVTData);
+    return -1;
+}
+
+typedef struct _LDR_DLL_NOTIFICATION_DATA {
+    ULONG Flags;
+    PCUNICODE_STRING FullDllName;
+    PCUNICODE_STRING BaseDllName;
+    PVOID DllBase;
+    ULONG SizeOfImage;
+} LDR_DLL_NOTIFICATION_DATA, *PLDR_DLL_NOTIFICATION_DATA;
+typedef const LDR_DLL_NOTIFICATION_DATA* PCLDR_DLL_NOTIFICATION_DATA;
+
+#define LDR_DLL_NOTIFICATION_REASON_LOADED 1
+
+typedef VOID(NTAPI* PLDR_DLL_NOTIFICATION_FUNCTION)(ULONG, PCLDR_DLL_NOTIFICATION_DATA, PVOID);
+
+HMODULE AntiInjection::baselineModules[256];
+int AntiInjection::baselineModuleCount = 0;
 HANDLE AntiInjection::hThread = nullptr;
 bool AntiInjection::running = false;
+PVOID AntiInjection::dllNotifyCookie = nullptr;
 
-static std::vector<HMODULE> GetModules()
+static int GetModules(HMODULE* buffer, int maxCount)
 {
-    std::vector<HMODULE> mods;
-    HMODULE buffer[1024];
     DWORD needed = 0;
-    if (Api::EnumProcessModules(Api::GetCurrentProcess(), buffer, sizeof(buffer), &needed))
+    if (Api::EnumProcessModules(Api::GetCurrentProcess(), buffer, maxCount * sizeof(HMODULE), &needed))
     {
-        size_t count = needed / sizeof(HMODULE);
-        if (count > 1024) count = 1024; // Limit to maximum buffer size to prevent out-of-bounds reads
-        for (size_t i = 0; i < count; ++i) mods.push_back(buffer[i]);
+        int count = static_cast<int>(needed / sizeof(HMODULE));
+        if (count > maxCount) count = maxCount;
+        return count;
     }
-    return mods;
+    return 0;
 }
 
 void AntiInjection::Start()
 {
     if (running) return;
-    baselineModules = GetModules();
+    baselineModuleCount = GetModules(baselineModules, 256);
     running = true;
     hThread = Api::CreateThread(nullptr, 0, MonitorThread, nullptr, 0, nullptr);
 }
 
+static VOID NTAPI DllNotificationCallback(ULONG Reason, PCLDR_DLL_NOTIFICATION_DATA Data, PVOID Ctx)
+{
+    if (Reason == LDR_DLL_NOTIFICATION_REASON_LOADED)
+    {
+        auto mod = Data->BaseDllName;
+        if (!mod->Buffer) return;
+
+        Api::CharLowerBuffW(mod->Buffer, mod->Length / sizeof(wchar_t));
+
+        if (mod->Length >= 22 && wcsstr(mod->Buffer, L"ntdll.dll") != nullptr)
+            return;
+        if (mod->Length >= 10 && wcsstr(mod->Buffer, L"kernel32.dll") != nullptr)
+            return;
+        if (mod->Length >= 10 && wcsstr(mod->Buffer, L"kernelbase.dll") != nullptr)
+            return;
+
+        HMODULE hMod = (HMODULE)Data->DllBase;
+        wchar_t fullPath[MAX_PATH];
+        if (Api::GetModuleFileNameExW(Api::GetCurrentProcess(), hMod, fullPath, MAX_PATH))
+        {
+            Api::CharLowerBuffW(fullPath, wcslen(fullPath));
+
+            WINTRUST_FILE_INFO FileInfo;
+            memset(&FileInfo, 0, sizeof(FileInfo));
+            FileInfo.cbStruct = sizeof(WINTRUST_FILE_INFO);
+            FileInfo.pcwszFilePath = fullPath;
+            FileInfo.hFile = NULL;
+
+            GUID guidAction = WINTRUST_ACTION_GENERIC_VERIFY_V2;
+
+            WINTRUST_DATA WvtData;
+            memset(&WvtData, 0, sizeof(WvtData));
+            WvtData.cbStruct = sizeof(WvtData);
+            WvtData.dwUnionChoice = WTD_CHOICE_FILE;
+            WvtData.pFile = &FileInfo;
+            WvtData.dwUIChoice = WTD_UI_NONE;
+            WvtData.fdwRevocationChecks = WTD_REVOKE_NONE;
+            WvtData.dwProvFlags = WTD_CACHE_ONLY_URL_RETRIEVAL;
+            WvtData.dwStateAction = WTD_STATEACTION_IGNORE;
+
+            LONG status = DynamicWinVerifyTrust(NULL, &guidAction, &WvtData);
+            if (status != ERROR_SUCCESS)
+            {
+                *reinterpret_cast<volatile bool*>(Ctx) = true;
+            }
+        }
+    }
+}
+
 void AntiInjection::Stop()
 {
+    if (dllNotifyCookie)
+    {
+        Api::LdrUnregisterDllNotification(dllNotifyCookie);
+        dllNotifyCookie = nullptr;
+    }
+
     running = false;
     if (hThread)
     {
@@ -45,42 +124,92 @@ void AntiInjection::Stop()
 
 DWORD __stdcall AntiInjection::MonitorThread(void*)
 {
+    static volatile bool dllDetected = false;
+
+    PLDR_DLL_NOTIFICATION_FUNCTION notifyFn = DllNotificationCallback;
+    Api::LdrRegisterDllNotification(0, (PVOID)notifyFn, const_cast<bool*>(&dllDetected), &dllNotifyCookie);
+
+    int scanCounter = 0;
+
     while (running)
     {
-        if (DetectDebugger() || DetectRemoteDebugger() || DetectNewModules() || DetectManualMapRegions() || DetectThreadStartAnomalies() || DetectNtdllHooks())
+        bool detected = false;
+
+        if (dllDetected)
+        {
+            Logger::Log("[AntiInjection] unsigned module detected via DLL notification");
+            detected = true;
+        }
+
+        if (DetectDebugger())
+        {
+            Logger::Log("[AntiInjection] debugger detected (IsDebuggerPresent)");
+            detected = true;
+        }
+
+        if (DetectRemoteDebugger())
+        {
+            Logger::Log("[AntiInjection] remote debugger detected");
+            detected = true;
+        }
+
+        ++scanCounter;
+
+        if (scanCounter % 100 == 0)
+        {
+            if (DetectThreadStartAnomalies())
+            {
+                Logger::Log("[AntiInjection] thread start anomaly detected");
+                detected = true;
+            }
+        }
+
+        if (scanCounter % 600 == 0)
+        {
+            if (DetectManualMapRegions())
+            {
+                Logger::Log("[AntiInjection] manual map region detected");
+                detected = true;
+            }
+        }
+
+        if (scanCounter % 600 == 300)
+        {
+            if (DetectNtdllHooks())
+            {
+                Logger::Log("[AntiInjection] ntdll hooks detected");
+                detected = true;
+            }
+        }
+
+        if (detected)
         {
             Api::TerminateProcess(Api::GetCurrentProcess(), 0);
         }
-        Api::Sleep(500);
+
+        Api::Sleep(100);
     }
     return 0;
 }
 
 bool AntiInjection::DetectDebugger() { return Api::IsDebuggerPresent(); }
 bool AntiInjection::DetectRemoteDebugger() { BOOL present = FALSE; Api::CheckRemoteDebuggerPresent(Api::GetCurrentProcess(), &present); return present; }
+
 bool AntiInjection::DetectNewModules()
 {
-    auto now = GetModules();
-    for (HMODULE m : now)
+    HMODULE now[256];
+    int nowCount = GetModules(now, 256);
+
+    for (int i = 0; i < nowCount; i++)
     {
         bool known = false;
-        for (HMODULE b : baselineModules) { if (m == b) { known = true; break; } }
+        for (int j = 0; j < baselineModuleCount; j++)
+        {
+            if (now[i] == baselineModules[j]) { known = true; break; }
+        }
+
         if (!known)
         {
-            wchar_t path[MAX_PATH] = {};
-            if (Api::GetModuleFileNameExW(Api::GetCurrentProcess(), m, path, MAX_PATH))
-            {
-                for (int i = 0; path[i]; ++i)
-                {
-                    if (path[i] >= L'A' && path[i] <= L'Z')
-                    {
-                        path[i] += 32;
-                    }
-                }
-
-                if (wcsstr(path, skCrypt(L"\\windows\\")) || wcsstr(path, skCrypt(L"\\program files\\windows")))
-                    continue;
-            }
             return true;
         }
     }
@@ -89,15 +218,11 @@ bool AntiInjection::DetectNewModules()
 
 bool AntiInjection::DetectManualMapRegions()
 {
-    std::vector<uintptr_t> knownBases;
-    HMODULE buffer[1024];
-    DWORD needed;
-    if (Api::EnumProcessModules(Api::GetCurrentProcess(), buffer, sizeof(buffer), &needed))
-    {
-        size_t count = needed / sizeof(HMODULE);
-        for (size_t i = 0; i < count; i++)
-            knownBases.push_back((uintptr_t)buffer[i]);
-    }
+    HMODULE buffer[256];
+    int knownCount = GetModules(buffer, 256);
+    uintptr_t knownBases[256];
+    for (int i = 0; i < knownCount; i++)
+        knownBases[i] = (uintptr_t)buffer[i];
 
     SYSTEM_INFO si;
     Api::GetSystemInfo(&si);
@@ -108,16 +233,15 @@ bool AntiInjection::DetectManualMapRegions()
         MEMORY_BASIC_INFORMATION mbi;
         if (Api::VirtualQuery((const void*)addr, &mbi, sizeof(mbi)) == 0)
         {
-            addr += 0x10000;
-            continue;
+            break;
         }
 
         if (mbi.State == MEM_COMMIT && mbi.Type == MEM_IMAGE)
         {
             bool found = false;
-            for (auto base : knownBases)
+            for (int i = 0; i < knownCount; i++)
             {
-                if ((uintptr_t)mbi.AllocationBase == base)
+                if ((uintptr_t)mbi.AllocationBase == knownBases[i])
                 {
                     found = true;
                     break;
@@ -157,23 +281,19 @@ bool AntiInjection::DetectThreadStartAnomalies()
         if (NT_SUCCESS(status) && startAddr)
         {
             bool found = false;
-            HMODULE buffer[1024];
-            DWORD needed;
-            if (Api::EnumProcessModules(Api::GetCurrentProcess(), buffer, sizeof(buffer), &needed))
+            HMODULE buffer[256];
+            int modCount = GetModules(buffer, 256);
+            for (int i = 0; i < modCount; i++)
             {
-                size_t count = needed / sizeof(HMODULE);
-                for (size_t i = 0; i < count; i++)
+                MODULEINFO mi;
+                if (Api::GetModuleInformation(Api::GetCurrentProcess(), buffer[i], &mi, sizeof(mi)))
                 {
-                    MODULEINFO mi;
-                    if (Api::GetModuleInformation(Api::GetCurrentProcess(), buffer[i], &mi, sizeof(mi)))
+                    uintptr_t start = (uintptr_t)startAddr;
+                    uintptr_t modBase = (uintptr_t)mi.lpBaseOfDll;
+                    if (start >= modBase && start < modBase + mi.SizeOfImage)
                     {
-                        uintptr_t start = (uintptr_t)startAddr;
-                        uintptr_t modBase = (uintptr_t)mi.lpBaseOfDll;
-                        if (start >= modBase && start < modBase + mi.SizeOfImage)
-                        {
-                            found = true;
-                            break;
-                        }
+                        found = true;
+                        break;
                     }
                 }
             }
@@ -189,6 +309,37 @@ bool AntiInjection::DetectThreadStartAnomalies()
 
     Api::CloseHandle(snap);
     return false;
+}
+
+static bool CompareExportPrologue(HMODULE ntdll, void* diskImage, const char* exportName, uint8_t diskBuf[12], uint8_t memBuf[12])
+{
+    auto dos = (PIMAGE_DOS_HEADER)diskImage;
+    auto nt = (PIMAGE_NT_HEADERS)((uintptr_t)diskImage + dos->e_lfanew);
+    auto dataDir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (!dataDir.VirtualAddress || !dataDir.Size) return false;
+
+    auto exportBase = (uintptr_t)diskImage;
+    auto exp = (PIMAGE_EXPORT_DIRECTORY)(exportBase + dataDir.VirtualAddress);
+
+    auto names = (DWORD*)(exportBase + exp->AddressOfNames);
+    auto funcs = (DWORD*)(exportBase + exp->AddressOfFunctions);
+    auto ords = (WORD*)(exportBase + exp->AddressOfNameOrdinals);
+
+    for (DWORD i = 0; i < exp->NumberOfNames; i++)
+    {
+        const char* currentName = (const char*)(exportBase + names[i]);
+        if (strcmp(currentName, exportName) != 0) continue;
+
+        DWORD funcRva = funcs[ords[i]];
+        uint8_t* diskAddr = (uint8_t*)(exportBase + funcRva);
+        uint8_t* memAddr = (uint8_t*)((uintptr_t)ntdll + funcRva);
+
+        memcpy(diskBuf, diskAddr, 12);
+        memcpy(memBuf, memAddr, 12);
+
+        return (memcmp(diskBuf, memBuf, 12) == 0);
+    }
+    return true;
 }
 
 bool AntiInjection::DetectNtdllHooks()
@@ -218,22 +369,36 @@ bool AntiInjection::DetectNtdllHooks()
         return false;
     }
 
-    PIMAGE_DOS_HEADER dos = (PIMAGE_DOS_HEADER)diskImage;
-    PIMAGE_NT_HEADERS nt = (PIMAGE_NT_HEADERS)((uintptr_t)diskImage + dos->e_lfanew);
-    PIMAGE_SECTION_HEADER section = IMAGE_FIRST_SECTION(nt);
+    const char* targetExports[] = {
+        "NtMapViewOfSection",
+        "NtWriteVirtualMemory",
+        "NtCreateThreadEx",
+        "NtQueryInformationProcess",
+        "NtOpenProcess",
+        "NtOpenThread",
+        "NtResumeThread",
+        "NtClose",
+        "NtReadVirtualMemory",
+        "NtProtectVirtualMemory",
+        "NtCreateProcessEx",
+        "NtQueueApcThread"
+    };
 
     bool hooked = false;
-    for (WORD i = 0; i < nt->FileHeader.NumberOfSections; i++)
+    for (auto expName : targetExports)
     {
-        if (memcmp(section[i].Name, ".text", 5) == 0)
-        {
-            void* diskText = (void*)((uintptr_t)diskImage + section[i].PointerToRawData);
-            void* memText = (void*)((uintptr_t)ntdll + section[i].VirtualAddress);
-            SIZE_T size = section[i].SizeOfRawData;
-            if (size > 2048) size = 2048;
+        uint8_t diskBuf[12] = {};
+        uint8_t memBuf[12] = {};
 
-            if (memcmp(diskText, memText, size) != 0)
-                hooked = true;
+        if (!CompareExportPrologue(ntdll, diskImage, expName, diskBuf, memBuf))
+        {
+            hooked = true;
+            break;
+        }
+
+        if (memcmp(diskBuf, memBuf, 12) != 0)
+        {
+            hooked = true;
             break;
         }
     }

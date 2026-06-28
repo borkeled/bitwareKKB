@@ -1,6 +1,5 @@
 #pragma once
 #include <Windows.h>
-#include <vector>
 
 class AntiInjection
 {
@@ -18,7 +17,9 @@ private:
     static bool DetectThreadStartAnomalies();
     static bool DetectNtdllHooks();
 
-    static std::vector<HMODULE> baselineModules;
+    static HMODULE baselineModules[256];
+    static int baselineModuleCount;
     static HANDLE hThread;
     static bool running;
+    static PVOID dllNotifyCookie;
 };

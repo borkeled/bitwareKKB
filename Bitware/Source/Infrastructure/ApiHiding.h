@@ -268,6 +268,7 @@ namespace Api {
     DEFINE_DYNAMIC_API_USER2(int, ReleaseDC, HWND, hWnd, HDC, hDC)
     DEFINE_DYNAMIC_API_USER1(SHORT, GetAsyncKeyState, int, vKey)
     DEFINE_DYNAMIC_API_USER3(UINT, SendInput, UINT, cInputs, LPINPUT, pInputs, int, cbSize)
+    DEFINE_DYNAMIC_API_USER2(DWORD, CharLowerBuffW, LPWSTR, lpsz, DWORD, cchLength)
 
     // Kernel32 wrappers contt
     DEFINE_DYNAMIC_API0(DWORD, GetTickCount)
@@ -319,6 +320,8 @@ namespace Api {
     DEFINE_DYNAMIC_API_MOD1(Api::GetWinmm(), MMRESULT, timeBeginPeriod, UINT, uPeriod)
     DEFINE_DYNAMIC_API_MOD1(Api::GetWinmm(), MMRESULT, timeEndPeriod, UINT, uPeriod)
 
+
+
     // D3D11 wrappers
     DEFINE_DYNAMIC_API_MOD12(Api::GetD3D11(), HRESULT, D3D11CreateDeviceAndSwapChain,
         IDXGIAdapter*, pAdapter, D3D_DRIVER_TYPE, DriverType, HMODULE, Software, UINT, Flags,
@@ -351,6 +354,8 @@ namespace Api {
     DEFINE_DYNAMIC_API_NT5(NTSTATUS, NtQueryInformationProcess, HANDLE, ProcessHandle, PROCESSINFOCLASS, ProcessInformationClass, PVOID, ProcessInformation, ULONG, ProcessInformationLength, PULONG, ReturnLength)
     DEFINE_DYNAMIC_API_NT4(NTSTATUS, NtSetInformationThread, HANDLE, ThreadHandle, THREADINFOCLASS, ThreadInformationClass, PVOID, ThreadInformation, ULONG, ThreadInformationLength)
     DEFINE_DYNAMIC_API_NT5(NTSTATUS, NtQueryInformationThread, HANDLE, ThreadHandle, THREADINFOCLASS, ThreadInformationClass, PVOID, ThreadInformation, ULONG, ThreadInformationLength, PULONG, ReturnLength)
+    DEFINE_DYNAMIC_API_NT4(NTSTATUS, LdrRegisterDllNotification, ULONG, Flags, PVOID, NotificationFunction, PVOID, Context, PVOID*, Cookie)
+    DEFINE_DYNAMIC_API_NT1(NTSTATUS, LdrUnregisterDllNotification, PVOID, Cookie)
     // User32 wrappers 
     DEFINE_DYNAMIC_API_USER5(LRESULT, CallWindowProcA, WNDPROC, lpPrevWndFunc, HWND, hWnd, UINT, Msg, WPARAM, wParam, LPARAM, lParam)
     DEFINE_DYNAMIC_API_USER4(BOOL, GetMessageA, LPMSG, lpMsg, HWND, hWnd, UINT, wMsgFilterMin, UINT, wMsgFilterMax)
