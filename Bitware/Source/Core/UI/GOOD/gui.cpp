@@ -6,6 +6,8 @@
 #include <Engine/Offsets/Offsets.h>
 #include <Globals.hxx>
 
+#include <algorithm>
+
 #include <Windows.h>
 
 // https://www.unknowncheats.me/forum/members/3936684.html
@@ -172,6 +174,8 @@ void c_gui::render()
 	gui->easing(elements->window.size.x, size.x, 24.f, dynamic_easing);
 	gui->easing(elements->window.size.y, size.y, 24.f, dynamic_easing);
 
+	gui->easing(var->gui.menu_open_alpha, var->gui.menu_open_target ? 1.f : 0.f, 12.f, dynamic_easing);
+
 	gui->set_next_window_size(elements->window.size);
 	gui->set_next_window_pos(c_vec2(0, 0), gui_cond_first_use_ever);
 
@@ -273,7 +277,7 @@ void c_gui::render()
 		}
 		gui->end_content();
 		
-		gui->push_var(style_var_alpha, var->gui.tab_alpha);
+		gui->push_var(style_var_alpha, var->gui.menu_open_alpha * var->gui.tab_alpha);
 
 		if (var->gui.tab != 0)
 		{
@@ -291,53 +295,59 @@ void c_gui::render()
 				{
 					c_window* hdr_win = gui->get_window();
 
-					static c_vec4 pill_overlay = c_vec4(0, 0, 0, 0);
+				static c_vec4 pill_overlay = c_vec4(0, 0, 0, 0);
+				const bool has_subtabs = (var->gui.tab == 1 || var->gui.tab == 2 || var->gui.tab == 4);
+
+				if (has_subtabs)
+				{
 					gui->easing(pill_overlay, g_pill_selected_rect, 18.f, dynamic_easing);
 					if (pill_overlay.z > pill_overlay.x + 1.f)
 					{
 						draw->rect_filled(hdr_win->DrawList,
 							c_vec2(pill_overlay.x, pill_overlay.y), c_vec2(pill_overlay.z, pill_overlay.w),
-						draw->get_clr(clr->widget), s_(9.1f));
+							draw->get_clr(clr->widget), s_(9.1f));
 					}
+				}
+				else
+				{
+					g_pill_selected_rect = c_vec4(0, 0, 0, 0);
+					pill_overlay = c_vec4(0, 0, 0, 0);
+				}
 
-					const c_vec2 row_pos = hdr_win->DC.CursorPos;
-					ImFont* tab_font = font->get(inter_semibold, 11);
-					const float tab_gap = s_(8.f);
+				const c_vec2 row_pos = hdr_win->DC.CursorPos;
+				ImFont* tab_font = font->get(inter_semibold, 11);
+				const float tab_gap = s_(8.f);
 
-					if (var->gui.tab == 1) // Aimbot sub-tabs
-					{
-						const float a_width = s_(42.f) + gui->text_size(tab_font, "Aimbot").x;
-						const float s_width = s_(42.f) + gui->text_size(tab_font, "Silent").x;
-						const float t_width = s_(42.f) + gui->text_size(tab_font, "Trigger").x;
-						widgets->sub_tab_button("Aimbot", "aim", 1, a_width);
-						gui->sameline(0.f, tab_gap);
-						widgets->sub_tab_button("Silent", "target", 2, s_width);
-						gui->sameline(0.f, tab_gap);
-						widgets->sub_tab_button("Trigger", "match", 3, t_width);
-					}
-					else if (var->gui.tab == 2) // Visuals sub-tabs
-					{
-						const float e_width = s_(42.f) + gui->text_size(tab_font, "ESP").x;
-						const float c_width = s_(42.f) + gui->text_size(tab_font, "Chams").x;
-						const float w_width = s_(42.f) + gui->text_size(tab_font, "World").x;
-						widgets->sub_tab_button("ESP", "visuals", 1, e_width);
-						gui->sameline(0.f, tab_gap);
-						widgets->sub_tab_button("Chams", "shapes", 2, c_width);
-						gui->sameline(0.f, tab_gap);
-						widgets->sub_tab_button("World", "world", 3, w_width);
-					}
-					else if (var->gui.tab == 4) // Players sub-tabs
-					{
-						const float l_width = s_(42.f) + gui->text_size(tab_font, "List").x;
-						const float w_width = s_(42.f) + gui->text_size(tab_font, "Whitelist").x;
-						widgets->sub_tab_button("List", "squad", 1, l_width);
-						gui->sameline(0.f, tab_gap);
-						widgets->sub_tab_button("Whitelist", "profile", 2, w_width);
-					}
-					else
-					{
-						g_pill_selected_rect = c_vec4(0, 0, 0, 0);
-					}
+				if (var->gui.tab == 1) // Aimbot sub-tabs
+				{
+					const float a_width = s_(42.f) + gui->text_size(tab_font, "Aimbot").x;
+					const float s_width = s_(42.f) + gui->text_size(tab_font, "Silent").x;
+					const float t_width = s_(42.f) + gui->text_size(tab_font, "Trigger").x;
+					widgets->sub_tab_button("Aimbot", "aim", 1, a_width);
+					gui->sameline(0.f, tab_gap);
+					widgets->sub_tab_button("Silent", "target", 2, s_width);
+					gui->sameline(0.f, tab_gap);
+					widgets->sub_tab_button("Trigger", "match", 3, t_width);
+				}
+				else if (var->gui.tab == 2) // Visuals sub-tabs
+				{
+					const float e_width = s_(42.f) + gui->text_size(tab_font, "ESP").x;
+					const float c_width = s_(42.f) + gui->text_size(tab_font, "Chams").x;
+					const float w_width = s_(42.f) + gui->text_size(tab_font, "World").x;
+					widgets->sub_tab_button("ESP", "visuals", 1, e_width);
+					gui->sameline(0.f, tab_gap);
+					widgets->sub_tab_button("Chams", "shapes", 2, c_width);
+					gui->sameline(0.f, tab_gap);
+					widgets->sub_tab_button("World", "world", 3, w_width);
+				}
+				else if (var->gui.tab == 4) // Players sub-tabs
+				{
+					const float l_width = s_(42.f) + gui->text_size(tab_font, "List").x;
+					const float w_width = s_(42.f) + gui->text_size(tab_font, "Whitelist").x;
+					widgets->sub_tab_button("List", "squad", 1, l_width);
+					gui->sameline(0.f, tab_gap);
+					widgets->sub_tab_button("Whitelist", "profile", 2, w_width);
+				}
 				}
 				gui->end_content();
 			}
@@ -717,7 +727,12 @@ void c_gui::render()
 								}
 								if (snapshot && !snapshot->empty())
 								{
-									for (auto& player : *snapshot)
+									std::vector<SDK::Player> sorted = *snapshot;
+									std::sort(sorted.begin(), sorted.end(),
+										[](const SDK::Player& a, const SDK::Player& b) {
+											return a.UserID < b.UserID;
+										});
+									for (auto& player : sorted)
 									{
 										bool whitelisted = Globals::Whitelist::UserIDs.count(player.UserID) > 0;
 										char label[192];

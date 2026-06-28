@@ -411,7 +411,8 @@ bool c_widgets::slider(std::string name, std::string description, float* callbac
 	slider_state* state = gui->anim_container<slider_state>(id);
 
 	c_vec2 pos = window->DC.CursorPos;
-	c_vec2 size = c_vec2(gui->content_avail().x, s_(68));
+	float height_val = description.empty() ? 52.f : 72.f;
+	c_vec2 size = c_vec2(gui->content_avail().x, s_(height_val));
 	c_rect rect = c_rect(pos, pos + size);
 	c_rect inner = c_rect(rect.Min + s_(0, 10), rect.Max - s_(0, 10));
 	c_rect button = c_rect(inner.GetBL() - s_(0, 12), inner.GetBR());
@@ -433,7 +434,7 @@ bool c_widgets::slider(std::string name, std::string description, float* callbac
 
 	draw->text_clipped(window->DrawList, font->get(inter_semibold, 12), inner.Min, inner.Max, draw->get_clr(clr->white),
 		name.data(), 0, 0, { 0, 0 });
-	draw->text_clipped(window->DrawList, font->get(inter_medium, 11), inner.Min + s_(0, 17), inner.Max, draw->get_clr(clr->text),
+	draw->text_clipped(window->DrawList, font->get(inter_medium, 11), inner.Min + s_(0, 17), c_vec2(inner.Max.x, button.Min.y - s_(2.f)), draw->get_clr(clr->text),
 		description.data(), 0, 0, { 0, 0 });
 
 	char value_buf[64];

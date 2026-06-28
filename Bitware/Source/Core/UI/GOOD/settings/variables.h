@@ -31,6 +31,9 @@ public:
 		float license_invalid_timer = 0.f;
 		std::string license_error_message = "";
 
+		float menu_open_alpha = 0.f;
+		bool menu_open_target = false;
+
 		bool compact_layout = false;
 		bool sidebar_glass = false;
 		float window_rounding = 12.f;

@@ -54,7 +54,7 @@ namespace SettingsStore {
     inline int Silent_FovSpinSpeed;
     inline float Silent_FovSize = 150.0f;
     inline float Silent_FovColor[4] = { 0.0f, 1.0f, 0.0f, 1.0f };
-    inline ImGuiKey Silent_Key = ImGuiKey_MouseLeft;
+    inline ImGuiKey Silent_Key = ImGuiKey_None;
     inline ImKeyBindMode Silent_Mode = ImKeyBindMode_Hold;
     inline float Silent_Mouse_SmoothingX = 1.0f;
     inline float Silent_Mouse_SmoothingY = 1.0f;

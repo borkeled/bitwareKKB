@@ -385,28 +385,34 @@ void Graphics::NewFrame()
 
     if (InputHook::ConsumeMenuKeyPress())
     {
-        Running = !Running;
-        InputHook::SetMenuOpen(Running);
+        var->gui.menu_open_target = !var->gui.menu_open_target;
 
-        if (Running)
+        if (var->gui.menu_open_target)
         {
-            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
+            Running = true;
+            InputHook::SetMenuOpen(true);
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE);
             Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
             MARGINS Margins{ -1, -1, -1, -1 };
             Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
-            SetForegroundWindow(Detail->Window);
-            SetFocus(Detail->Window);
         }
         else
         {
-            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT);
-            Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
-            MARGINS Margins{ -1, -1, -1, -1 };
-            Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
-            HWND target = Globals::RobloxWindow;
-            if (target && IsWindow(target))
-                SetForegroundWindow(target);
+            InputHook::SetMenuOpen(false);
         }
+    }
+
+    // Close animation complete: tear down window styles and disable render
+    if (!var->gui.menu_open_target && var->gui.menu_open_alpha < 0.01f && Running)
+    {
+        Running = false;
+        SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE | WS_EX_TRANSPARENT);
+        Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
+        MARGINS Margins{ -1, -1, -1, -1 };
+        Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
+        HWND target = Globals::RobloxWindow;
+        if (target && IsWindow(target))
+            SetForegroundWindow(target);
     }
 }
 

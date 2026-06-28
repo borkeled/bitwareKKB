@@ -1420,19 +1420,28 @@ bool c_gui::begin(std::string_view name, bool* p_open, window_flags flags)
 
         if (state->wheel)
         {
-            gui->easing(window->Scroll.y, state->scroll, 24.f, dynamic_easing);
-            if (fabsf(window->Scroll.y - state->scroll) <= 0.5f)
+            const bool at_boundary = (state->scroll <= 0.001f || state->scroll >= window->ScrollMax.y - 0.001f);
+            if (at_boundary)
             {
                 window->Scroll.y = state->scroll;
                 state->wheel = false;
             }
+            else
+            {
+                gui->easing(window->Scroll.y, state->scroll, 24.f, dynamic_easing);
+                if (fabsf(window->Scroll.y - state->scroll) <= 0.5f)
+                {
+                    window->Scroll.y = state->scroll;
+                    state->wheel = false;
+                }
+            }
         }
 
-        // Overshoot guard: only for windows with no_scroll_with_mouse (our managed windows)
-        if ((flags & window_flags_no_scroll_with_mouse) && window->Scroll.y > window->ScrollMax.y)
-        {
-            gui->easing(window->Scroll.y, roundf(window->ScrollMax.y), 24.f, dynamic_easing);
-        }
+        // Clamp guard: snap back if scroll somehow escapes bounds (no easing to avoid oscillation)
+        if (window->Scroll.y > window->ScrollMax.y + 1.f)
+            window->Scroll.y = window->ScrollMax.y;
+        if (window->Scroll.y < -1.f)
+            window->Scroll.y = 0.f;
 
         window->DecoInnerSizeX1 = window->DecoInnerSizeY1 = 0.0f;
 

@@ -74,6 +74,8 @@ namespace InputHook
         bind(SettingsStore::Aimbot_FovToggleKey);
         bind(SettingsStore::Misc_Speed_Key);
         bind(SettingsStore::Misc_Jump_Key);
+        bind(SettingsStore::Silent_Key);
+        bind(SettingsStore::Silent_FovToggleKey);
     }
 
     static LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
