@@ -415,7 +415,7 @@ bool c_widgets::slider(std::string name, std::string description, float* callbac
 	c_vec2 size = c_vec2(gui->content_avail().x, s_(height_val));
 	c_rect rect = c_rect(pos, pos + size);
 	c_rect inner = c_rect(rect.Min + s_(0, 10), rect.Max - s_(0, 10));
-	c_rect button = c_rect(inner.GetBL() - s_(0, 12), inner.GetBR());
+	c_rect button = c_rect(inner.GetBL() - s_(0, 12), inner.GetBR() - c_vec2(s_(12), 0));
 
 	gui->item_size(rect);
 	if (!gui->item_add(rect, id))
@@ -439,7 +439,7 @@ bool c_widgets::slider(std::string name, std::string description, float* callbac
 
 	char value_buf[64];
 	gui->get_fmt(value_buf, callback, format);
-	draw->text_clipped(window->DrawList, font->get(inter_semibold, 12), inner.Min, inner.Max, draw->get_clr(clr->white),
+	draw->text_clipped(window->DrawList, font->get(inter_semibold, 12), inner.Min, inner.Max - c_vec2(s_(12), 0), draw->get_clr(clr->white),
 		value_buf, 0, 0, { 1, 0 });
 
 	draw->rect_filled(window->DrawList, button.Min, button.Max, draw->get_clr(clr->widget), s_(999));
@@ -543,7 +543,8 @@ bool dropdown_ex(std::string name, std::string description, std::string preview)
 	c_vec2 size = c_vec2(gui->content_avail().x, s_(84));
 	c_rect rect = c_rect(pos, pos + size);
 	c_rect inner = c_rect(rect.Min + s_(0, 10), rect.Max - s_(0, 10));
-	c_rect button = c_rect(inner.GetBL() - s_(0, 29), inner.GetBR());
+	const float drop_width = ImClamp(inner.GetWidth() * 0.40f, s_(140), s_(200));
+	c_rect button = c_rect(c_vec2(inner.Max.x - s_(12) - drop_width, inner.GetBL().y - s_(29)), c_vec2(inner.Max.x - s_(12), inner.GetBR().y));
 
 	gui->item_size(rect);
 	if (!gui->item_add(rect, id))
@@ -1449,7 +1450,7 @@ bool c_widgets::keybind(std::string name, std::string description, keybind_t* bi
 	c_rect inner = c_rect(rect.Min + s_(0, 9), rect.Max - s_(0, 9));
 
 	const float bind_width = ImClamp(inner.GetWidth() * 0.30f, s_(82), s_(108));
-	const c_rect bind_button = c_rect(c_vec2(inner.Max.x - bind_width, inner.GetCenter().y - s_(12)), c_vec2(inner.Max.x, inner.GetCenter().y + s_(12)));
+	const c_rect bind_button = c_rect(c_vec2(inner.Max.x - s_(12) - bind_width, inner.GetCenter().y - s_(12)), c_vec2(inner.Max.x - s_(12), inner.GetCenter().y + s_(12)));
 	const c_rect text_rect = c_rect(inner.Min, c_vec2(bind_button.Min.x - s_(14), inner.Max.y));
 
 	gui->item_size(rect);
@@ -1463,7 +1464,26 @@ bool c_widgets::keybind(std::string name, std::string description, keybind_t* bi
 	const bool bind_held = row_held && bind_button.Contains(gui->mouse_pos());
 
 	bool changed = false;
-	if (bind_pressed)
+
+	bool clear_clicked = false;
+	if (!state->listening && bind->key != ImGuiKey_None && bind_hovered)
+	{
+		const float clear_size = s_(16);
+		const float clear_margin = s_(4);
+		c_rect clear_rect = c_rect(
+			c_vec2(bind_button.Max.x - clear_size - clear_margin, bind_button.GetCenter().y - clear_size * 0.5f),
+			c_vec2(bind_button.Max.x - clear_margin, bind_button.GetCenter().y + clear_size * 0.5f)
+		);
+		clear_clicked = clear_rect.Contains(gui->mouse_pos()) && gui->mouse_clicked(0);
+
+		if (clear_clicked)
+		{
+			keybind_clear(bind);
+			changed = true;
+		}
+	}
+
+	if (bind_pressed && !clear_clicked)
 	{
 		state->listening = true;
 		bind->capturing = true;
@@ -1501,8 +1521,35 @@ bool c_widgets::keybind(std::string name, std::string description, keybind_t* bi
 		draw->get_clr(state->listening ? clr->accent.Value : clr->border.Value, state->listening ? 0.80f : 0.92f), s_(7));
 
 	const std::string bind_text = state->listening ? "Press key" : keybind_display_name(*bind);
-	draw->text_clipped(window->DrawList, font->get(inter_semibold, 10), bind_button.Min + s_(9, 0), bind_button.Max - s_(9, 0),
+	const float clear_button_width = (!state->listening && bind->key != ImGuiKey_None) ? s_(20) : 0.f;
+	draw->text_clipped(window->DrawList, font->get(inter_semibold, 10), bind_button.Min + s_(9, 0), bind_button.Max - s_(9 + clear_button_width, 0),
 		draw->get_clr(state->listening ? clr->black.Value : (bind_hovered ? clr->white.Value : clr->text.Value)), bind_text.data(), 0, 0, { 0.5f, 0.5f });
+
+	if (!state->listening && bind->key != ImGuiKey_None && bind_hovered)
+	{
+		const float clear_size = s_(16);
+		const float clear_margin = s_(4);
+		c_rect clear_rect = c_rect(
+			c_vec2(bind_button.Max.x - clear_size - clear_margin, bind_button.GetCenter().y - clear_size * 0.5f),
+			c_vec2(bind_button.Max.x - clear_margin, bind_button.GetCenter().y + clear_size * 0.5f)
+		);
+		bool clear_hovered = clear_rect.Contains(gui->mouse_pos());
+		bool clear_clicked = clear_hovered && gui->mouse_clicked(0);
+
+		if (clear_clicked)
+		{
+			keybind_clear(bind);
+			state->listening = false;
+			bind->capturing = false;
+			changed = true;
+		}
+
+		draw->rect_filled(window->DrawList, clear_rect.Min, clear_rect.Max,
+			draw->get_clr(clr->widget, clear_hovered ? 0.95f : 0.6f), s_(4));
+		draw->text_clipped(window->DrawList, font->get(inter_semibold, 12), clear_rect.Min, clear_rect.Max,
+			draw->get_clr(clear_hovered ? clr->accent : clr->text, 0.85f),
+			"\xd7", 0, 0, { 0.5f, 0.5f });
+	}
 
 	if (gui->content_avail().y > 0)
 	{
@@ -1526,7 +1573,7 @@ bool c_widgets::checkbox(std::string name, std::string description, bool* callba
 	c_rect rect = c_rect(pos, pos + size);
 	c_rect inner = c_rect(rect.Min + s_(0, 6), rect.Max - s_(0, 6));
 	c_vec2 switch_size = s_(36.3f, 20.9f);
-	c_rect button = c_rect(c_vec2(inner.Max.x - switch_size.x, inner.GetCenter().y - switch_size.y * 0.5f), c_vec2(inner.Max.x, inner.GetCenter().y + switch_size.y * 0.5f));
+	c_rect button = c_rect(c_vec2(inner.Max.x - s_(12) - switch_size.x, inner.GetCenter().y - switch_size.y * 0.5f), c_vec2(inner.Max.x - s_(12), inner.GetCenter().y + switch_size.y * 0.5f));
 
 	gui->item_size(rect);
 	if (!gui->item_add(rect, id))

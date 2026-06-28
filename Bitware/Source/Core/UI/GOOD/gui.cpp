@@ -65,7 +65,7 @@ static void draw_visual_sidebar_glass(const c_rect& bounds)
 
 static void begin_visual_section(const std::string& name, float height)
 {
-	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_no_scroll_with_mouse);
+	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_no_scroll_with_mouse | window_flags_always_vertical_scrollbar);
 	c_window* window = gui->get_window();
 	if (window->SkipItems)
 		return;
@@ -74,8 +74,9 @@ static void begin_visual_section(const std::string& name, float height)
 	ImFont* title_font = font->get(inter_semibold, 12);
 	draw->text(window->DrawList, title_font, title_font->FontSize,
 		window->Pos + s_(10, 8), draw->get_clr(clr->text), name.data());
-	window->DC.CursorPos = window->Pos + s_(10, 24) - window->Scroll;
+	window->DC.CursorPos = window->Pos + s_(22, 24) - window->Scroll;
 	window->DC.CursorStartPos = window->DC.CursorPos;
+	window->DC.Indent.x = s_(22);
 }
 
 static void end_visual_section()
@@ -909,10 +910,12 @@ draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
 								aw->DC.CursorPos + s_(4, 4), draw->get_clr(clr->text), "Save current settings:");
 								aw->DC.CursorPos += c_vec2(s_(4), s_(20));
 							ImGui::SetNextItemWidth(elements->child_width - s_(24));
+							ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, s_(8));
 							ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.14f, 0.14f, 0.16f, 1.f));
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.7f, 0.7f, 0.8f, 1.f));
 							ImGui::InputText("##config_input", config_name, sizeof(config_name));
 							ImGui::PopStyleColor(2);
+							ImGui::PopStyleVar();
 							aw->DC.CursorPos += c_vec2(0, ImGui::GetItemRectSize().y + s_(8));
 							if (widgets->primary_button("Save Config"))
 							{

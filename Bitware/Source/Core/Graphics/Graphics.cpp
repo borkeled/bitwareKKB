@@ -45,12 +45,42 @@ LRESULT CALLBACK WndProc(HWND Hwnd, UINT Msg, WPARAM WParam, LPARAM LParam)
         }
         break;
 
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            if (!io.WantCaptureKeyboard)
+            {
+                DWORD vk = (DWORD)WParam;
+                if (!InputHook::IsVkBound(vk))
+                {
+                    HWND target = Globals::RobloxWindow;
+                    if (target && IsWindow(target))
+                        PostMessageA(target, Msg, WParam, LParam);
+                }
+            }
+        }
+        return 0;
+
     case WM_SYSKEYDOWN:
-        if (WParam == VK_F4) {
+        if (WParam == VK_F4)
+        {
             Api::DestroyWindow(Hwnd);
             return 0;
         }
         break;
+
+    case WM_CHAR:
+    {
+        ImGuiIO& io = ImGui::GetIO();
+        if (!io.WantCaptureKeyboard)
+        {
+            HWND target = Globals::RobloxWindow;
+            if (target && IsWindow(target))
+                PostMessageA(target, Msg, WParam, LParam);
+        }
+        return 0;
+    }
 
     case WM_DESTROY:
         PostQuitMessage(11);
@@ -391,10 +421,12 @@ void Graphics::NewFrame()
         {
             Running = true;
             InputHook::SetMenuOpen(true);
-            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE);
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
             Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
             MARGINS Margins{ -1, -1, -1, -1 };
             Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
+            SetForegroundWindow(Detail->Window);
+            SetFocus(Detail->Window);
         }
         else
         {
