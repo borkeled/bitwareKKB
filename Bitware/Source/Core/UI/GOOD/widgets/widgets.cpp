@@ -472,6 +472,8 @@ bool c_widgets::slider(std::string name, std::string description, float* callbac
 		float x = button.GetWidth() * state->normalized;
 		x = ImClamp(x, s_(12), button.GetWidth());
 
+		draw->shadow_rect(window->DrawList, button.Min, button.Min + c_vec2(x, button.GetHeight()),
+			draw->get_clr(clr->accent, 0.20f), s_(8), c_vec2(0, 0), 0, s_(999));
 		draw->rect_filled(window->DrawList, button.Min, button.Min + c_vec2(x, button.GetHeight()),
 			draw->get_clr(clr->accent), s_(999));
 
@@ -1098,7 +1100,7 @@ struct checkbox_state
 
 static c_vec4 title_status_color(title_status_icon status)
 {
-	c_vec4 color = c_col(75, 220, 145).Value;
+	c_vec4 color = c_col(3, 249, 128).Value;
 
 	if (status == title_status_danger)
 		color = c_col(245, 70, 86).Value;
@@ -1622,10 +1624,10 @@ bool c_widgets::checkbox(std::string name, std::string description, bool* callba
 		notify->add_notify(*callback ? "Function enabled" : "Function disabled", name, *callback ? success : warning);
 	}
 
-	const c_vec4 off_track = clr->widget.Value;
+	const c_vec4 off_track = c_col(20, 22, 28).Value;
 	const c_vec4 on_track = c_col(38, 37, 50).Value;
 	const c_vec4 on_knob = clr->accent.Value;
-	const c_vec4 off_knob = c_col(96, 88, 142).Value;
+	const c_vec4 off_knob = c_col(25, 27, 33).Value;
 	const c_vec4 on_knob_inner = c_col(28, 28, 33).Value;
 	const c_vec4 off_knob_inner = c_col(31, 31, 39).Value;
 

@@ -65,12 +65,22 @@ static void draw_visual_sidebar_glass(const c_rect& bounds)
 
 static void begin_visual_section(const std::string& name, float height)
 {
-	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_always_vertical_scrollbar);
+	gui->begin_def_child(name, c_vec2(elements->child_width, height), child_flags_none, window_flags_no_bring_to_front_on_focus | window_flags_no_saved_settings | window_flags_no_focus_on_appearing | window_flags_no_scroll_with_mouse | window_flags_always_vertical_scrollbar);
 	c_window* window = gui->get_window();
 	if (window->SkipItems)
 		return;
 
 	draw->rect_filled(window->DrawList, window->Pos, window->Pos + window->Size, draw->get_clr(clr->child), s_(12));
+	const float edge_inset = s_(12);
+	const float edge_y = s_(1);
+	draw->line(window->DrawList,
+		window->Pos + c_vec2(edge_inset, edge_y),
+		window->Pos + c_vec2(window->Size.x - edge_inset, edge_y),
+		draw->get_clr(clr->white, 0.06f));
+	draw->line(window->DrawList,
+		window->Pos + c_vec2(edge_inset, window->Size.y - edge_y),
+		window->Pos + c_vec2(window->Size.x - edge_inset, window->Size.y - edge_y),
+		draw->get_clr(clr->black, 0.10f));
 	ImFont* title_font = font->get(inter_semibold, 12);
 	draw->text(window->DrawList, title_font, title_font->FontSize,
 		window->Pos + s_(10, 8), draw->get_clr(clr->text), name.data());
@@ -246,7 +256,7 @@ void c_gui::render()
 				{
 					draw->rect_filled(tabs_inner_bg->DrawList,
 						c_vec2(sidebar_overlay.x, sidebar_overlay.y), c_vec2(sidebar_overlay.z, sidebar_overlay.w),
-						draw->get_clr(clr->widget), s_(9.1f));
+						draw->get_clr(clr->widget, 0.40f), s_(9.1f));
 				}
 			}
 
@@ -268,6 +278,8 @@ void c_gui::render()
 					const float bar_x = sidebar_indicator.x + s_(2);
 					const c_vec2 bar_min = c_vec2(bar_x, sidebar_indicator.y + bar_inset_y);
 					const c_vec2 bar_max = c_vec2(bar_x + bar_w, sidebar_indicator.w - bar_inset_y);
+					draw->shadow_rect(tabs_inner->DrawList, bar_min - s_(2, 4), bar_max + s_(2, 4),
+						draw->get_clr(clr->accent, 0.25f), s_(10), c_vec2(0, 0), 0, s_(2));
 					draw->rect_filled(tabs_inner->DrawList, bar_min, bar_max,
 						draw->get_clr(clr->accent), bar_w * 0.5f);
 				}
@@ -955,6 +967,10 @@ draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
 							aw->DC.CursorPos += c_vec2(0, ImGui::GetItemRectSize().y + s_(8));
 							const float btn_w = elements->child_width - s_(88);
 							aw->DC.CursorPos.x = aw->Pos.x + (elements->child_width - btn_w) * 0.5f;
+							ImGui::PushStyleColor(ImGuiCol_Button, draw->get_clr(clr->accent, 1.f));
+							ImGui::PushStyleColor(ImGuiCol_ButtonHovered, draw->get_clr(c_vec4(clr->accent.Value.x * 1.15f, clr->accent.Value.y * 1.15f, clr->accent.Value.z * 1.15f, 1.f), 1.f));
+							ImGui::PushStyleColor(ImGuiCol_Text, draw->get_clr(clr->black, 1.f));
+							ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, s_(8));
 							if (ImGui::Button("Save Config", ImVec2(btn_w, s_(34))))
 							{
 								if (config_name[0] != '\0')
@@ -964,6 +980,8 @@ draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
 									config_name[0] = '\0';
 								}
 							}
+							ImGui::PopStyleVar();
+							ImGui::PopStyleColor(3);
 							gui->dummy(c_vec2(0, s_(24)));
 							{
 								int old_dpi = var->gui.stored_dpi;

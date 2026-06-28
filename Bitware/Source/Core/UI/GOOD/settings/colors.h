@@ -6,12 +6,12 @@
 class c_colors
 {
 public:
-    c_col layout{ 25, 25, 28 };
+    c_col layout{ 1, 7, 12 };
     c_col white{ 255, 255, 255 };
     c_col black{ 0, 0, 0 };
-    c_col accent{ 0, 200, 50 };
-    c_col child{ 28, 28, 33 };
-    c_col widget{ 33, 33, 40 };
+    c_col accent{ 3, 249, 128 };
+    c_col child{ 6, 11, 18 };
+    c_col widget{ 12, 15, 22 };
     c_col text{ 140, 140, 160 };
     c_col cirlce{ 50, 50, 63 };
     c_col border{ 35, 35, 44 };

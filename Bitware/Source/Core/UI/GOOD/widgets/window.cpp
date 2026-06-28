@@ -1385,7 +1385,7 @@ bool c_gui::begin(std::string_view name, bool* p_open, window_flags flags)
         // The value of ScrollMax are ahead from ScrollbarX/ScrollbarY which is intentionally using InnerRect from previous rect in order to accommodate
         // for right/bottom aligned items without creating a scrollbar.
         window->ScrollMax.x = ImMax(0.0f, window->ContentSize.x + window->WindowPadding.x * 2.0f - window->InnerRect.GetWidth());
-        float extra_bottom_clearance = 0.0f;
+        float extra_bottom_clearance = s_(100);
         window->ScrollMax.y = ImMax(0.0f, window->ContentSize.y + window->WindowPadding.y * 2.0f + extra_bottom_clearance - window->InnerRect.GetHeight());
 
         // Apply scrolling
@@ -1403,7 +1403,7 @@ bool c_gui::begin(std::string_view name, bool* p_open, window_flags flags)
 
         // Handle mouse wheel using io.MouseWheel delta (walk up from hovered to find scrollable ancestor)
         ImGuiIO& io = ImGui::GetIO();
-        if (io.MouseWheel != 0.f && (flags & window_flags_child_window) && !io.KeyCtrl)
+        if (io.MouseWheel != 0.f && (flags & window_flags_child_window) && !(flags & ImGuiWindowFlags_NoScrollWithMouse) && !io.KeyCtrl)
         {
             ImGuiWindow* hovered = g.HoveredWindow;
             while (hovered && hovered != window)
