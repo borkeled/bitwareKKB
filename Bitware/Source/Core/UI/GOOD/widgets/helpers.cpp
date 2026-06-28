@@ -1241,7 +1241,9 @@ void c_gui::draw_decorations()
 
     draw->rect_filled(draw_list, rect.Min, rect.Max, draw->get_clr(clr->layout), s_(elements->window.rounding));
     draw->shadow_rect(draw_list, rect.Min, rect.Max,
-        draw->get_clr(clr->accent, 0.18f), s_(10), c_vec2(0, 0), 0, s_(elements->window.rounding));
+        draw->get_clr(clr->accent, 0.40f), s_(16), c_vec2(0, 0), draw_flags_shadow_cut_out_shape_background, s_(elements->window.rounding));
+    draw->rect_filled(draw_list, rect.Min, rect.Max,
+        draw->get_clr(clr->accent, 0.04f), s_(elements->window.rounding));
 }
 
 void c_gui::initialize()

@@ -63,7 +63,9 @@ static void draw_visual_sidebar_glass(const c_rect& bounds)
 	c_draw_list* dl = gui->background_drawlist();
 	draw->rect_filled(dl, bounds.Min, bounds.Max, draw->get_clr(clr->child), s_(12));
 	draw->shadow_rect(dl, bounds.Min, bounds.Max,
-		draw->get_clr(clr->accent, 0.06f), s_(6), c_vec2(0, 0), 0, s_(12));
+		draw->get_clr(clr->accent, 0.15f), s_(12), c_vec2(0, 0), draw_flags_shadow_cut_out_shape_background, s_(12));
+	draw->rect_filled(dl, bounds.Min, bounds.Max,
+		draw->get_clr(clr->accent, 0.04f), s_(12));
 }
 
 static void begin_visual_section(const std::string& name, float height)
@@ -75,7 +77,9 @@ static void begin_visual_section(const std::string& name, float height)
 
 	draw->rect_filled(window->DrawList, window->Pos, window->Pos + window->Size, draw->get_clr(clr->child), s_(12));
 	draw->shadow_rect(window->DrawList, window->Pos, window->Pos + window->Size,
-		draw->get_clr(clr->accent, 0.06f), s_(6), c_vec2(0, 0), 0, s_(12));
+		draw->get_clr(clr->accent, 0.15f), s_(12), c_vec2(0, 0), draw_flags_shadow_cut_out_shape_background, s_(12));
+	draw->rect_filled(window->DrawList, window->Pos, window->Pos + window->Size,
+		draw->get_clr(clr->accent, 0.04f), s_(12));
 	const float edge_inset = s_(12);
 	const float edge_y = s_(1);
 	draw->line(window->DrawList,
@@ -87,8 +91,11 @@ static void begin_visual_section(const std::string& name, float height)
 		window->Pos + c_vec2(window->Size.x - edge_inset, window->Size.y - edge_y),
 		draw->get_clr(clr->black, 0.10f));
 	ImFont* title_font = font->get(inter_semibold, 12);
+	const float title_scroll_pct = window->ScrollMax.y > 0.f
+		? ImClamp(window->Scroll.y / window->ScrollMax.y * 1.5f, 0.f, 1.f)
+		: 0.f;
 	draw->text(window->DrawList, title_font, title_font->FontSize,
-		window->Pos + s_(10, 8), draw->get_clr(clr->text), name.data());
+		window->Pos + s_(10, 8), draw->get_clr(clr->text, 1.f - title_scroll_pct), name.data());
 	window->DC.CursorPos = window->Pos + s_(22, 24) - window->Scroll;
 	window->DC.CursorStartPos = window->DC.CursorPos;
 	window->DC.Indent.x = s_(22);
@@ -176,7 +183,12 @@ void c_gui::render()
 
 	c_vec2 size = c_vec2(0, 0);
 
-	if (var->gui.tab_stored == 0)
+	if (!var->gui.menu_open_target)
+	{
+		size.x = s_(1);
+		size.y = s_(1);
+	}
+	else if (var->gui.tab_stored == 0)
 	{
 		size.x = s_(380);
 		size.y = s_(236);
@@ -238,7 +250,7 @@ void c_gui::render()
 		{
 			c_window* w = gui->get_window();
 			const c_vec2 wp = w->Pos;
-			draw_visual_sidebar_glass(c_rect(wp + c_vec2(s_(visual_outer_padding), s_(top_row_y)), wp + c_vec2(s_(visual_outer_padding + visual_sidebar_width), s_(visual_window_height - visual_outer_padding))));
+			draw_visual_sidebar_glass(c_rect(wp + c_vec2(s_(visual_outer_padding), s_(top_row_y)), wp + c_vec2(s_(visual_outer_padding + visual_sidebar_width), elements->window.size.y - s_(visual_outer_padding))));
 		}
 
 		gui->set_pos(c_vec2(s_(visual_outer_padding), s_(top_row_y)), pos_all);
