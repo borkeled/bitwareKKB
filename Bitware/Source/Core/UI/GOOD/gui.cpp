@@ -61,11 +61,23 @@ static bool slider_int(const std::string& name, const std::string& desc, int* va
 static void draw_visual_sidebar_glass(const c_rect& bounds)
 {
 	c_draw_list* dl = gui->background_drawlist();
-	draw->rect_filled(dl, bounds.Min, bounds.Max, draw->get_clr(clr->child), s_(12));
-	draw->shadow_rect(dl, bounds.Min, bounds.Max,
-		draw->get_clr(clr->accent, 0.15f), s_(12), c_vec2(0, 0), draw_flags_shadow_cut_out_shape_background, s_(12));
-	draw->rect_filled(dl, bounds.Min, bounds.Max,
-		draw->get_clr(clr->accent, 0.04f), s_(12));
+	const float sb_rnd = s_(12);
+
+	{
+		ImVec4 top = clr->child.Value; top.w = 1.0f;
+		ImVec4 bot = clr->child.Value; bot.w = 1.0f;
+		bot.x *= 0.80f; bot.y *= 0.80f; bot.z *= 0.80f;
+		draw->fade_rect_filled(dl, bounds.Min, bounds.Max,
+			draw->get_clr(top), draw->get_clr(bot),
+			fade_direction::vertically, sb_rnd);
+	}
+
+	draw->rect_filled(dl, bounds.Min - s_(10, 10), bounds.Max + s_(10, 10),
+		draw->get_clr(clr->accent, 0.04f), sb_rnd + s_(10));
+	draw->rect_filled(dl, bounds.Min - s_(6, 6), bounds.Max + s_(6, 6),
+		draw->get_clr(clr->accent, 0.10f), sb_rnd + s_(6));
+	draw->rect_filled(dl, bounds.Min - s_(2, 2), bounds.Max + s_(2, 2),
+		draw->get_clr(clr->accent, 0.18f), sb_rnd + s_(2));
 }
 
 static void begin_visual_section(const std::string& name, float height)
@@ -75,11 +87,23 @@ static void begin_visual_section(const std::string& name, float height)
 	if (window->SkipItems)
 		return;
 
-	draw->rect_filled(window->DrawList, window->Pos, window->Pos + window->Size, draw->get_clr(clr->child), s_(12));
-	draw->shadow_rect(window->DrawList, window->Pos, window->Pos + window->Size,
-		draw->get_clr(clr->accent, 0.15f), s_(12), c_vec2(0, 0), draw_flags_shadow_cut_out_shape_background, s_(12));
-	draw->rect_filled(window->DrawList, window->Pos, window->Pos + window->Size,
-		draw->get_clr(clr->accent, 0.04f), s_(12));
+	const float sec_rnd = s_(12);
+
+	{
+		ImVec4 top = clr->child.Value; top.w = 1.0f;
+		ImVec4 bot = clr->child.Value; bot.w = 1.0f;
+		bot.x *= 0.80f; bot.y *= 0.80f; bot.z *= 0.80f;
+		draw->fade_rect_filled(window->DrawList, window->Pos, window->Pos + window->Size,
+			draw->get_clr(top), draw->get_clr(bot),
+			fade_direction::vertically, sec_rnd);
+	}
+
+	draw->rect_filled(window->DrawList, window->Pos - s_(10, 10), window->Pos + window->Size + s_(10, 10),
+		draw->get_clr(clr->accent, 0.04f), sec_rnd + s_(10));
+	draw->rect_filled(window->DrawList, window->Pos - s_(6, 6), window->Pos + window->Size + s_(6, 6),
+		draw->get_clr(clr->accent, 0.10f), sec_rnd + s_(6));
+	draw->rect_filled(window->DrawList, window->Pos - s_(2, 2), window->Pos + window->Size + s_(2, 2),
+		draw->get_clr(clr->accent, 0.18f), sec_rnd + s_(2));
 	const float edge_inset = s_(12);
 	const float edge_y = s_(1);
 	draw->line(window->DrawList,
@@ -327,7 +351,7 @@ void c_gui::render()
 				const c_vec2 pill_pos = gui->get_window()->DC.CursorPos;
 				draw->rect_filled(gui->get_window()->DrawList, pill_pos, pill_pos + c_vec2(s_(feature_width), s_(feature_header_height)), draw->get_clr(clr->child), s_(14));
 
-				gui->begin_content("FeatureHeader", c_vec2(s_(feature_width), s_(feature_header_height)), s_(8, 4), s_(8, 0), window_flags_no_scrollbar | window_flags_no_background, child_flags_none);
+				gui->begin_content("FeatureHeader", c_vec2(s_(feature_width), s_(feature_header_height)), s_(8, 6), s_(8, 0), window_flags_no_scrollbar | window_flags_no_background, child_flags_none);
 				{
 					c_window* hdr_win = gui->get_window();
 

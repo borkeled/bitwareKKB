@@ -1239,11 +1239,23 @@ void c_gui::draw_decorations()
 
     c_draw_list* draw_list = gui->background_drawlist();
 
-    draw->rect_filled(draw_list, rect.Min, rect.Max, draw->get_clr(clr->layout), s_(elements->window.rounding));
-    draw->shadow_rect(draw_list, rect.Min, rect.Max,
-        draw->get_clr(clr->accent, 0.40f), s_(16), c_vec2(0, 0), draw_flags_shadow_cut_out_shape_background, s_(elements->window.rounding));
-    draw->rect_filled(draw_list, rect.Min, rect.Max,
-        draw->get_clr(clr->accent, 0.04f), s_(elements->window.rounding));
+    const float win_rnd = s_(elements->window.rounding);
+
+    {
+        ImVec4 top = clr->layout.Value; top.w = 1.0f;
+        ImVec4 bot = clr->layout.Value; bot.w = 1.0f;
+        bot.x *= 0.75f; bot.y *= 0.75f; bot.z *= 0.75f;
+        draw->fade_rect_filled(draw_list, rect.Min, rect.Max,
+            draw->get_clr(top), draw->get_clr(bot),
+            fade_direction::vertically, win_rnd);
+    }
+
+    draw->rect_filled(draw_list, rect.Min - s_(16, 16), rect.Max + s_(16, 16),
+        draw->get_clr(clr->accent, 0.04f), win_rnd + s_(16));
+    draw->rect_filled(draw_list, rect.Min - s_(10, 10), rect.Max + s_(10, 10),
+        draw->get_clr(clr->accent, 0.10f), win_rnd + s_(10));
+    draw->rect_filled(draw_list, rect.Min - s_(4, 4), rect.Max + s_(4, 4),
+        draw->get_clr(clr->accent, 0.20f), win_rnd + s_(4));
 }
 
 void c_gui::initialize()
