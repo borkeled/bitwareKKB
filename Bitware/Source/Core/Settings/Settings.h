@@ -204,4 +204,6 @@ namespace SettingsStore {
     inline ImKeyBindMode Misc_Jump_Key_Mode = ImKeyBindMode_Toggle;
 
     inline bool Explorer_Open = false;
+
+    inline float AccentColor[4] = { 0.012f, 0.976f, 0.502f, 1.0f };
 }

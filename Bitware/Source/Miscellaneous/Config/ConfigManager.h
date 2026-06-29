@@ -244,6 +244,7 @@ public:
         WriteFloatArray(ss, WRAPPER_MARCO("World_FogColor"), SettingsStore::World_FogColor);
 
         WriteFloatArray(ss, WRAPPER_MARCO("Whitelist_Color"), SettingsStore::Whitelist_Color);
+        WriteFloatArray(ss, WRAPPER_MARCO("AccentColor"), SettingsStore::AccentColor);
 
         // Whitelist_UserIDs
         {
@@ -465,6 +466,7 @@ private:
         if (key == WRAPPER_MARCO("World_AmbienceColor")) { ParseFloatArray(val, SettingsStore::World_AmbienceColor); return; }
         if (key == WRAPPER_MARCO("World_FogColor")) { ParseFloatArray(val, SettingsStore::World_FogColor); return; }
         if (key == WRAPPER_MARCO("Whitelist_Color")) { ParseFloatArray(val, SettingsStore::Whitelist_Color); return; }
+        if (key == WRAPPER_MARCO("AccentColor")) { ParseFloatArray(val, SettingsStore::AccentColor); return; }
 
         if (key == WRAPPER_MARCO("Whitelist_UserIDs")) {
             SettingsStore::Whitelist_UserIDs.clear();

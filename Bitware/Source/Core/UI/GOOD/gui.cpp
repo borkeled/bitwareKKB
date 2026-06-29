@@ -63,21 +63,27 @@ static void draw_visual_sidebar_glass(const c_rect& bounds)
 	c_draw_list* dl = gui->background_drawlist();
 	const float sb_rnd = s_(12);
 
+	draw->shadow_rect(dl, bounds.Min, bounds.Max,
+		draw->get_clr(clr->accent, 0.04f), s_(24), c_vec2(0, 0),
+		draw_flags_shadow_cut_out_shape_background, sb_rnd);
+	draw->shadow_rect(dl, bounds.Min, bounds.Max,
+		draw->get_clr(clr->accent, 0.10f), s_(8), c_vec2(0, 0),
+		draw_flags_shadow_cut_out_shape_background, sb_rnd);
+	draw->shadow_rect(dl, bounds.Min, bounds.Max,
+		draw->get_clr(clr->accent, 0.08f), s_(4), c_vec2(0, 0),
+		draw_flags_shadow_cut_out_shape_background, sb_rnd);
+
 	{
 		ImVec4 top = clr->child.Value; top.w = 1.0f;
+		top.x += 0.030f; top.y += 0.050f; top.z += 0.075f;
 		ImVec4 bot = clr->child.Value; bot.w = 1.0f;
-		bot.x *= 0.80f; bot.y *= 0.80f; bot.z *= 0.80f;
 		draw->fade_rect_filled(dl, bounds.Min, bounds.Max,
 			draw->get_clr(top), draw->get_clr(bot),
 			fade_direction::vertically, sb_rnd);
 	}
 
-	draw->rect_filled(dl, bounds.Min - s_(10, 10), bounds.Max + s_(10, 10),
-		draw->get_clr(clr->accent, 0.04f), sb_rnd + s_(10));
-	draw->rect_filled(dl, bounds.Min - s_(6, 6), bounds.Max + s_(6, 6),
-		draw->get_clr(clr->accent, 0.10f), sb_rnd + s_(6));
-	draw->rect_filled(dl, bounds.Min - s_(2, 2), bounds.Max + s_(2, 2),
-		draw->get_clr(clr->accent, 0.18f), sb_rnd + s_(2));
+	draw->rect_filled(dl, bounds.Min, bounds.Max,
+		draw->get_clr(clr->accent, 0.04f), sb_rnd);
 }
 
 static void begin_visual_section(const std::string& name, float height)
@@ -89,21 +95,29 @@ static void begin_visual_section(const std::string& name, float height)
 
 	const float sec_rnd = s_(12);
 
+	draw->shadow_rect(window->DrawList, window->Pos, window->Pos + window->Size,
+		draw->get_clr(clr->accent, 0.04f), s_(24), c_vec2(0, 0),
+		draw_flags_shadow_cut_out_shape_background, sec_rnd);
+	draw->shadow_rect(window->DrawList, window->Pos, window->Pos + window->Size,
+		draw->get_clr(clr->accent, 0.10f), s_(8), c_vec2(0, 0),
+		draw_flags_shadow_cut_out_shape_background, sec_rnd);
+	draw->shadow_rect(window->DrawList, window->Pos, window->Pos + window->Size,
+		draw->get_clr(clr->accent, 0.08f), s_(4), c_vec2(0, 0),
+		draw_flags_shadow_cut_out_shape_background, sec_rnd);
+	draw->rect(window->DrawList, window->Pos, window->Pos + window->Size,
+		draw->get_clr(clr->accent, 0.06f), sec_rnd, 0, s_(1));
+
 	{
 		ImVec4 top = clr->child.Value; top.w = 1.0f;
+		top.x += 0.030f; top.y += 0.050f; top.z += 0.075f;
 		ImVec4 bot = clr->child.Value; bot.w = 1.0f;
-		bot.x *= 0.80f; bot.y *= 0.80f; bot.z *= 0.80f;
 		draw->fade_rect_filled(window->DrawList, window->Pos, window->Pos + window->Size,
 			draw->get_clr(top), draw->get_clr(bot),
 			fade_direction::vertically, sec_rnd);
 	}
 
-	draw->rect_filled(window->DrawList, window->Pos - s_(10, 10), window->Pos + window->Size + s_(10, 10),
-		draw->get_clr(clr->accent, 0.04f), sec_rnd + s_(10));
-	draw->rect_filled(window->DrawList, window->Pos - s_(6, 6), window->Pos + window->Size + s_(6, 6),
-		draw->get_clr(clr->accent, 0.10f), sec_rnd + s_(6));
-	draw->rect_filled(window->DrawList, window->Pos - s_(2, 2), window->Pos + window->Size + s_(2, 2),
-		draw->get_clr(clr->accent, 0.18f), sec_rnd + s_(2));
+	draw->rect_filled(window->DrawList, window->Pos, window->Pos + window->Size,
+		draw->get_clr(clr->accent, 0.04f), sec_rnd);
 	const float edge_inset = s_(12);
 	const float edge_y = s_(1);
 	draw->line(window->DrawList,
@@ -970,6 +984,7 @@ draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
 											if (i == 0)
 											{
 												ConfigManager::Get().Load(name.c_str());
+												clr->accent = ImColor(SettingsStore::AccentColor[0], SettingsStore::AccentColor[1], SettingsStore::AccentColor[2], SettingsStore::AccentColor[3]);
 												notify->add_notify("Config", ("Loaded: " + name).c_str(), success);
 											}
 											else if (i == 1)
@@ -1038,6 +1053,18 @@ draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
 								slider_int("UI Size", "Scale the interface 100%–200%", &var->gui.stored_dpi, 100, 200, "%.0f%%");
 								if (var->gui.stored_dpi != old_dpi)
 									var->gui.dpi_changed = true;
+							}
+							gui->dummy(c_vec2(0, s_(8)));
+							draw->text(aw->DrawList, font->get(inter_semibold, 11), 11.f,
+								aw->DC.CursorPos + s_(4, 4), draw->get_clr(clr->text), "Theme accent:");
+							aw->DC.CursorPos += c_vec2(0, s_(4));
+							{
+								c_vec4 prev = { SettingsStore::AccentColor[0], SettingsStore::AccentColor[1], SettingsStore::AccentColor[2], SettingsStore::AccentColor[3] };
+								widgets->color_picker("Accent", (c_vec4*)SettingsStore::AccentColor);
+								if (SettingsStore::AccentColor[0] != prev.x || SettingsStore::AccentColor[1] != prev.y || SettingsStore::AccentColor[2] != prev.z)
+								{
+									clr->accent = ImColor(SettingsStore::AccentColor[0], SettingsStore::AccentColor[1], SettingsStore::AccentColor[2], SettingsStore::AccentColor[3]);
+								}
 							}
 						}
 						end_visual_section();

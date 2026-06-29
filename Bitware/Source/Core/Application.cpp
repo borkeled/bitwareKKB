@@ -35,6 +35,7 @@
 #include <Infrastructure/ResourceEnc.h>
 #include <Infrastructure/MiniVM.h>
 #include <Infrastructure/Logger.h>
+#include <Core/UI/GOOD/settings/colors.h>
 
 #include <ShlObj.h>
 #pragma comment(lib, "Shell32.lib")
@@ -261,6 +262,7 @@ void Application::Run()
         auto configs = ConfigManager::Get().ListNames();
         if (!configs.empty()) {
             ConfigManager::Get().Load(configs[0].c_str());
+            clr->accent = ImColor(SettingsStore::AccentColor[0], SettingsStore::AccentColor[1], SettingsStore::AccentColor[2], SettingsStore::AccentColor[3]);
         }
     }
 
