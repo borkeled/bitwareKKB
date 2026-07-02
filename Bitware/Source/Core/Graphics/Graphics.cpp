@@ -461,12 +461,10 @@ void Graphics::NewFrame()
         {
             Running = true;
             InputHook::SetMenuOpen(true);
-            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST);
+            SetWindowLong(Detail->Window, GWL_EXSTYLE, WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_TOPMOST | WS_EX_NOACTIVATE);
             Api::SetLayeredWindowAttributes(Detail->Window, RGB(0, 0, 0), BYTE(255), LWA_ALPHA);
             MARGINS Margins{ -1, -1, -1, -1 };
             Api::DwmExtendFrameIntoClientArea(Detail->Window, &Margins);
-            SetForegroundWindow(Detail->Window);
-            SetFocus(Detail->Window);
         }
         else
         {

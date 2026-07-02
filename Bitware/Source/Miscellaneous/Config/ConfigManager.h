@@ -52,8 +52,6 @@ public:
         WriteBool(ss, WRAPPER_MARCO("Aimbot_Shake"), SettingsStore::Aimbot_Shake);
         WriteBool(ss, WRAPPER_MARCO("Aimbot_KnockedCheck"), SettingsStore::Aimbot_KnockedCheck);
         WriteBool(ss, WRAPPER_MARCO("Aimbot_WallCheck"), SettingsStore::Aimbot_WallCheck);
-        WriteBool(ss, WRAPPER_MARCO("Aimbot_ClosestPlayerFound"), SettingsStore::Aimbot_ClosestPlayerFound);
-
         WriteBool(ss, WRAPPER_MARCO("Silent_Enabled"), SettingsStore::Silent_Enabled);
         WriteBool(ss, WRAPPER_MARCO("Silent_DrawFov"), SettingsStore::Silent_DrawFov);
         WriteBool(ss, WRAPPER_MARCO("Silent_FovSpin"), SettingsStore::Silent_FovSpin);
@@ -105,8 +103,6 @@ public:
 
         WriteBool(ss, WRAPPER_MARCO("Misc_Speed"), SettingsStore::Misc_Speed);
         WriteBool(ss, WRAPPER_MARCO("Misc_Jump"), SettingsStore::Misc_Jump);
-        WriteBool(ss, WRAPPER_MARCO("Explorer_Open"), SettingsStore::Explorer_Open);
-
         // Int
         WriteInt(ss, WRAPPER_MARCO("Aimbot_type"), SettingsStore::Aimbot_type);
         WriteInt(ss, WRAPPER_MARCO("Aimbot_HitPart"), SettingsStore::Aimbot_HitPart);
@@ -208,6 +204,7 @@ public:
         WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Plastic_Shininess"), SettingsStore::Visuals_Chams_Plastic_Shininess);
         WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Specular_Power"), SettingsStore::Visuals_Chams_Specular_Power);
         WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Specular_Intensity"), SettingsStore::Visuals_Chams_Specular_Intensity);
+        WriteFloat(ss, WRAPPER_MARCO("Visuals_Chams_Outline_Width"), SettingsStore::Visuals_Chams_Outline_Width);
 
         WriteFloat(ss, WRAPPER_MARCO("World_Rotate_Speed"), SettingsStore::World_Rotate_Speed);
         WriteFloat(ss, WRAPPER_MARCO("World_Fog_Distance"), SettingsStore::World_Fog_Distance);
@@ -348,6 +345,7 @@ public:
                 AssignValue(k, v);
             }
         }
+        ClampSettings();
         return true;
     }
 
@@ -507,8 +505,6 @@ private:
         SET_BOOL(Aimbot_Shake);
         SET_BOOL(Aimbot_KnockedCheck);
         SET_BOOL(Aimbot_WallCheck);
-        SET_BOOL(Aimbot_ClosestPlayerFound);
-
         SET_BOOL(Silent_Enabled);
         SET_BOOL(Silent_DrawFov);
         SET_BOOL(Silent_FovSpin);
@@ -560,7 +556,6 @@ private:
 
         SET_BOOL(Misc_Speed);
         SET_BOOL(Misc_Jump);
-        SET_BOOL(Explorer_Open);
 #undef SET_BOOL
         return false;
     }
@@ -692,6 +687,7 @@ private:
             SET_FLOAT(Visuals_Chams_Plastic_Shininess);
             SET_FLOAT(Visuals_Chams_Specular_Power);
             SET_FLOAT(Visuals_Chams_Specular_Intensity);
+            SET_FLOAT(Visuals_Chams_Outline_Width);
 
             SET_FLOAT(World_Rotate_Speed);
             SET_FLOAT(World_Fog_Distance);
@@ -726,5 +722,38 @@ private:
             }
             i++;
         }
+    }
+
+    static void ClampSettings()
+    {
+        OBF_PROLOGUE;
+        SettingsStore::Aimbot_type = std::clamp(SettingsStore::Aimbot_type, 0, 1);
+        SettingsStore::Aimbot_HitPart = std::clamp(SettingsStore::Aimbot_HitPart, 0, 3);
+        SettingsStore::Aimbot_FovSpinDirection = std::clamp(SettingsStore::Aimbot_FovSpinDirection, 0, 1);
+        SettingsStore::Aimbot_FovSpinSpeed = std::clamp(SettingsStore::Aimbot_FovSpinSpeed, 1, 5);
+        SettingsStore::Silent_type = std::clamp(SettingsStore::Silent_type, 0, 0);
+        SettingsStore::Silent_HitPart = std::clamp(SettingsStore::Silent_HitPart, 0, 2);
+        SettingsStore::Silent_FovSpinDirection = std::clamp(SettingsStore::Silent_FovSpinDirection, 0, 1);
+        SettingsStore::Silent_FovSpinSpeed = std::clamp(SettingsStore::Silent_FovSpinSpeed, 1, 5);
+        SettingsStore::Visuals_ChamsFadeSpeed = std::clamp(SettingsStore::Visuals_ChamsFadeSpeed, 1, 5);
+        SettingsStore::Visuals_Chams_Type = std::clamp(SettingsStore::Visuals_Chams_Type, 0, 2);
+        SettingsStore::Visuals_Chams_Quality = std::clamp(SettingsStore::Visuals_Chams_Quality, 0, 2);
+        SettingsStore::Visuals_Chams_Shader = std::clamp(SettingsStore::Visuals_Chams_Shader, 0, 21);
+        SettingsStore::Visuals_BoxFillSpeed = std::clamp(SettingsStore::Visuals_BoxFillSpeed, 1, 5);
+        SettingsStore::Visuals_Healthbar_Type = std::clamp(SettingsStore::Visuals_Healthbar_Type, 0, 1);
+        SettingsStore::Visuals_Box_Type = std::clamp(SettingsStore::Visuals_Box_Type, 0, 1);
+        SettingsStore::Visuals_Box_Fill_Type = std::clamp(SettingsStore::Visuals_Box_Fill_Type, 0, 2);
+        SettingsStore::Visuals_Name_Type = std::clamp(SettingsStore::Visuals_Name_Type, 0, 2);
+        SettingsStore::Visuals_Gap = std::clamp(SettingsStore::Visuals_Gap, 1, 5);
+        SettingsStore::Visuals_Thickness = std::clamp(SettingsStore::Visuals_Thickness, 1, 5);
+        SettingsStore::World_Skybox_Type = std::clamp(SettingsStore::World_Skybox_Type, 0, 10);
+        SettingsStore::Triggerbot_Delay = std::clamp(SettingsStore::Triggerbot_Delay, 0, 500);
+        SettingsStore::Triggerbot_Randomize = std::clamp(SettingsStore::Triggerbot_Randomize, 0, 250);
+        SettingsStore::Triggerbot_HitPart = std::clamp(SettingsStore::Triggerbot_HitPart, 0, 3);
+        SettingsStore::Triggerbot_FireMode = std::clamp(SettingsStore::Triggerbot_FireMode, 0, 1);
+        SettingsStore::Triggerbot_Fov = std::clamp(SettingsStore::Triggerbot_Fov, 0, 360);
+        SettingsStore::Settings_Performance_Mode = std::clamp(SettingsStore::Settings_Performance_Mode, 0, 3);
+        SettingsStore::WallCheck_Method = std::clamp(SettingsStore::WallCheck_Method, 0, 1);
+        OBF_JUNK_BLOCK;
     }
 };

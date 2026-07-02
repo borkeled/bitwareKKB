@@ -944,8 +944,12 @@ void c_gui::render()
 									c_vec2 card_pos = w->DC.CursorPos;
 									float card_w = gui->content_avail().x - s_(22);
 
-									// Card background
 									c_rect card_rect(card_pos, card_pos + c_vec2(card_w, card_h));
+									ImGuiID card_id = w->GetID(name.c_str());
+									gui->item_size(card_rect);
+									gui->item_add(card_rect, card_id);
+
+									// Card background
 									draw->rect_filled(w->DrawList, card_rect.Min, card_rect.Max,
 										draw->get_clr(clr->widget), rounding);
 
@@ -965,8 +969,16 @@ void c_gui::render()
 										float bx = card_pos.x + pad + (btn_w + btn_gap) * i;
 										c_rect btn_rect(bx, btn_y, bx + btn_w, btn_y + btn_h);
 
-										bool hovered = gui->is_rect_visible(btn_rect) && ImGui::IsMouseHoveringRect(btn_rect.Min, btn_rect.Max);
-										bool clicked = hovered && ImGui::IsMouseClicked(0);
+										char btn_id_buf[192];
+										snprintf(btn_id_buf, sizeof(btn_id_buf), "%s##btn%d", name.c_str(), i);
+										ImGuiID btn_id = w->GetID(btn_id_buf);
+
+										if (!gui->item_add(btn_rect, btn_id))
+											continue;
+
+										bool hovered = false;
+										bool held = false;
+										bool clicked = gui->button_behavior(btn_rect, btn_id, &hovered, &held);
 
 										c_vec4 btn_col = hovered
 											? c_vec4(clr->accent.Value.x * 0.6f + 0.4f,
@@ -977,9 +989,9 @@ void c_gui::render()
 
 										draw->rect_filled(w->DrawList, btn_rect.Min, btn_rect.Max,
 											draw->get_clr(btn_col), s_(6));
-draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
-    btn_rect.Min, btn_rect.Max, draw->get_clr(clr->text),
-    labels[i], NULL, NULL, ImVec2(0.5f, 0.5f));
+										draw->text_clipped(w->DrawList, font->get(inter_semibold, 11),
+											btn_rect.Min, btn_rect.Max, draw->get_clr(clr->text),
+											labels[i], NULL, NULL, ImVec2(0.5f, 0.5f));
 
 										if (clicked)
 										{
