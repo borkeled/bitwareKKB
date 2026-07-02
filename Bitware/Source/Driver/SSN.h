@@ -22,6 +22,8 @@ namespace SSN {
 
     inline bool Resolve()
     {
+        SyscallObf::CleanupStubs();
+
         auto ntdll = EatParser::FindModuleInPEB(skCrypt(L"ntdll.dll"));
         if (!ntdll) return false;
 

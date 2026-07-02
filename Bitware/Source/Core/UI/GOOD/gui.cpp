@@ -812,7 +812,7 @@ void c_gui::render()
 					gui->begin_group();
 					{
 						begin_visual_section("Settings", half_section_height);
-						widgets->dropdown("Performance mode", "Frame rate target", &SettingsStore::Settings_Performance_Mode, { "Low (60)", "Medium (144)", "High (240)" });
+						widgets->dropdown("Performance mode", "Frame rate target", &SettingsStore::Settings_Performance_Mode, { "Low (60)", "Medium (144)", "High (240)", "Unlimited" });
 						widgets->checkbox("Streamproof", "Hide from screen capture", &SettingsStore::Settings_Streamproof);
 						widgets->checkbox("VSync", "Enable vertical sync", &SettingsStore::Settings_VSync);
 						widgets->checkbox("Team check", "Global team filter", &SettingsStore::Settings_Team_Check);

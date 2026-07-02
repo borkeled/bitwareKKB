@@ -50,7 +50,6 @@ namespace Triggerbot {
         std::thread([st]() {
             OBF_PROLOGUE;
             OBF_JUNK_DECLARE;
-            timeBeginPeriod(1);
 
             bool Holding = false;
             static bool Toggled = false;
@@ -268,8 +267,6 @@ namespace Triggerbot {
                 auto iterEnd = std::chrono::steady_clock::now();
                 Perf::TriggerbotTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(iterEnd - iterStart).count());
             }
-
-            timeEndPeriod(1);
         }).detach();
     }
 }

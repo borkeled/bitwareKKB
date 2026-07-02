@@ -1518,11 +1518,19 @@ bool c_widgets::keybind(std::string name, std::string description, keybind_t* bi
 		keybind_prime_physical_input();
 	}
 
-	if (state->listening && ImGui::GetFrameCount() > state->listen_started_frame && keybind_capture_input(bind))
+	if (state->listening && ImGui::GetFrameCount() > state->listen_started_frame)
 	{
-		state->listening = false;
-		bind->capturing = false;
-		changed = true;
+		if (gui->mouse_clicked(0) && !bind_button.Contains(gui->mouse_pos()))
+		{
+			state->listening = false;
+			bind->capturing = false;
+		}
+		else if (keybind_capture_input(bind))
+		{
+			state->listening = false;
+			bind->capturing = false;
+			changed = true;
+		}
 	}
 	bind->capturing = state->listening;
 

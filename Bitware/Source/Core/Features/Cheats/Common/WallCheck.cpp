@@ -341,7 +341,8 @@ void WallCheck::find_valid_parts(SDK::Instance* instance, int depth, std::vector
     }
 
     auto children = instance->Children();
-    for (auto& child : children)
+    std::vector<SDK::Instance> childrenCopy(children.begin(), children.end());
+    for (auto& child : childrenCopy)
     {
         if (!child.Address)
         {

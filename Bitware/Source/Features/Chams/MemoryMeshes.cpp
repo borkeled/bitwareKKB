@@ -30,6 +30,7 @@ namespace
     {
         std::string url;
         parsed_mesh parsed;
+        std::uint64_t last_access_frame = 0;
     };
 
     struct captured_record final
@@ -58,6 +59,7 @@ namespace
     }
 
     static std::unordered_map<std::string, std::shared_ptr<live_mesh_record>> g_box_meshes;
+    static constexpr std::size_t k_max_box_meshes = 500;
 
     static constexpr std::uint64_t k_vertex_stride = 40;
     static constexpr std::uint64_t k_face_stride = 12;
@@ -67,9 +69,54 @@ namespace
 
     static std::unordered_map<std::string, std::shared_ptr<live_mesh_record>> g_lookup;
     static std::unordered_set<std::string> g_cached_urls;
+    static constexpr std::size_t k_max_lookup_entries = 4000;
+    static std::atomic<std::uint64_t> g_mesh_frame_counter{ 0 };
     static std::mutex g_cache_mutex;
     static std::atomic<bool> g_scan_running{ false };
     static HANDLE g_scan_thread = nullptr;
+
+    static void evict_old_lookup_entries()
+    {
+        if (g_lookup.size() <= k_max_lookup_entries && g_box_meshes.size() <= k_max_box_meshes)
+            return;
+
+        const std::uint64_t oldest_frame = g_mesh_frame_counter.load() > 600 ? g_mesh_frame_counter.load() - 600 : 0;
+
+        if (g_lookup.size() > k_max_lookup_entries)
+        {
+            std::vector<std::string> to_remove;
+            to_remove.reserve(g_lookup.size() - k_max_lookup_entries + 100);
+            for (auto& [key, record] : g_lookup)
+            {
+                if (record && record->last_access_frame < oldest_frame)
+                    to_remove.push_back(key);
+            }
+            std::size_t target = k_max_lookup_entries * 3 / 4;
+            while (g_lookup.size() > target && !to_remove.empty())
+            {
+                g_cached_urls.erase(g_lookup[to_remove.back()]->url);
+                g_lookup.erase(to_remove.back());
+                to_remove.pop_back();
+            }
+        }
+
+        if (g_box_meshes.size() > k_max_box_meshes)
+        {
+            std::vector<std::string> to_remove;
+            to_remove.reserve(g_box_meshes.size() - k_max_box_meshes + 50);
+            for (auto& [name, record] : g_box_meshes)
+            {
+                if (record && record->last_access_frame < oldest_frame)
+                    to_remove.push_back(name);
+            }
+            std::size_t target = k_max_box_meshes * 3 / 4;
+            while (g_box_meshes.size() > target && !to_remove.empty())
+            {
+                g_box_meshes.erase(to_remove.back());
+                to_remove.pop_back();
+            }
+        }
+    }
 
     static bool is_valid_address(std::uintptr_t addr)
     {
@@ -354,10 +401,16 @@ namespace
     {
         auto it = g_box_meshes.find(part_name);
         if (it != g_box_meshes.end())
+        {
+            it->second->last_access_frame = g_mesh_frame_counter.load();
             return it->second;
+        }
+
+        evict_old_lookup_entries();
 
         auto record = std::make_shared<live_mesh_record>();
         record->url = "box:" + part_name;
+        record->last_access_frame = g_mesh_frame_counter.load();
         init_unit_cube(record->parsed);
         g_box_meshes.emplace(part_name, record);
         return record;
@@ -646,6 +699,9 @@ namespace
 
     static void perform_scan_once()
     {
+        if (!Globals::Visuals::Chams)
+            return;
+
         std::uint64_t evict = 0, pinned = 0;
         if (!find_cache(evict, pinned))
             return;
@@ -671,12 +727,15 @@ namespace
             return;
 
         std::lock_guard<std::mutex> lock(g_cache_mutex);
+        evict_old_lookup_entries();
         for (auto& entry : captured)
         {
             g_cached_urls.insert(entry.record->url);
+            entry.record->last_access_frame = g_mesh_frame_counter.load();
             for (const std::string& key : entry.keys)
                 g_lookup[key] = entry.record;
         }
+        g_mesh_frame_counter.fetch_add(1);
     }
 
     static DWORD WINAPI scan_thread_main(LPVOID)
@@ -734,6 +793,7 @@ namespace
             if (it == g_lookup.end())
                 continue;
 
+            it->second->last_access_frame = g_mesh_frame_counter.load();
             resolved_mesh_draw resolved{};
             resolved.cache_key = reinterpret_cast<std::uint64_t>(it->second.get());
             resolved.mesh = &it->second->parsed;
@@ -868,6 +928,16 @@ std::vector<mesh_gpu::draw_item> build_draw_list(
     const float view[16])
 {
     return build_draw_list_impl(players, local_player, view);
+}
+
+void clear_caches()
+{
+    std::lock_guard<std::mutex> lock(g_cache_mutex);
+    g_lookup.clear();
+    g_cached_urls.clear();
+    g_box_meshes.clear();
+    g_mesh_frame_counter.store(0);
+    mesh_gpu::clear_gpu_meshes();
 }
 
 void start_memory_mesh_scan()

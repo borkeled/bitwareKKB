@@ -2,6 +2,8 @@
 #include <cstdint>
 #include <windows.h>
 #include <random>
+#include <vector>
+#include <mutex>
 #include <Auth/skStr.h>
 
 namespace SyscallObf {
@@ -11,6 +13,18 @@ namespace SyscallObf {
         size_t Size;
         uint64_t XorKey;
     };
+
+    static std::mutex g_StubMutex;
+    static std::vector<StubInfo> g_AllStubs;
+
+    static void CleanupStubs() {
+        std::lock_guard<std::mutex> lock(g_StubMutex);
+        for (auto& stub : g_AllStubs) {
+            if (stub.Address)
+                VirtualFree(stub.Address, 0, MEM_RELEASE);
+        }
+        g_AllStubs.clear();
+    }
 
     static std::mt19937_64& GetRng() {
         static std::mt19937_64 rng(std::random_device{}());
@@ -106,7 +120,12 @@ namespace SyscallObf {
             exec[i] = buffer[i] ^ ((uint8_t*)&xor_key)[i % 8];
         }
 
-        return { exec, total, xor_key };
+        StubInfo info = { exec, total, xor_key };
+        {
+            std::lock_guard<std::mutex> lock(g_StubMutex);
+            g_AllStubs.push_back(info);
+        }
+        return info;
     }
 
     static void DecryptStub(StubInfo& stub) {
@@ -152,7 +171,12 @@ namespace SyscallObf {
         DWORD old;
         VirtualProtect(exec, ((total + 16) & ~15), PAGE_EXECUTE_READ, &old);
 
-        return { exec, total, 0 };
+        StubInfo info = { exec, total, 0 };
+        {
+            std::lock_guard<std::mutex> lock(g_StubMutex);
+            g_AllStubs.push_back(info);
+        }
+        return info;
     }
 
     static void EncryptStub(StubInfo& stub) {

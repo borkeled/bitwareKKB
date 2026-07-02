@@ -552,21 +552,24 @@ void Graphics::Present()
     {
         int Mode = Globals::Settings::Performance_Mode;
         if (Mode < 0) Mode = 0;
-        if (Mode > 2) Mode = 2;
+        if (Mode > 3) Mode = 3;
         TargetFPS = SettingsStore::PerfMode_FPS[Mode];
     }
 
-    auto TargetInterval = std::chrono::microseconds(1000000 / TargetFPS);
-
-    auto Now = std::chrono::steady_clock::now();
-    auto Elapsed = std::chrono::duration_cast<std::chrono::microseconds>(Now - LastPresentTime);
-    if (Elapsed < TargetInterval) {
-        std::this_thread::sleep_for(TargetInterval - Elapsed);
+    if (TargetFPS > 0)
+    {
+        auto TargetInterval = std::chrono::microseconds(1000000 / TargetFPS);
+        auto Now = std::chrono::steady_clock::now();
+        auto Elapsed = std::chrono::duration_cast<std::chrono::microseconds>(Now - LastPresentTime);
+        if (Elapsed < TargetInterval) {
+            std::this_thread::sleep_for(TargetInterval - Elapsed);
+        }
     }
-    LastPresentTime = std::chrono::steady_clock::now();
 
     int SyncInterval = Globals::Settings::VSync ? 1 : 0;
     Detail->SwapChain->Present(SyncInterval, 0);
+
+    LastPresentTime = std::chrono::steady_clock::now();
 
     auto presentEnd = std::chrono::steady_clock::now();
     Perf::PresentTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(presentEnd - presentStart).count());

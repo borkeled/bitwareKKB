@@ -49,6 +49,7 @@ namespace
         ID3D11Buffer* vb = nullptr;
         ID3D11Buffer* ib = nullptr;
         UINT index_count = 0;
+        std::uint64_t last_frame_used = 0;
     };
 
     static ID3D11Device* g_device = nullptr;
@@ -64,6 +65,8 @@ namespace
     static ID3D11RasterizerState* g_raster_outline = nullptr;
     static ID3D11DepthStencilState* g_depth_disabled = nullptr;
     static std::unordered_map<std::uint64_t, gpu_mesh_buffers> g_gpu_meshes;
+    static std::uint64_t g_frame_counter = 0;
+    static constexpr std::size_t k_max_gpu_meshes = 2000;
 
     static constexpr UINT k_max_instances = 384;
     static constexpr UINT k_instance_stride = static_cast<UINT>(sizeof(instance_data));
@@ -85,6 +88,8 @@ namespace
 
         g_gpu_meshes.clear();
 
+        g_frame_counter = 0;
+
         if (g_instance_srv) { g_instance_srv->Release(); g_instance_srv = nullptr; }
         if (g_instance_sb) { g_instance_sb->Release(); g_instance_sb = nullptr; }
         if (g_depth_disabled) { g_depth_disabled->Release(); g_depth_disabled = nullptr; }
@@ -97,6 +102,37 @@ namespace
         if (g_ps) { g_ps->Release(); g_ps = nullptr; }
         if (g_vs) { g_vs->Release(); g_vs = nullptr; }
         g_device = nullptr;
+    }
+
+    static void evict_old_meshes()
+    {
+        if (g_gpu_meshes.size() <= k_max_gpu_meshes)
+            return;
+
+        const std::uint64_t oldest_threshold = g_frame_counter > 300 ? g_frame_counter - 300 : 0;
+        std::vector<std::uint64_t> to_evict;
+        to_evict.reserve(g_gpu_meshes.size() - k_max_gpu_meshes + 100);
+
+        for (auto& [key, mesh] : g_gpu_meshes)
+        {
+            if (mesh.last_frame_used < oldest_threshold)
+                to_evict.push_back(key);
+        }
+
+        std::sort(to_evict.begin(), to_evict.end());
+        std::size_t target = (std::max)(k_max_gpu_meshes, k_max_gpu_meshes * 3 / 4);
+        while (g_gpu_meshes.size() > target && !to_evict.empty())
+        {
+            std::uint64_t key = to_evict.back();
+            to_evict.pop_back();
+            auto it = g_gpu_meshes.find(key);
+            if (it != g_gpu_meshes.end())
+            {
+                if (it->second.vb) it->second.vb->Release();
+                if (it->second.ib) it->second.ib->Release();
+                g_gpu_meshes.erase(it);
+            }
+        }
     }
 
     static void decimate_indices(const mesh_chams::parsed_mesh& mesh, std::vector<std::uint32_t>& out_indices, int max_triangles)
@@ -128,10 +164,15 @@ namespace
     {
         auto it = g_gpu_meshes.find(cache_key);
         if (it != g_gpu_meshes.end())
+        {
+            it->second.last_frame_used = g_frame_counter;
             return true;
+        }
 
         if (mesh.vertices.empty() || mesh.indices.size() < 3)
             return false;
+
+        evict_old_meshes();
 
         std::vector<std::uint32_t> indices;
         if (is_box_cache_key(cache_key))
@@ -161,6 +202,7 @@ namespace
         ib_data.pSysMem = indices.data();
 
         gpu_mesh_buffers gpu_mesh{};
+        gpu_mesh.last_frame_used = g_frame_counter;
         HRESULT hr = device->CreateBuffer(&vb_desc, &vb_data, &gpu_mesh.vb);
         if (FAILED(hr)) return false;
 
@@ -776,6 +818,11 @@ namespace
     }
 }
 
+void clear_gpu_meshes()
+{
+    release_resources();
+}
+
 std::size_t render_draw_list(
     const std::vector<draw_item>& items,
     const float view[16],
@@ -789,6 +836,8 @@ std::size_t render_draw_list(
 {
     if (!device || !context || items.empty())
         return 0;
+
+    ++g_frame_counter;
 
     if (!ensure_pipeline(device))
         return 0;

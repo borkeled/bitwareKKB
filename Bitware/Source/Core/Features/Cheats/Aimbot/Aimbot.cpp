@@ -200,12 +200,11 @@ namespace Aimbot {
 
     void RunService(std::stop_token st) {
         std::thread([st]() {
-            timeBeginPeriod(1);
             bool Toggled = false;
             bool LastPressed = false;
-            std::uint64_t StoredGameID = 0;
+            std::uint64_t StoredGameID = Globals::GameID;
             auto LastTick = std::chrono::steady_clock::now();
-            const std::chrono::microseconds TickInterval(1000000 / 144);
+            const std::chrono::microseconds TickInterval(1000000 / 60);
 
             while (!st.stop_requested()) {
                 OBF_PROLOGUE;
@@ -224,6 +223,7 @@ namespace Aimbot {
                 if (Globals::Aimbot::Aimbot_Mode == ImKeyBindMode_Always) {
                     AcquireTarget();
                     UpdateAimbot();
+                    SDK::sleep_jitter(8, 2);
                 } else {
                     int Vk = ImGuiKeyToVK(Globals::Aimbot::Aimbot_Key);
                     if (!Vk) { OBF_JUNK_BLOCK; continue; }
@@ -247,7 +247,6 @@ namespace Aimbot {
                 auto iterEnd = std::chrono::steady_clock::now();
                 Perf::AimbotTimeUs.store(std::chrono::duration_cast<std::chrono::microseconds>(iterEnd - iterStart).count());
             }
-            timeEndPeriod(1);
         }).detach();
     }
 

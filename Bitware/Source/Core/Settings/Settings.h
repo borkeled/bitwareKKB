@@ -175,8 +175,8 @@ namespace SettingsStore {
     inline int Settings_Performance_Mode = 2;
     inline ImGuiKey Settings_Menu_Keybind = ImGuiKey_Insert;
 
-    // Low=60, Medium=144, High=240
-    constexpr inline int PerfMode_FPS[] = { 60, 144, 240 };
+    // Low=60, Medium=144, High=240, Unlimited=0
+    constexpr inline int PerfMode_FPS[] = { 60, 144, 240, 0 };
 
     inline bool Whitelist_Enabled;
     inline std::unordered_set<std::uint64_t> Whitelist_UserIDs;

@@ -13,8 +13,17 @@ namespace World {
     std::atomic<bool> StopFOV{ false };
 
     void SkyboxChanger(std::stop_token st) {
+        std::uint64_t lastGameID = Globals::GameID;
+        float rotY = 0.0f;
+
         while (!StopSkybox && !st.stop_requested())
         {
+            if (Globals::GameID != lastGameID)
+            {
+                lastGameID = Globals::GameID;
+                rotY = 0.0f;
+            }
+
             if (Globals::World::Skybox)
             {
                 auto Sky = Globals::Lighting.Find_First_Child(std::string(skCrypt("Sky")));
@@ -123,8 +132,7 @@ namespace World {
                     }
 
                     if (Globals::World::Rotate) {
-                        static float rotY = 0.0f;
-                        rotY = (0.0f > 360.0f) ? 0.0f : rotY + Globals::World::Skybox_Rotate_Speed;
+                        rotY = (rotY > 360.0f) ? 0.0f : rotY + Globals::World::Skybox_Rotate_Speed;
                         Driver->Write<SDK::Vector3>(Sky.Address + Offsets::Sky::SkyboxOrientation, { 0.0f, rotY, 0.0f });
                     }
 
@@ -205,10 +213,17 @@ namespace World {
     }
 
     void FOVChanger(std::stop_token st) {
-        static float LastFOVValue = -1.0f;
+        std::uint64_t lastGameID = Globals::GameID;
+        float LastFOVValue = -1.0f;
 
         while (!StopFOV && !st.stop_requested())
         {
+            if (Globals::GameID != lastGameID)
+            {
+                lastGameID = Globals::GameID;
+                LastFOVValue = -1.0f;
+            }
+
             if (Globals::World::FOV)
             {
                 float CurrentFOV = Globals::World::FOV_Distance;

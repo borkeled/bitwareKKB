@@ -36,6 +36,7 @@ namespace mesh_chams
 
     void start_memory_mesh_scan();
     void shutdown_memory_mesh_scan();
+    void clear_caches();
 
     std::vector<mesh_gpu::draw_item> build_draw_list(
         const std::vector<SDK::Player>& players,

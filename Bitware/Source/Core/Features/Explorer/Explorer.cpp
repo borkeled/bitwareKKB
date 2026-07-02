@@ -66,14 +66,16 @@ void Explorer::Explorer::BuildTree()
         parent->children.push_back(child_node);
 
         auto children = instance.Children();
-        for (auto& child_instance : children)
+        std::vector<SDK::Instance> childCopy(children.begin(), children.end());
+        for (auto& child_instance : childCopy)
         {
             self_ref(child_node, child_instance, self_ref);
         }
     };
 
     auto children = Globals::Datamodel.Children();
-    for (auto& instance : children)
+    std::vector<SDK::Instance> childCopy(children.begin(), children.end());
+    for (auto& instance : childCopy)
     {
         build_tree(root, instance, build_tree);
     }

@@ -38,6 +38,28 @@ class c_gui
 public:
     std::unordered_map<ImGuiID, void*> m_anim_states;
 
+    ~c_gui()
+    {
+        for (auto& [id, state] : m_anim_states)
+        {
+            (void)id;
+            if (state)
+                delete state;
+        }
+        m_anim_states.clear();
+    }
+
+    void clear_anim_states()
+    {
+        for (auto& [id, state] : m_anim_states)
+        {
+            (void)id;
+            if (state)
+                delete state;
+        }
+        m_anim_states.clear();
+    }
+
     template <typename T>
     T* anim_container(ImGuiID id)
     {

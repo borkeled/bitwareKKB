@@ -111,10 +111,12 @@
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <AdditionalOptions>/MP4 %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <LinkIncremental>true</LinkIncremental>
       <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
     </Link>
   </ItemDefinitionGroup>
@@ -128,7 +130,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdclatest</LanguageStandard_C>
-      <AdditionalOptions>/FS %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/MP4 /FS %(AdditionalOptions)</AdditionalOptions>
       <UseFullPaths>false</UseFullPaths>
     </ClCompile>
     <Link>
@@ -380,9 +382,6 @@ rmdir /s /q "$(IntDir)$(TargetName).tlog" 2>NUL</Command>
   </ItemGroup>
   <ItemGroup>
     <Library Include="Dependencies\FreeType\freetype.lib" />
-  </ItemGroup>
-  <ItemGroup>
-    <MASM Include="Source\Driver\luck.asm" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="Bitware.ico" />

@@ -30,17 +30,19 @@ namespace SDK {
     }
 
     std::vector<Instance> Instance::Children() const {
-        std::vector<Instance> Container;
-        if (!Address) return Container;
+        if (!Address) return {};
 
         auto Start = Driver->Read<uintptr_t>(Address + Offsets::Instance::ChildrenStart);
-        if (!Start) return Container;
+        if (!Start) return {};
 
         auto End = Driver->Read<uintptr_t>(Start + Offsets::Instance::ChildrenEnd);
-        for (auto instances = Driver->Read<uintptr_t>(Start); instances != End; instances += 16)
-            Container.emplace_back(Driver->Read<Instance>(instances));
+        std::vector<Instance> Children;
+        Children.reserve(32);
+        int walked = 0;
+        for (auto instances = Driver->Read<uintptr_t>(Start); instances != End && walked < 10000; instances += 16, ++walked)
+            Children.push_back(Driver->Read<Instance>(instances));
 
-        return Container;
+        return Children;
     }
 
     Instance Instance::Find_First_Child(const std::string& Name) const {

@@ -29,6 +29,7 @@
 #include <Core/UI/GoodMenuRenderer.h>
 #include <Miscellaneous/Config/ConfigManager.h>
 #include <Infrastructure/ApiHiding.h>
+#include <Infrastructure/SyscallObf.h>
 #include <Infrastructure/Obfuscation.h>
 #include <Infrastructure/AntiDump.h>
 #include <Infrastructure/ThreadObf.h>
@@ -350,6 +351,12 @@ void Application::Run()
 
         InputHook::PollKeys();
 
+        if (Graphic->Detail->Window && IsIconic(Graphic->Detail->Window))
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            continue;
+        }
+
         auto frameStart = std::chrono::steady_clock::now();
 
         if (GetAsyncKeyState(VK_F6) & 1) {
@@ -384,6 +391,8 @@ void Application::Shutdown()
     InputHook::Remove();
 
     m_WorkerThreads.clear();
+
+    SyscallObf::CleanupStubs();
 
     timeEndPeriod(1);
 }

@@ -16,6 +16,8 @@
 #include <Infrastructure/ApiHiding.h>
 #include <Infrastructure/Obfuscation.h>
 #include <Infrastructure/Logger.h>
+#include <Core/Features/Cheats/Common/WallCheck.h>
+#include <Features/Chams/MemoryMeshes.h>
 
 namespace Cache {
 
@@ -62,6 +64,7 @@ namespace Cache {
     std::mutex Cache_Mutex;
     std::atomic<bool> CacheReady{ false };
     std::atomic<bool> References_Updated{ false };
+    std::atomic<bool> ReinitInProgress{ false };
     std::atomic<std::uint64_t> Current_GameID{ 0 };
     std::atomic<int> StaleFrames{ 0 };
     std::atomic<bool> ForceReInit{ false };
@@ -137,11 +140,12 @@ namespace Cache {
 
         auto Local_Team = Local_SDK_Player.Get_Team();
         auto Player_Instances = Globals::Players.Children();
+        std::vector<SDK::Instance> PlayerInstanceCopy(Player_Instances.begin(), Player_Instances.end());
 
         std::vector<SDK::Player> Players;
-        Players.reserve(Player_Instances.size());
+        Players.reserve(PlayerInstanceCopy.size());
 
-        for (const auto& Instance : Player_Instances) {
+        for (const auto& Instance : PlayerInstanceCopy) {
             if (Instance.Address == 0) continue;
 
             if (Instance.Address == Local_SDK_Player.Address) {
@@ -248,6 +252,9 @@ void Cache::RunService(std::stop_token st) {
                                     Current_GameID.store(GameID);
                                     Globals::GameID = GameID;
 
+                                    ReinitInProgress.store(true);
+                                    CacheReady.store(false);
+
                                     Globals::Players.Address = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Players"))).Address;
                                     auto Lightin = Globals::Datamodel.Find_First_Child_Of_Class(std::string(skCrypt("Lighting")));
                                     Globals::Lighting = SDK::Lighting(Lightin.Address);
@@ -264,6 +271,10 @@ void Cache::RunService(std::stop_token st) {
 
                                     Globals::LocalPlayer = SDK::Player{};
 
+                                    wallcheck->clear();
+                                    mesh_chams::clear_caches();
+
+                                    ReinitInProgress.store(false);
                                     References_Updated.store(true);
                                 }
                             }
@@ -313,6 +324,11 @@ void Cache::RunService(std::stop_token st) {
                 Globals::LocalPlayer = SDK::Player{};
                 Globals::Player_Cache.reset();
                 StaleFrames.store(0, std::memory_order_relaxed);
+            }
+
+            if (ReinitInProgress.load()) {
+                SDK::sleep_jitter(50, 10);
+                continue;
             }
 
             auto cacheStart = std::chrono::steady_clock::now();

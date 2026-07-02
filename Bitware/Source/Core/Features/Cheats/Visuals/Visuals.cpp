@@ -643,7 +643,12 @@ namespace Visuals {
                     AllParts.push_back(std::move(Path));
                 }
                 if (!AllParts.empty()) {
-                    auto UnifiedSolution = Clipper2Lib::Union(AllParts, Clipper2Lib::FillRule::NonZero);
+                    Clipper2Lib::Paths64 UnifiedSolution;
+                    if (AllParts.size() == 1) {
+                        UnifiedSolution = std::move(AllParts);
+                    } else {
+                        UnifiedSolution = Clipper2Lib::Union(AllParts, Clipper2Lib::FillRule::NonZero);
+                    }
                     std::vector<std::vector<ImVec2>> AllPolys;
                     AllPolys.reserve(UnifiedSolution.size());
                     for (auto& Sp : UnifiedSolution) {

@@ -64,6 +64,10 @@ namespace Misc {
         }
     }
 
+    static bool jumpWasActive = false;
+    static float jumpOriginalPower = 50.0f;
+    static bool jumpCapturedOriginal = false;
+
     static void Jumphack()
     {
         OBF_PROLOGUE;
@@ -74,42 +78,49 @@ namespace Misc {
             return;
         }
 
-        static bool wasActive = false;
-        static float originalJumpPower = 50.0f;
-        static bool capturedOriginal = false;
-
         auto humanoidAddr = Globals::LocalPlayer.Humanoid.Address;
 
         if (Globals::Misc::Jump)
         {
-            if (!capturedOriginal)
+            if (!jumpCapturedOriginal)
             {
-                originalJumpPower = Driver->Read<float>(humanoidAddr + Offsets::Humanoid::JumpPower);
-                capturedOriginal = true;
+                jumpOriginalPower = Driver->Read<float>(humanoidAddr + Offsets::Humanoid::JumpPower);
+                jumpCapturedOriginal = true;
             }
 
             Driver->Write<bool>(humanoidAddr + Offsets::Humanoid::UseJumpPower, true);
             Driver->Write<float>(humanoidAddr + Offsets::Humanoid::JumpPower, Globals::Misc::Jump_Value);
-            wasActive = true;
+            jumpWasActive = true;
         }
-        else if (wasActive)
+        else if (jumpWasActive)
         {
-            Driver->Write<float>(humanoidAddr + Offsets::Humanoid::JumpPower, originalJumpPower);
-            wasActive = false;
-            capturedOriginal = false;
+            Driver->Write<float>(humanoidAddr + Offsets::Humanoid::JumpPower, jumpOriginalPower);
+            jumpWasActive = false;
+            jumpCapturedOriginal = false;
         }
     }
 
     static bool speedWasActive = false;
-    static bool jumpWasActive = false;
 
     void Speed(std::stop_token st)
     {
         OBF_PROLOGUE;
         OBF_JUNK_DECLARE;
+        std::uint64_t lastGameID = Globals::GameID;
 
         for (; !st.stop_requested(); )
         {
+            if (Globals::GameID != lastGameID)
+            {
+                lastGameID = Globals::GameID;
+                if (Globals::LocalPlayer.Humanoid.Address)
+                {
+                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::Walkspeed, 16.0f);
+                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::WalkspeedCheck, 16.0f);
+                }
+                speedWasActive = false;
+            }
+
             if (Globals::Misc::Speed && IsSpeedActiveByKeybind())
             {
                 Speedhack();
@@ -136,10 +147,22 @@ namespace Misc {
     {
         OBF_PROLOGUE;
         OBF_JUNK_DECLARE;
+        std::uint64_t lastGameID = Globals::GameID;
 
         for (; !st.stop_requested(); )
         {
-            SDK::sleep_jitter(10, 5);
+            if (Globals::GameID != lastGameID)
+            {
+                lastGameID = Globals::GameID;
+                if (Globals::LocalPlayer.Humanoid.Address)
+                {
+                    Driver->Write<float>(Globals::LocalPlayer.Humanoid.Address + Offsets::Humanoid::JumpPower, 50.0f);
+                }
+                jumpWasActive = false;
+                jumpCapturedOriginal = false;
+            }
+
+            SDK::sleep_jitter(30, 10);
 
             if (Globals::Misc::Jump && IsJumpActiveByKeybind())
             {

@@ -61,4 +61,5 @@ namespace mesh_gpu
         const render_params& params);
 
     void shutdown();
+    void clear_gpu_meshes();
 }

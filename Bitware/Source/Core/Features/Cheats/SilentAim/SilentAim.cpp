@@ -89,7 +89,6 @@ namespace SilentAim {
 
     void RunService(std::stop_token st) {
         std::thread([st]() {
-            timeBeginPeriod(1);
             bool Toggled = false;
             bool LastPressed = false;
 
@@ -105,6 +104,7 @@ namespace SilentAim {
                 if (Globals::Silent::Silent_Mode == ImKeyBindMode_Always) {
                     AcquireTarget();
                     UpdateSilentAim();
+                    SDK::sleep_jitter(8, 2);
                 } else if (Globals::Silent::Silent_Key == ImGuiKey_None) {
                     AcquireTarget();
                     UpdateSilentAim();
@@ -115,17 +115,16 @@ namespace SilentAim {
 
                     if (Globals::Silent::Silent_Mode == ImKeyBindMode_Toggle) {
                         if (Pressed && !LastPressed) Toggled = !Toggled;
-                        if (Toggled) { AcquireTarget(); UpdateSilentAim(); }
+                        if (Toggled) { AcquireTarget(); UpdateSilentAim(); SDK::sleep_jitter(8, 2); }
                         else { ResetViewport(); SDK::sleep_jitter(50, 15); }
                     } else {
-                        if (Pressed) { AcquireTarget(); UpdateSilentAim(); }
+                        if (Pressed) { AcquireTarget(); UpdateSilentAim(); SDK::sleep_jitter(8, 2); }
                         else { ResetViewport(); SDK::sleep_jitter(50, 15); }
                     }
                     LastPressed = Pressed;
                 }
             }
             ResetViewport();
-            timeEndPeriod(1);
         }).detach();
     }
 
