@@ -27,6 +27,30 @@ namespace SilentAim {
     static SDK::Vector2 AimPositionS = { 0, 0 };
     static std::atomic<bool> TargetFound{ false };
 
+    static SDK::ViewPort OriginalViewport = {};
+    static bool OriginalViewportSaved = false;
+
+    static void SaveOriginalViewport() {
+        OBF_PROLOGUE;
+        if (Globals::Camera.Address && !OriginalViewportSaved) {
+            OriginalViewport = Driver->Read<SDK::ViewPort>(Globals::Camera.Address + Offsets::Camera::Viewport);
+            OriginalViewportSaved = true;
+        }
+    }
+
+    static void RestoreOriginalViewport() {
+        OBF_PROLOGUE;
+        if (Globals::Camera.Address && OriginalViewportSaved) {
+            SDK::Camera Cam(Globals::Camera.Address);
+            Driver->Write<SDK::ViewPort>(Cam.Address + Offsets::Camera::Viewport, OriginalViewport);
+        }
+    }
+
+    static void ResetViewport() {
+        RestoreOriginalViewport();
+        OriginalViewportSaved = false;
+    }
+
     static SDK::Vector3 GetTargetBonePos(const SDK::Player& Plr, int HitboxIdx) {
         OBF_PROLOGUE;
         uintptr_t targetAddr = 0;
@@ -40,26 +64,19 @@ namespace SilentAim {
         return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
     }
 
-    static void ResetViewport() {
-        OBF_PROLOGUE;
-        if (Globals::Camera.Address) {
-            SDK::Camera Cam(Globals::Camera.Address);
-            Cam.SetViewPort({ 0, 0 });
-        }
-    }
-
     void AcquireTarget();
 
     void UpdateSilentAim() {
         OBF_PROLOGUE;
         if (!TargetFound) {
             OBF_JUNK_BLOCK;
-            ResetViewport();
+            RestoreOriginalViewport();
             return;
         }
 
         if (!Globals::Camera.Address) return;
         SDK::Camera Cam(Globals::Camera.Address);
+        SaveOriginalViewport();
 
         SDK::VisualEngine Ve(Globals::VisualEngine.Address);
         auto ScreenSize = Ve.Get_Dimensions();
@@ -85,7 +102,10 @@ namespace SilentAim {
                     continue;
                 }
 
-                if (Globals::Silent::Silent_Key == ImGuiKey_None) {
+                if (Globals::Silent::Silent_Mode == ImKeyBindMode_Always) {
+                    AcquireTarget();
+                    UpdateSilentAim();
+                } else if (Globals::Silent::Silent_Key == ImGuiKey_None) {
                     AcquireTarget();
                     UpdateSilentAim();
                 } else {

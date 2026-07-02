@@ -57,9 +57,9 @@ public:
     HANDLE Get_Handle();
 
 private:
-    std::uint32_t Process_ID;
-    std::uint64_t Base_Address;
-    HANDLE Process_Handle;
+    std::uint32_t Process_ID = 0;
+    std::uint64_t Base_Address = 0;
+    HANDLE Process_Handle = nullptr;
 };
 
 template <typename T>

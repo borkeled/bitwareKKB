@@ -979,6 +979,8 @@ bool Menu::KeyBindEx(const char* StrId, ImGuiKey* Key, ImKeyBindMode* Mode, cons
         if (Menu::SelectableLabel("Toggle", *Mode == ImKeyBindMode_Toggle)) *Mode = ImKeyBindMode_Toggle;
         SameLine();
         if (Menu::SelectableLabel("Hold", *Mode == ImKeyBindMode_Hold)) *Mode = ImKeyBindMode_Hold;
+        SameLine();
+        if (Menu::SelectableLabel("Always", *Mode == ImKeyBindMode_Always)) *Mode = ImKeyBindMode_Always;
 
         EndChild();
         EndPopup();

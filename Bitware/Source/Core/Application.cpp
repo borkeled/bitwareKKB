@@ -55,6 +55,8 @@ void Application::SetMenuRenderer(std::unique_ptr<IMenuRenderer> renderer)
     m_MenuRenderer = std::move(renderer);
 }
 
+const char* InitFailureReason = nullptr;
+
 bool Application::InitProcess()
 {
     OBF_PROLOGUE;
@@ -62,19 +64,33 @@ bool Application::InitProcess()
     for (int Retries = 0; Retries < 10; Retries++)
     {
         Driver->Find_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
-        Driver->Attach_Process(std::string(skCrypt("RobloxPlayerBeta.exe")));
+        if (!Driver->Get_Process()) {
+            Output::Warning(WRAPPER_MARCO("Process not found, retrying..."));
+            Api::Sleep(500);
+            continue;
+        }
+
+        if (!Driver->Attach_Process(std::string(skCrypt("RobloxPlayerBeta.exe")))) {
+            Output::Warning(WRAPPER_MARCO("Attach failed, retrying..."));
+            Api::Sleep(500);
+            continue;
+        }
+
         Driver->Find_Module(std::string(skCrypt("RobloxPlayerBeta.exe")));
+        if (!Driver->Get_Module()) {
+            Output::Warning(WRAPPER_MARCO("Module not found, retrying..."));
+            Api::Sleep(500);
+            continue;
+        }
 
         if (Driver->Get_Handle())
             break;
-
-        Output::Warning(WRAPPER_MARCO("Retrying process attachment..."));
-        Api::Sleep(500);
     }
 
     if (!Driver->Get_Handle())
     {
-        Output::Error(WRAPPER_MARCO("Failed to attach to process"));
+        InitFailureReason = WRAPPER_MARCO("Failed to find or attach to RobloxPlayerBeta.exe.\nMake sure Roblox is running and you are running as Administrator.");
+        Output::Error(InitFailureReason);
         return false;
     }
 
@@ -91,6 +107,7 @@ bool Application::InitSDK()
     OBF_PROLOGUE;
     auto ModuleBase = Driver->Get_Module();
     if (!ModuleBase) {
+        InitFailureReason = WRAPPER_MARCO("RobloxPlayerBeta.exe module base not found");
         OBF_JUNK_BLOCK;
         return false;
     }
@@ -101,12 +118,14 @@ bool Application::InitSDK()
 
     auto FakeDataModel = Driver->Read<std::uint64_t>(ModuleBase + Offsets::FakeDataModel::Pointer);
     if (!FakeDataModel) {
+        InitFailureReason = WRAPPER_MARCO("FakeDataModel pointer invalid - SDK offsets may be out of date");
         OBF_JUNK_BLOCK;
         return false;
     }
 
     Globals::Datamodel.Address = Driver->Read<std::uint64_t>(FakeDataModel + Offsets::FakeDataModel::RealDataModel);
     if (!Globals::Datamodel.Address) {
+        InitFailureReason = WRAPPER_MARCO("RealDataModel pointer invalid - SDK offsets may be out of date");
         OBF_JUNK_BLOCK;
         OBF_JUNK_DECLARE;
         return false;
@@ -243,6 +262,7 @@ bool Application::Init()
             (unsigned long long)exc->ExceptionRecord->ExceptionAddress);
         Logger::Log(buf);
         Logger::Flush();
+        InitFailureReason = WRAPPER_MARCO("An unexpected exception occurred during initialization");
         return false;
     }
 }

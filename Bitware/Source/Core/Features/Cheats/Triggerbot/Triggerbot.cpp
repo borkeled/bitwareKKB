@@ -80,41 +80,43 @@ namespace Triggerbot {
                 }
                 LastTick = std::chrono::steady_clock::now();
 
-                int Vk = ImGuiKeyToVK(Globals::Triggerbot::Triggerbot_Key);
-                if (!Vk) {
-                    if (Holding) {
-                        INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
-                        Api::SendInput(1, &Up, sizeof(INPUT));
-                        Holding = false;
+                if (Globals::Triggerbot::Triggerbot_Mode != ImKeyBindMode_Always) {
+                    int Vk = ImGuiKeyToVK(Globals::Triggerbot::Triggerbot_Key);
+                    if (!Vk) {
+                        if (Holding) {
+                            INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
+                            Api::SendInput(1, &Up, sizeof(INPUT));
+                            Holding = false;
+                        }
+                        SDK::sleep_jitter(50, 10);
+                        continue;
                     }
-                    SDK::sleep_jitter(50, 10);
-                    continue;
-                }
-                bool Pressed = InputHook::IsKeyDown(Vk);
+                    bool Pressed = InputHook::IsKeyDown(Vk);
 
-                if (Globals::Triggerbot::Triggerbot_Mode == ImKeyBindMode_Toggle) {
-                    if (Pressed && !LastPressed) Toggled = !Toggled;
-                    if (!Toggled) {
-                        if (Holding) {
-                            INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
-                            Api::SendInput(1, &Up, sizeof(INPUT));
-                            Holding = false;
+                    if (Globals::Triggerbot::Triggerbot_Mode == ImKeyBindMode_Toggle) {
+                        if (Pressed && !LastPressed) Toggled = !Toggled;
+                        if (!Toggled) {
+                            if (Holding) {
+                                INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
+                                Api::SendInput(1, &Up, sizeof(INPUT));
+                                Holding = false;
+                            }
+                            SDK::sleep_jitter(50, 10);
+                            continue;
                         }
-                        SDK::sleep_jitter(50, 10);
-                        continue;
-                    }
-                } else {
-                    if (!Pressed) {
-                        if (Holding) {
-                            INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
-                            Api::SendInput(1, &Up, sizeof(INPUT));
-                            Holding = false;
+                    } else {
+                        if (!Pressed) {
+                            if (Holding) {
+                                INPUT Up = {}; Up.type = INPUT_MOUSE; Up.mi.dwFlags = MOUSEEVENTF_LEFTUP; Up.mi.dwExtraInfo = SDK::xorshift64();
+                                Api::SendInput(1, &Up, sizeof(INPUT));
+                                Holding = false;
+                            }
+                            SDK::sleep_jitter(50, 10);
+                            continue;
                         }
-                        SDK::sleep_jitter(50, 10);
-                        continue;
                     }
+                    LastPressed = Pressed;
                 }
-                LastPressed = Pressed;
 
                 if (!Globals::VisualEngine.Address || !Globals::Camera.Address) {
                     SDK::sleep_jitter(10, 5);

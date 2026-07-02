@@ -1239,7 +1239,7 @@ void c_gui::draw_decorations()
 
     c_draw_list* draw_list = gui->background_drawlist();
 
-    const float win_rnd = s_(elements->window.rounding);
+    const float win_rnd = ImMin(s_(elements->window.rounding), ImMin(rect.GetWidth(), rect.GetHeight()) * 0.5f);
 
     draw->shadow_rect(draw_list, rect.Min, rect.Max,
         draw->get_clr(clr->accent, 0.04f), s_(40), c_vec2(0, 0),

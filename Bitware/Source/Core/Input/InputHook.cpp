@@ -67,14 +67,20 @@ namespace InputHook
             DWORD vk = static_cast<DWORD>(ImGuiKeyToVK(key));
             if (vk > 0 && vk < 256) g_BoundVk[vk] = true;
         };
+        auto bind_if_not_always = [](ImGuiKey key, ImKeyBindMode mode) {
+            if (mode == ImKeyBindMode_Always) return;
+            if (key == ImGuiKey_None) return;
+            DWORD vk = static_cast<DWORD>(ImGuiKeyToVK(key));
+            if (vk > 0 && vk < 256) g_BoundVk[vk] = true;
+        };
 
-        bind(SettingsStore::Aimbot_Key);
-        bind(SettingsStore::Triggerbot_Key);
+        bind_if_not_always(SettingsStore::Aimbot_Key, SettingsStore::Aimbot_Mode);
+        bind_if_not_always(SettingsStore::Triggerbot_Key, SettingsStore::Triggerbot_Mode);
         bind(SettingsStore::Visuals_ToggleKey);
         bind(SettingsStore::Aimbot_FovToggleKey);
         bind(SettingsStore::Misc_Speed_Key);
         bind(SettingsStore::Misc_Jump_Key);
-        bind(SettingsStore::Silent_Key);
+        bind_if_not_always(SettingsStore::Silent_Key, SettingsStore::Silent_Mode);
         bind(SettingsStore::Silent_FovToggleKey);
     }
 

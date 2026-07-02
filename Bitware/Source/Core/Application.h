@@ -7,6 +7,8 @@
 
 class IMenuRenderer;
 
+extern const char* InitFailureReason;
+
 class Application {
 public:
     Application();

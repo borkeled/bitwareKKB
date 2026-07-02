@@ -54,7 +54,7 @@ std::uint64_t Driver_t::Find_Module(const std::string& Module_Name)
     OBF_PROLOGUE;
     std::uint64_t Module_Address = 0;
 
-    if (!Process_Handle || Process_Handle == INVALID_HANDLE_VALUE || !DriverNtOpenProcess) {
+    if (!Process_Handle || Process_Handle == INVALID_HANDLE_VALUE || !DriverReadVirtualMemory) {
         OBF_JUNK_BLOCK;
         return Module_Address;
     }

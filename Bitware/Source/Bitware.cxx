@@ -232,18 +232,38 @@ namespace {
     }
 
     bool IsRobloxRunning() {
-        bool found = false;
-        EnumWindows(EnumRobloxWindow, reinterpret_cast<LPARAM>(&found));
-        return found;
+        HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+        if (snapshot == INVALID_HANDLE_VALUE) {
+            bool found = false;
+            EnumWindows(EnumRobloxWindow, reinterpret_cast<LPARAM>(&found));
+            return found;
+        }
+
+        PROCESSENTRY32W pe = { sizeof(pe) };
+        if (Process32FirstW(snapshot, &pe)) {
+            do {
+                if (_wcsicmp(pe.szExeFile, WS(skCrypt(L"RobloxPlayerBeta.exe")).c_str()) == 0) {
+                    CloseHandle(snapshot);
+                    return true;
+                }
+            } while (Process32NextW(snapshot, &pe));
+        }
+        CloseHandle(snapshot);
+        return false;
     }
 
     void WaitForRobloxWithSplash() {
         SplashWindow::SetStatus(SplashWindow::Status::Waiting, "Roblox",
             S(skCrypt("Waiting for RobloxPlayerBeta.exe...")).c_str());
 
+        const int timeout_ms = 30000;
+        int waited = 0;
+
         while (!IsRobloxRunning()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(400));
-            if (!SplashWindow::IsRunning()) break;
+            waited += 400;
+            if (!SplashWindow::IsRunning() || waited >= timeout_ms)
+                break;
         }
 
         if (SplashWindow::IsRunning()) {
@@ -354,7 +374,8 @@ std::int32_t main(std::int32_t argc, char** argv[]) {
     Application app;
 
     if (!app.Init()) {
-        Api::MessageBoxA(nullptr, WRAPPER_MARCO("Failed to initialize"), WRAPPER_MARCO("Error"), MB_ICONERROR | MB_OK);
+        const char* reason = InitFailureReason ? InitFailureReason : WRAPPER_MARCO("Unknown error");
+        Api::MessageBoxA(nullptr, reason, WRAPPER_MARCO("Bitware - Initialization Failed"), MB_ICONERROR | MB_OK);
         return 1;
     }
 

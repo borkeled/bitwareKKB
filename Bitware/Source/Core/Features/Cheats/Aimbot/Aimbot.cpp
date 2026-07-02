@@ -221,19 +221,24 @@ namespace Aimbot {
                     std::this_thread::sleep_until(NextTick);
                 }
                 LastTick = std::chrono::steady_clock::now();
-                int Vk = ImGuiKeyToVK(Globals::Aimbot::Aimbot_Key);
-                if (!Vk) { OBF_JUNK_BLOCK; continue; }
-                bool Pressed = InputHook::IsKeyDown(Vk);
-
-                if (Globals::Aimbot::Aimbot_Mode == ImKeyBindMode_Toggle) {
-                    if (Pressed && !LastPressed) Toggled = !Toggled;
-                    if (Toggled) { AcquireTarget(); UpdateAimbot(); }
-                    else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); SDK::sleep_jitter(50, 15); }
+                if (Globals::Aimbot::Aimbot_Mode == ImKeyBindMode_Always) {
+                    AcquireTarget();
+                    UpdateAimbot();
                 } else {
-                    if (Pressed) { AcquireTarget(); UpdateAimbot(); }
-                    else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); SDK::sleep_jitter(50, 15); }
+                    int Vk = ImGuiKeyToVK(Globals::Aimbot::Aimbot_Key);
+                    if (!Vk) { OBF_JUNK_BLOCK; continue; }
+                    bool Pressed = InputHook::IsKeyDown(Vk);
+
+                    if (Globals::Aimbot::Aimbot_Mode == ImKeyBindMode_Toggle) {
+                        if (Pressed && !LastPressed) Toggled = !Toggled;
+                        if (Toggled) { AcquireTarget(); UpdateAimbot(); }
+                        else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); SDK::sleep_jitter(50, 15); }
+                    } else {
+                        if (Pressed) { AcquireTarget(); UpdateAimbot(); }
+                        else { CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0; Globals::Aimbot::AimTarget = SDK::Instance(0); SDK::sleep_jitter(50, 15); }
+                    }
+                    LastPressed = Pressed;
                 }
-                LastPressed = Pressed;
                 if (StoredGameID != 0 && Globals::GameID != StoredGameID) {
                     StoredGameID = Globals::GameID;
                     CurrentLockedName[0] = '\0'; IsPersisting = false; PersistenceAddress = 0;
@@ -293,6 +298,9 @@ namespace Aimbot {
             IsPersisting = false;
             PersistenceAddress = 0;
             Globals::Aimbot::AimTarget = SDK::Instance(0);
+            TargetFound = false;
+            CurrentLockedName[0] = '\0';
+            return;
         }
 
         for (auto& Plr : *Snapshot) {

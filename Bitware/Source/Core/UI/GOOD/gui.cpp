@@ -61,7 +61,7 @@ static bool slider_int(const std::string& name, const std::string& desc, int* va
 static void draw_visual_sidebar_glass(const c_rect& bounds)
 {
 	c_draw_list* dl = gui->background_drawlist();
-	const float sb_rnd = s_(12);
+	const float sb_rnd = ImMin(s_(12), ImMin(bounds.GetWidth(), bounds.GetHeight()) * 0.5f);
 
 	draw->shadow_rect(dl, bounds.Min, bounds.Max,
 		draw->get_clr(clr->accent, 0.04f), s_(24), c_vec2(0, 0),
@@ -93,7 +93,7 @@ static void begin_visual_section(const std::string& name, float height)
 	if (window->SkipItems)
 		return;
 
-	const float sec_rnd = s_(12);
+	const float sec_rnd = ImMin(s_(12), ImMin(window->Size.x, window->Size.y) * 0.5f);
 
 	draw->shadow_rect(window->DrawList, window->Pos, window->Pos + window->Size,
 		draw->get_clr(clr->accent, 0.04f), s_(24), c_vec2(0, 0),
@@ -179,9 +179,10 @@ static void sync_keybind_from_store(keybind_t& kb, ImGuiKey store_key, ImKeyBind
 	if (!kb.capturing)
 	{
 		kb.key = (int)store_key;
-		// Convert ImKeyBindMode → keybind_mode
 		if (store_mode == ImKeyBindMode_Toggle)
 			kb.mode = keybind_mode_toggle;
+		else if (store_mode == ImKeyBindMode_Always)
+			kb.mode = keybind_mode_always;
 		else
 			kb.mode = keybind_mode_hold;
 	}
@@ -190,9 +191,10 @@ static void sync_keybind_from_store(keybind_t& kb, ImGuiKey store_key, ImKeyBind
 static void sync_keybind_to_store(const keybind_t& kb, ImGuiKey& store_key, ImKeyBindMode& store_mode)
 {
 	store_key = (ImGuiKey)kb.key;
-	// Convert keybind_mode → ImKeyBindMode
 	if (kb.mode == keybind_mode_toggle)
 		store_mode = ImKeyBindMode_Toggle;
+	else if (kb.mode == keybind_mode_always)
+		store_mode = ImKeyBindMode_Always;
 	else
 		store_mode = ImKeyBindMode_Hold;
 }

@@ -1526,6 +1526,31 @@ bool c_widgets::keybind(std::string name, std::string description, keybind_t* bi
 	}
 	bind->capturing = state->listening;
 
+	if (!state->listening && gui->mouse_clicked(1) && bind_button.Contains(gui->mouse_pos()))
+	{
+		ImGui::OpenPopup("##keybind_mode_popup");
+	}
+
+	if (ImGui::BeginPopup("##keybind_mode_popup"))
+	{
+		if (ImGui::MenuItem("Hold", nullptr, bind->mode == keybind_mode_hold))
+		{
+			bind->mode = keybind_mode_hold;
+			changed = true;
+		}
+		if (ImGui::MenuItem("Toggle", nullptr, bind->mode == keybind_mode_toggle))
+		{
+			bind->mode = keybind_mode_toggle;
+			changed = true;
+		}
+		if (ImGui::MenuItem("Always", nullptr, bind->mode == keybind_mode_always))
+		{
+			bind->mode = keybind_mode_always;
+			changed = true;
+		}
+		ImGui::EndPopup();
+	}
+
 	gui->easing(state->bind_hover_alpha, bind_hovered || bind_held || state->listening ? 1.f : 0.f, 12.f, dynamic_easing);
 	gui->easing(state->listen_alpha, state->listening ? 1.f : 0.f, 14.f, dynamic_easing);
 	gui->easing(state->bind_background, state->listening ? clr->accent.Value : clr->widget.Value, 18.f, dynamic_easing);
