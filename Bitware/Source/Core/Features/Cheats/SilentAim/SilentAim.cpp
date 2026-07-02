@@ -59,6 +59,13 @@ namespace SilentAim {
         else targetAddr = Plr.HumanoidRootPart.Address;
 
         if (!targetAddr) return SDK::Vector3{};
+        for (int ci = 0; ci < Plr.CachedBoneCount; ++ci) {
+            if (Plr.CachedBones[ci].InstanceAddress == targetAddr) {
+                auto pa = Plr.CachedBones[ci].PrimitiveAddress;
+                if (pa) return Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                break;
+            }
+        }
         uintptr_t primAddr = Driver->Read<uintptr_t>(targetAddr + Offsets::BasePart::Primitive);
         if (!primAddr) return SDK::Vector3{};
         return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
@@ -190,7 +197,7 @@ namespace SilentAim {
             float Dist2DSqr = (ScreenPos.x - CursorPos.x) * (ScreenPos.x - CursorPos.x) + (ScreenPos.y - CursorPos.y) * (ScreenPos.y - CursorPos.y);
 
             if (Globals::Silent::useFov) { float MaxFovSqr = Globals::Silent::FovSize * Globals::Silent::FovSize; if (Dist2DSqr > MaxFovSqr) continue; }
-            if (Globals::Silent::KnockedCheck && PlayerUtils::IsPlayerKnocked(Plr)) continue;
+            if (Globals::Silent::KnockedCheck && PlayerUtils::IsPlayerDead(Plr)) continue;
             if (Globals::Silent::WallCheck && !wallcheck->is_visible(CameraOrigin, BonePos)) continue;
 
             if (Dist2DSqr < ClosestDistanceSqr) {

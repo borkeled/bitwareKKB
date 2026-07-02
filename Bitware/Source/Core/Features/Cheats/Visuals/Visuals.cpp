@@ -276,18 +276,31 @@ namespace Visuals {
                 continue;
             }
 
-            SDK::Part Head(Player.Head.Address);
-            if (!Head.Address) continue;
+            if (!Player.Head.Address) continue;
 
-            SDK::Vector3 HeadPos = Head.Get_Primitive().Get_Position();
+            SDK::Vector3 HeadPos{};
+            for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                if (Player.CachedBones[ci].InstanceAddress == Player.Head.Address) {
+                    auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                    if (pa) HeadPos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                    break;
+                }
+            }
             auto Head_W2S = Globals::VisualEngine.World_To_Screen(HeadPos);
 
             bool onScreen = (Head_W2S.x >= 0.f && Head_W2S.y >= 0.f);
 
             if (!onScreen && Player.HumanoidRootPart.Address)
             {
-                SDK::Part Root(Player.HumanoidRootPart.Address);
-                auto Root_W2S = Globals::VisualEngine.World_To_Screen(Root.Get_Primitive().Get_Position());
+                SDK::Vector3 RootPos{};
+                for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                    if (Player.CachedBones[ci].InstanceAddress == Player.HumanoidRootPart.Address) {
+                        auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                        if (pa) RootPos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                        break;
+                    }
+                }
+                auto Root_W2S = Globals::VisualEngine.World_To_Screen(RootPos);
                 onScreen = (Root_W2S.x >= 0.f && Root_W2S.y >= 0.f);
             }
 
@@ -306,15 +319,19 @@ namespace Visuals {
 
                 for (auto* Inst : Bones) {
                     if (!Inst || !Inst->Address) continue;
-                    const auto Part = SDK::Part(Inst->Address);
-                    if (!Part.Address) continue;
 
-                    const auto Primitive = Part.Get_Primitive();
-                    if (!Primitive.Address) continue;
+                    std::uint64_t primAddr = 0;
+                    for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                        if (Player.CachedBones[ci].InstanceAddress == Inst->Address) {
+                            primAddr = Player.CachedBones[ci].PrimitiveAddress;
+                            break;
+                        }
+                    }
+                    if (!primAddr) continue;
 
-                    SDK::Vector3 Size = Primitive.Get_Size();
-                    const auto Position = Primitive.Get_Position();
-                    const auto Rotation = Primitive.Get_Rotation();
+                    SDK::Vector3 Size = Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Size);
+                    SDK::Vector3 Position = Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
+                    SDK::Matrix3 Rotation = Driver->Read<SDK::Matrix3>(primAddr + Offsets::Primitive::Rotation);
 
                     if (std::isnan(Position.x) || std::isnan(Position.y) || std::isnan(Position.z))
                         continue;
@@ -360,8 +377,15 @@ namespace Visuals {
 
                 if (Player.HumanoidRootPart.Address)
                 {
-                    auto RootW2S = Globals::VisualEngine.World_To_Screen(
-                        SDK::Part(Player.HumanoidRootPart.Address).Get_Primitive().Get_Position());
+                    SDK::Vector3 RootPos2{};
+                    for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                        if (Player.CachedBones[ci].InstanceAddress == Player.HumanoidRootPart.Address) {
+                            auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                            if (pa) RootPos2 = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                            break;
+                        }
+                    }
+                    auto RootW2S = Globals::VisualEngine.World_To_Screen(RootPos2);
                     if (RootW2S.x >= 0.f && RootW2S.y >= 0.f)
                     {
                         Left = std::min(Left, RootW2S.x - 15.f);
@@ -379,19 +403,22 @@ namespace Visuals {
                 bool visible = wallcheck->is_visible(CamPos, HeadPos);
                 if (!visible)
                 {
-                    auto try_point = [&](const SDK::Instance& inst) -> bool
+                    auto try_point = [&](std::uint64_t addr) -> bool
                     {
-                        if (!inst.Address) return false;
-                        SDK::Part p(inst.Address);
-                        if (!p.Address) return false;
-                        auto prim = p.Get_Primitive();
-                        if (!prim.Address) return false;
-                        return wallcheck->is_visible(CamPos, prim.Get_Position());
+                        if (!addr) return false;
+                        for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                            if (Player.CachedBones[ci].InstanceAddress == addr) {
+                                auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                                if (!pa) return false;
+                                return wallcheck->is_visible(CamPos, Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position));
+                            }
+                        }
+                        return false;
                     };
-                    visible = try_point(Player.HumanoidRootPart) ||
-                              try_point(Player.UpperTorso) ||
-                              try_point(Player.LowerTorso) ||
-                              try_point(Player.Torso);
+                    visible = try_point(Player.HumanoidRootPart.Address) ||
+                              try_point(Player.UpperTorso.Address) ||
+                              try_point(Player.LowerTorso.Address) ||
+                              try_point(Player.Torso.Address);
                 }
                 if (!visible)
                     wl = Globals::Visuals::Colors::Occluded;
@@ -600,15 +627,22 @@ namespace Visuals {
                 ImDrawListFlags SavedFlags = Draw->Flags;
                 Draw->Flags |= ImDrawListFlags_AntiAliasedLines | ImDrawListFlags_AntiAliasedFill;
 
-                auto ProjectPart = [&](const SDK::Instance* Inst, const SDK::Part& Part) -> const std::vector<ImVec2>& {
+                auto ProjectPart = [&](const SDK::Instance* Inst) -> const std::vector<ImVec2>& {
                     static thread_local std::vector<ImVec2> Projected;
                     static thread_local std::vector<ImVec2> Hull;
                     Projected.clear(); Hull.clear();
-                    if (!Part.Address) return Hull;
-                    const auto Prim = Part.Get_Primitive();
-                    auto Size = Prim.Get_Size();
-                    const auto Pos = Prim.Get_Position();
-                    const auto Rot = Prim.Get_Rotation();
+                    if (!Inst || !Inst->Address) return Hull;
+                    std::uint64_t primAddr = 0;
+                    for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                        if (Player.CachedBones[ci].InstanceAddress == Inst->Address) {
+                            primAddr = Player.CachedBones[ci].PrimitiveAddress;
+                            break;
+                        }
+                    }
+                    if (!primAddr) return Hull;
+                    auto Size = Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Size);
+                    SDK::Vector3 Pos = Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
+                    SDK::Matrix3 Rot = Driver->Read<SDK::Matrix3>(primAddr + Offsets::Primitive::Rotation);
                     if (Globals::GameID == 292439477) {
                         if (Inst == &Player.Head) Size = { 1.f, 1.f, 1.f };
                         else if (Inst == &Player.Torso || Inst == &Player.UpperTorso || Inst == &Player.LowerTorso) Size = { 2.f, 2.f, 1.f };
@@ -634,8 +668,7 @@ namespace Visuals {
 
                 Clipper2Lib::Paths64 AllParts;
                 for (auto* Inst : Bones) {
-                    const SDK::Part Part(Inst->Address);
-                    auto Hull = ProjectPart(Inst, Part);
+                    auto Hull = ProjectPart(Inst);
                     if (Hull.size() < 3) continue;
                     Clipper2Lib::Path64 Path;
                     Path.reserve(Hull.size());
@@ -698,10 +731,16 @@ namespace Visuals {
                         int MaxCount = std::min(Count, 8);
                         for (int i = 0; i < MaxCount; ++i) {
                             if (!Instances[i].Address) { DrawPoly(ScreenPoints, ValidCount); ValidCount = 0; continue; }
-                            SDK::Part Part(Instances[i].Address);
-                            if (!Part.Address) { DrawPoly(ScreenPoints, ValidCount); ValidCount = 0; continue; }
+                            SDK::Vector3 BonePos{};
+                            for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                                if (Player.CachedBones[ci].InstanceAddress == Instances[i].Address) {
+                                    auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                                    if (pa) BonePos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                                    break;
+                                }
+                            }
                             ImVec2 ScreenPos;
-                            if (!W2S(Part.Get_Primitive().Get_Position(), ScreenPos)) { DrawPoly(ScreenPoints, ValidCount); ValidCount = 0; continue; }
+                            if (!W2S(BonePos, ScreenPos)) { DrawPoly(ScreenPoints, ValidCount); ValidCount = 0; continue; }
                             ScreenPoints[ValidCount++] = ScreenPos;
                         }
                         DrawPoly(ScreenPoints, ValidCount);
@@ -718,12 +757,23 @@ namespace Visuals {
                     ProcessR15Chain(RightLeg, 4);
                 }
                 else if (Player.Torso.Address && Player.Head.Address) {
-                    SDK::Part TorsoPart(Player.Torso.Address), HeadPart(Player.Head.Address);
-                    const auto& TorsoPrim = TorsoPart.Get_Primitive();
-                    const auto& HeadPrim = HeadPart.Get_Primitive();
-                    const SDK::Vector3 TorsoPos = TorsoPrim.Get_Position(), TorsoSize = TorsoPrim.Get_Size();
-                    const auto TorsoRot = TorsoPrim.Get_Rotation();
-                    const SDK::Vector3 HeadPos = HeadPrim.Get_Position(), HeadSize = HeadPrim.Get_Size();
+                    auto ReadPrimLive = [&](std::uint64_t addr, SDK::Vector3& pos, SDK::Vector3& sz, SDK::Matrix3& rot) {
+                        for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                            if (Player.CachedBones[ci].InstanceAddress == addr) {
+                                auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                                if (!pa) return;
+                                pos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                                sz  = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Size);
+                                rot = Driver->Read<SDK::Matrix3>(pa + Offsets::Primitive::Rotation);
+                                return;
+                            }
+                        }
+                    };
+                    SDK::Vector3 TorsoPos{}, TorsoSize{}; SDK::Matrix3 TorsoRot{};
+                    SDK::Vector3 HeadPos{}, HeadSize{}; SDK::Matrix3 HeadRot{};
+                    ReadPrimLive(Player.Torso.Address, TorsoPos, TorsoSize, TorsoRot);
+                    ReadPrimLive(Player.Head.Address, HeadPos, HeadSize, HeadRot);
+
                     const SDK::Vector3 ShoulderCenter = TorsoPos + TorsoRot * SDK::Vector3{ 0, TorsoSize.y * 0.2f, 0 };
                     const SDK::Vector3 HipCenter = TorsoPos - TorsoRot * SDK::Vector3{ 0, TorsoSize.y * 0.4f, 0 };
                     const SDK::Vector3 HeadBottom = HeadPos - SDK::Vector3{ 0, HeadSize.y * 0.5f, 0 };
@@ -745,25 +795,77 @@ namespace Visuals {
                     {
                         SDK::Vector3 ArmPts[4]; int Count = 0;
                         ArmPts[Count++] = ShoulderCenter; ArmPts[Count++] = ShoulderLeft;
-                        if (Player.LeftArm.Address) { SDK::Part Arm(Player.LeftArm.Address); const auto& ArmPrim = Arm.Get_Primitive(); const auto& ArmRot = ArmPrim.Get_Rotation(); const SDK::Vector3 ArmPos = ArmPrim.Get_Position(); const SDK::Vector3 ArmSize = ArmPrim.Get_Size(); ArmPts[Count++] = ArmPos + ArmRot * SDK::Vector3{ 0, ArmSize.y * 0.2f, 0 }; ArmPts[Count++] = ArmPos - ArmRot * SDK::Vector3{ 0, ArmSize.y * 0.5f, 0 }; }
+                        if (Player.LeftArm.Address) {
+                            for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                                if (Player.CachedBones[ci].InstanceAddress == Player.LeftArm.Address) {
+                                    auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                                    if (!pa) break;
+                                    SDK::Vector3 aPos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                                    SDK::Vector3 aSz = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Size);
+                                    SDK::Matrix3 aRot = Driver->Read<SDK::Matrix3>(pa + Offsets::Primitive::Rotation);
+                                    ArmPts[Count++] = aPos + aRot * SDK::Vector3{ 0, aSz.y * 0.2f, 0 };
+                                    ArmPts[Count++] = aPos - aRot * SDK::Vector3{ 0, aSz.y * 0.5f, 0 };
+                                    break;
+                                }
+                            }
+                        }
                         ProcessR6Chain(ArmPts, Count);
                     }
                     {
                         SDK::Vector3 ArmPts[4]; int Count = 0;
                         ArmPts[Count++] = ShoulderCenter; ArmPts[Count++] = ShoulderRight;
-                        if (Player.RightArm.Address) { SDK::Part Arm(Player.RightArm.Address); const auto& ArmPrim = Arm.Get_Primitive(); const auto& ArmRot = ArmPrim.Get_Rotation(); const SDK::Vector3 ArmPos = ArmPrim.Get_Position(); const SDK::Vector3 ArmSize = ArmPrim.Get_Size(); ArmPts[Count++] = ArmPos + ArmRot * SDK::Vector3{ 0, ArmSize.y * 0.2f, 0 }; ArmPts[Count++] = ArmPos - ArmRot * SDK::Vector3{ 0, ArmSize.y * 0.5f, 0 }; }
+                        if (Player.RightArm.Address) {
+                            for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                                if (Player.CachedBones[ci].InstanceAddress == Player.RightArm.Address) {
+                                    auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                                    if (!pa) break;
+                                    SDK::Vector3 aPos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                                    SDK::Vector3 aSz = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Size);
+                                    SDK::Matrix3 aRot = Driver->Read<SDK::Matrix3>(pa + Offsets::Primitive::Rotation);
+                                    ArmPts[Count++] = aPos + aRot * SDK::Vector3{ 0, aSz.y * 0.2f, 0 };
+                                    ArmPts[Count++] = aPos - aRot * SDK::Vector3{ 0, aSz.y * 0.5f, 0 };
+                                    break;
+                                }
+                            }
+                        }
                         ProcessR6Chain(ArmPts, Count);
                     }
                     {
                         SDK::Vector3 LegPts[3]; int Count = 0;
                         LegPts[Count++] = HipCenter;
-                        if (Player.LeftLeg.Address) { SDK::Part Leg(Player.LeftLeg.Address); const auto& LegPrim = Leg.Get_Primitive(); const auto& LegRot = LegPrim.Get_Rotation(); const SDK::Vector3 LegPos = LegPrim.Get_Position(); const SDK::Vector3 LegSize = LegPrim.Get_Size(); LegPts[Count++] = LegPos + LegRot * SDK::Vector3{ 0, LegSize.y * 0.5f, 0 }; LegPts[Count++] = LegPos - LegRot * SDK::Vector3{ 0, LegSize.y * 0.5f, 0 }; }
+                        if (Player.LeftLeg.Address) {
+                            for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                                if (Player.CachedBones[ci].InstanceAddress == Player.LeftLeg.Address) {
+                                    auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                                    if (!pa) break;
+                                    SDK::Vector3 lPos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                                    SDK::Vector3 lSz = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Size);
+                                    SDK::Matrix3 lRot = Driver->Read<SDK::Matrix3>(pa + Offsets::Primitive::Rotation);
+                                    LegPts[Count++] = lPos + lRot * SDK::Vector3{ 0, lSz.y * 0.5f, 0 };
+                                    LegPts[Count++] = lPos - lRot * SDK::Vector3{ 0, lSz.y * 0.5f, 0 };
+                                    break;
+                                }
+                            }
+                        }
                         ProcessR6Chain(LegPts, Count);
                     }
                     {
                         SDK::Vector3 LegPts[3]; int Count = 0;
                         LegPts[Count++] = HipCenter;
-                        if (Player.RightLeg.Address) { SDK::Part Leg(Player.RightLeg.Address); const auto& LegPrim = Leg.Get_Primitive(); const auto& LegRot = LegPrim.Get_Rotation(); const SDK::Vector3 LegPos = LegPrim.Get_Position(); const SDK::Vector3 LegSize = LegPrim.Get_Size(); LegPts[Count++] = LegPos + LegRot * SDK::Vector3{ 0, LegSize.y * 0.5f, 0 }; LegPts[Count++] = LegPos - LegRot * SDK::Vector3{ 0, LegSize.y * 0.5f, 0 }; }
+                        if (Player.RightLeg.Address) {
+                            for (int ci = 0; ci < Player.CachedBoneCount; ++ci) {
+                                if (Player.CachedBones[ci].InstanceAddress == Player.RightLeg.Address) {
+                                    auto pa = Player.CachedBones[ci].PrimitiveAddress;
+                                    if (!pa) break;
+                                    SDK::Vector3 lPos = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                                    SDK::Vector3 lSz = Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Size);
+                                    SDK::Matrix3 lRot = Driver->Read<SDK::Matrix3>(pa + Offsets::Primitive::Rotation);
+                                    LegPts[Count++] = lPos + lRot * SDK::Vector3{ 0, lSz.y * 0.5f, 0 };
+                                    LegPts[Count++] = lPos - lRot * SDK::Vector3{ 0, lSz.y * 0.5f, 0 };
+                                    break;
+                                }
+                            }
+                        }
                         ProcessR6Chain(LegPts, Count);
                     }
                 }
@@ -825,25 +927,22 @@ namespace chams_gpu_dispatch
 {
     struct callback_data
     {
-        std::vector<SDK::Player> snapshot;
+        std::shared_ptr<const std::vector<SDK::Player>> snapshot_ptr;
         SDK::Matrix4             view{};
         SDK::Vector2             dims{};
         mesh_gpu::render_params  params{};
     };
 
-    static callback_data* g_pending = nullptr;
+    static std::atomic<callback_data*> g_pending{ nullptr };
 
     static void submit(callback_data* data)
     {
-        delete g_pending;
-        g_pending = data;
+        delete g_pending.exchange(data);
     }
 
     static callback_data* consume()
     {
-        callback_data* d = g_pending;
-        g_pending = nullptr;
-        return d;
+        return g_pending.exchange(nullptr);
     }
 }
 
@@ -921,7 +1020,7 @@ void Visuals::RunMeshChams()
     std::memcpy(params.occluded_color, Globals::Visuals::Colors::ChamsOccluded, sizeof(params.occluded_color));
 
     auto* cb = new chams_gpu_dispatch::callback_data{};
-    cb->snapshot = *snapshot;
+    cb->snapshot_ptr = snapshot;
     cb->view     = view;
     cb->dims     = dims;
     cb->params   = params;
@@ -943,7 +1042,7 @@ void Visuals::FlushMeshChams(ID3D11Device* device, ID3D11DeviceContext* context,
     };
 
     const std::vector<mesh_gpu::draw_item> draws = mesh_chams::build_draw_list(
-        data->snapshot, Globals::LocalPlayer, view_flat);
+        *(data->snapshot_ptr), Globals::LocalPlayer, view_flat);
 
     if (!draws.empty())
     {

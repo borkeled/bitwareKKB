@@ -113,6 +113,16 @@ namespace Cache {
             Player.Rig_Type = Humanoid.Get_RigType();
         }
 
+        Player.CachedBoneCount = 0;
+        for (const auto& Mapping : Part_Mappings) {
+            const SDK::Instance& part = Player.*(Mapping.Member);
+            if (!part.Address) continue;
+            auto& entry = Player.CachedBones[Player.CachedBoneCount];
+            entry.InstanceAddress = part.Address;
+            entry.PrimitiveAddress = Driver->Read<std::uint64_t>(part.Address + Offsets::BasePart::Primitive);
+            Player.CachedBoneCount++;
+        }
+
         if (!Is_Local && Player.Head.Address != 0 && Valid_Position(Camera_Pos)) {
             SDK::Part Head(Player.Head.Address);
             SDK::Vector3 Head_Pos = Head.Get_PartPosition();

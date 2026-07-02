@@ -96,6 +96,13 @@ namespace Aimbot {
         else targetAddr = Plr.HumanoidRootPart.Address;
 
         if (!targetAddr) return SDK::Vector3{};
+        for (int ci = 0; ci < Plr.CachedBoneCount; ++ci) {
+            if (Plr.CachedBones[ci].InstanceAddress == targetAddr) {
+                auto pa = Plr.CachedBones[ci].PrimitiveAddress;
+                if (pa) return Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                break;
+            }
+        }
         uintptr_t primAddr = Driver->Read<uintptr_t>(targetAddr + Offsets::BasePart::Primitive);
         if (!primAddr) return SDK::Vector3{};
         return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
@@ -277,7 +284,7 @@ namespace Aimbot {
             for (auto& Plr : *Snapshot) {
                 if (Plr.Character.Address != PersistenceAddress) continue;
                 if (Plr.Local_Player || !Plr.Character.Address || !Plr.Head.Address) break;
-                if (Globals::Aimbot::KnockedCheck && PlayerUtils::IsPlayerKnocked(Plr)) break;
+                if (Globals::Aimbot::KnockedCheck && PlayerUtils::IsPlayerDead(Plr)) break;
                 int HitboxIdx = GetRandomizedHitbox(Plr.Character.Address, Globals::Aimbot::HitPart);
                 if (HitboxIdx > 2) HitboxIdx = 0;
                 SDK::Vector3 BonePos = GetTargetBonePos(Plr, HitboxIdx);
@@ -315,7 +322,7 @@ namespace Aimbot {
             SDK::Vector2 ScreenPos = Globals::VisualEngine.World_To_Screen(BonePos);
             float Dist2DSqr = (ScreenPos.x - CursorPos.x) * (ScreenPos.x - CursorPos.x) + (ScreenPos.y - CursorPos.y) * (ScreenPos.y - CursorPos.y);
             if (Globals::Aimbot::useFov) { float MaxFovSqr = Globals::Aimbot::FovSize * Globals::Aimbot::FovSize; if (Dist2DSqr > MaxFovSqr) continue; }
-            if (Globals::Aimbot::KnockedCheck && PlayerUtils::IsPlayerKnocked(Plr)) continue;
+            if (Globals::Aimbot::KnockedCheck && PlayerUtils::IsPlayerDead(Plr)) continue;
             if (Globals::Aimbot::WallCheck && !wallcheck->is_visible(CameraOrigin, BonePos)) continue;
             if (Dist2DSqr < ClosestDistanceSqr) {
                 ClosestDistanceSqr = Dist2DSqr;

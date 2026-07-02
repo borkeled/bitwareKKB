@@ -24,6 +24,12 @@ namespace Cache
 
 namespace SDK
 {
+    struct CachedBone
+    {
+        std::uint64_t InstanceAddress = 0;
+        std::uint64_t PrimitiveAddress = 0;
+    };
+
     class Player
     {
     public:
@@ -73,5 +79,9 @@ namespace SDK
 
         SDK::Instance LeftLeg;
         SDK::Instance RightLeg;
+
+        static constexpr int MaxCachedBones = 22;
+        CachedBone CachedBones[MaxCachedBones];
+        int CachedBoneCount = 0;
     };
 }

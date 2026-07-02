@@ -31,6 +31,14 @@ namespace Triggerbot {
 
         if (!targetAddr) return SDK::Vector3{};
 
+        for (int ci = 0; ci < Plr.CachedBoneCount; ++ci) {
+            if (Plr.CachedBones[ci].InstanceAddress == targetAddr) {
+                auto pa = Plr.CachedBones[ci].PrimitiveAddress;
+                if (pa) return Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                break;
+            }
+        }
+
         OBF_OPAQUE_TRUE { OBF_JUNK_BLOCK; }
 
         uintptr_t primAddr = Driver->Read<uintptr_t>(targetAddr + Offsets::BasePart::Primitive);
@@ -39,9 +47,16 @@ namespace Triggerbot {
         return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
     }
 
-    static SDK::Vector3 GetBonePosition(const SDK::Instance& Bone) {
-        if (!Bone.Address) return SDK::Vector3{};
-        uintptr_t primAddr = Driver->Read<uintptr_t>(Bone.Address + Offsets::BasePart::Primitive);
+    static SDK::Vector3 GetBonePosition(const SDK::Player& Plr, std::uint64_t addr) {
+        if (!addr) return SDK::Vector3{};
+        for (int ci = 0; ci < Plr.CachedBoneCount; ++ci) {
+            if (Plr.CachedBones[ci].InstanceAddress == addr) {
+                auto pa = Plr.CachedBones[ci].PrimitiveAddress;
+                if (pa) return Driver->Read<SDK::Vector3>(pa + Offsets::Primitive::Position);
+                break;
+            }
+        }
+        uintptr_t primAddr = Driver->Read<uintptr_t>(addr + Offsets::BasePart::Primitive);
         if (!primAddr) return SDK::Vector3{};
         return Driver->Read<SDK::Vector3>(primAddr + Offsets::Primitive::Position);
     }
@@ -151,7 +166,7 @@ namespace Triggerbot {
 
                     if (Plr.Distance > 700.f) continue;
 
-                    if (Globals::Triggerbot::KnockedCheck && PlayerUtils::IsPlayerKnocked(Plr)) continue;
+                    if (Globals::Triggerbot::KnockedCheck && PlayerUtils::IsPlayerDead(Plr)) continue;
 
                     int HitboxIdx = Globals::Triggerbot::HitPart;
 
@@ -160,7 +175,7 @@ namespace Triggerbot {
                         auto& Bones = Visuals::Get_Bones(Plr);
                         for (auto* Inst : Bones)
                         {
-                            SDK::Vector3 BonePos = GetBonePosition(*Inst);
+                            SDK::Vector3 BonePos = GetBonePosition(Plr, Inst->Address);
                             if (std::isnan(BonePos.x) || (BonePos.x == 0 && BonePos.y == 0)) continue;
 
                             SDK::Vector2 ScreenPos = Ve.World_To_Screen(BonePos);

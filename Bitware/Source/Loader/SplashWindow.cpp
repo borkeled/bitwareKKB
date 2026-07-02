@@ -248,7 +248,7 @@ namespace {
 
         // Footer with clean high-end spaced tracking
         wchar_t footerStr[128];
-        swprintf_s(footerStr, L"B I T W A R E");
+        swprintf_s(footerStr, L"L O A D E R");
         SetTextCharacterExtra(memDC, 6);
         DrawTextCentered(memDC, 0, h - 35, w, 20, footerStr, TextMuted(), smallFont);
         SetTextCharacterExtra(memDC, 0);

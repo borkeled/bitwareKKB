@@ -1,13 +1,13 @@
 #pragma once
 
 #define BITWARE_VERSION_MAJOR 1
-#define BITWARE_VERSION_MINOR 1
-#define BITWARE_VERSION_PATCH 2
+#define BITWARE_VERSION_MINOR 2
+#define BITWARE_VERSION_PATCH 3
 
-#define BITWARE_VERSION_STRING "1.1.2"
-#define BITWARE_VERSION_WSTRING L"1.1.2"
+#define BITWARE_VERSION_STRING "1.2.3"
+#define BITWARE_VERSION_WSTRING L"1.2.3"
 
 #define BITWARE_PRODUCT_NAME "Bitware"
 #define BITWARE_PRODUCT_NAME_W L"Bitware"
-#define BITWARE_DESCRIPTION "Bitware - External for Roblox"
-#define BITWARE_DESCRIPTION_W L"Bitware - External for Roblox"
+#define BITWARE_DESCRIPTION "Bitware"
+#define BITWARE_DESCRIPTION_W L"Bitware"
